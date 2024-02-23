@@ -1,9 +1,9 @@
+version=2
+
 ##
 ## Copyright(C) 2024 @ ZENETYS
 ## License: MIT (http://opensource.org/licenses/MIT)
 ##
-
-version=2
 
 type=@url_user:%[ { "type": "char-to", "name": "username", "extradata": ":@" } ]%
 type=@url_pass:%[ { "type": "char-to", "name": "password", "extradata": "@" } ]%

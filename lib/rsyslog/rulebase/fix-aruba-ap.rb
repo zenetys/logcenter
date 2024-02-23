@@ -1,9 +1,9 @@
+version=2
+
 ##
 ## Copyright(C) 2024 @ ZENETYS
 ## License: MIT (http://opensource.org/licenses/MIT)
 ##
-
-version=2
 
 # <142>Dec  6 23:04:36 2023 10.109.21.206 <10.109.21.206 C8:A5:DA:E3:21:87> snmp[5403]: ...
 # <142>Dec  6 23:04:36 2023 10.109.21.206 <10.109.21.206 C8:A5:DA:E3:21:87> dnsmasq[10711]: ...
