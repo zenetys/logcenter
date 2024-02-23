@@ -1,0 +1,101 @@
+#!/bin/bash
+#
+# Copyright(C) 2024 @ ZENETYS
+# This script is licensed under MIT License (http://opensource.org/licenses/MIT)
+#
+
+export LC_ALL=C
+shopt -s nullglob
+set -o pipefail
+set -f
+
+PROGNAME=${0##*/}
+
+if tty -s > /dev/null 2>&1; then
+    JQ_OPTS=( -C )
+    declare -A C=(
+        [ok]=$'\x1b[1;32m'
+        [error]=$'\x1b[1;91m'
+        [reset]=$'\x1b[m'
+    )
+fi
+
+if _jq=$(type -P jq); then
+    function jq() { "$_jq" "${JQ_OPTS[@]}" "$@" .; }
+else
+    echo 'WARNING: Command jq not found, consider installing jq for better output.' >&2
+    function jq() { cat "$@"; }
+fi
+
+if _lognormalizer=$(PATH=$PATH:${0%/*}:/usr/lib/lognorm type -P lognormalizer); then
+    function lognormalizer() { "$_lognormalizer" "$@"; }
+else
+    echo 'FATAL: Command lognormalizer not found!' >&2
+    exit 1
+fi
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+
+    echo "\
+Usage: $PROGNAME [OPTION...] RB-FILE SAMPLES-FILE
+Use lognormalizer to test log samples against liblognorm
+
+Available options:
+    -d, --rulebases DIR     Rulebases path for includes lookup
+    -v, --verbose           Increase verbose level
+    -h, --help              Display this help
+"
+    exit "$status"
+}
+
+ARGS=()
+VERBOSE=0
+
+shopt -s extglob
+
+while (( $# > 0 )); do
+    case "$1" in
+        -d|--rulebases) export LIBLOGNORM_RULEBASES="$2"; shift ;;
+        --verbose) (( VERBOSE++ )) ;;
+        -+([v]))
+            for (( i = 1; i < ${#1}; i++ )); do
+                case "${1:i:1}" in
+                    v) (( VERBOSE++ )) ;;
+                esac
+            done
+            ;;
+        -h|--help) exit_usage ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+
+shopt -u extglob
+
+ARGS+=( "$@" )
+(( ${#ARGS[@]} < 2 )) && exit_usage 1
+rulebase=${ARGS[0]}; shift
+retval=0
+
+for i in "${ARGS[@]:1}"; do
+    [[ $i == - ]] && i=/dev/stdin
+
+    echo -n "Test $i... "
+    out=$({ lognormalizer -T -oaddOriginalMsg -r "$rulebase" \
+                -e json < "$i" |jq; } 2>&1)
+    if (( $? != 0 )) || [[ $out == *unparsed-data* ]]; then
+        echo "${C[error]}FAILED${C[reset]}"
+        (( VERBOSE > 0 )) && echo "$out"
+        retval=2
+    else
+        echo "${C[ok]}OK${C[reset]}"
+        (( VERBOSE > 1 ))  && echo "$out"
+    fi
+done
+
+echo -n "${C[reset]}"
+exit "$retval"
