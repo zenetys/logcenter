@@ -1,0 +1,97 @@
+#!/bin/bash
+#
+# Copyright(C) 2024 @ ZENETYS
+# This script is licensed under MIT License (http://opensource.org/licenses/MIT)
+#
+
+set -f
+export LC_ALL=C
+umask 0077
+PROGNAME=${0##*/}
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/rsyslog/rsyslog.env}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [-n]
+Update by-name log archives symlinks
+
+Available options:
+  -n, --dry-run     Dry-run mode, do not change anything.
+  -q, --quiet       Display errors only.
+  -h, --help        Display this help."
+    exit "$status"
+}
+
+function _log() {
+    local now=$(date +%Y-%m-%dT%H:%M:%S.%3N%:z)
+    local LOGGER_SEVERITY=${LOGGER_SEVERITY:-info}
+    local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
+    [[ -t 0 ]] || logger -t "$PROGNAME[$$]" -p "$LOGGER_SEVERITY" -- "${DRY_RUN:+DRY-RUN ** }$*"
+    [[ -n $QUIET && $STDOUT_LABEL == INFO ]] && return 0
+    echo "$now $STDOUT_LABEL $PROGNAME: ${DRY_RUN:+DRY-RUN ** }$*"
+}
+
+function info() { LOGGER_SEVERITY=info STDOUT_LABEL=INFO _log "$@"; }
+function warning() { LOGGER_SEVERITY=warning STDOUT_LABEL=WARNING _log "$@"; }
+function error() { LOGGER_SEVERITY=err STDOUT_LABEL=ERROR _log "$@"; }
+function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+function load_env_or_fatal() {
+    source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
+    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
+    return 0
+}
+
+
+[[ $UID == 0 ]] ||
+    fatal 'This script must be run as root'
+
+load_env_or_fatal
+
+while (( $# > 0 )); do
+    case "$1" in
+        -n|--dry-run) DRY_RUN=1 ;;
+        -q|--quiet) QUIET=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n $DRY_RUN ]]; then
+    function ln() { info "EXEC: $FUNCNAME $*"; }
+fi
+
+find "$ZLC_OUTPUT_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 -printf '%P\n' |
+    grep -E '^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$' |
+    sort -V |
+    while read -r ip; do
+
+        if [[ $ip == 127.0.0.1 ]]; then
+            ptr=$(hostname --fqdn)
+            if [[ $ptr == *.* ]]; then
+                ptr="${ptr%%.*}-localhost.${ptr#*.}"
+            else
+                ptr+="-localhost"
+            fi
+        else
+            ptr=( $(host "$ip" |sed -nre 's,^.* domain name pointer (.+)\.$,\1,p' |tr '[A-Z]' '[a-z]') )
+        fi
+        info "IP: $ip, PTR: ${ptr[*]:-<not-found>}"
+
+        for p in "${ptr[@]}"; do
+            if [[ -e "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p" && $(readlink "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p") == "../$ip" ]]; then
+                info "Symlink $ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p already exists"
+                continue
+            fi
+            if ! [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/by-name ]] && !
+               ! mkdir -p "$ZLC_OUTPUT_ARCHIVES_DIR/by-name"; then
+                error "mkdir failed: $ZLC_OUTPUT_ARCHIVES_DIR/by-name"
+                continue
+            fi
+            ln -Tsnf "../$ip" "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p" ||
+                error "ln failed: $ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p"
+        done
+    done
