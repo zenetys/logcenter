@@ -1,0 +1,399 @@
+#!/usr/bin/lua
+--
+-- Copyright(C) 2024 @ ZENETYS
+-- This script is licensed under MIT License (http://opensource.org/licenses/MIT)
+-- 
+
+require 'json'
+
+PROGNAME = arg[0]:match('([^/]*)$')
+DEBUG = 0
+
+DEFAULT = {
+    facility = 1,
+    severity = 6,
+    hostname = '127.0.0.1',
+    src_ip = '127.0.0.1',
+    app_name = '-',
+    procid = '-',
+    msgid = '-',
+    sd = '-',
+    msg = '',
+    rj_id = os.date("%Y%m%d%H%M%S"),
+}
+
+PAT_DATE_RFC3339 = '%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[^+]*%+%d%d:%d%d'
+
+PARSER_DATE = {
+    {
+        name = 'date-received/date-reported',
+        match = {
+            pattern = '^('..PAT_DATE_RFC3339..')/('..PAT_DATE_RFC3339..')$',
+            set = { received = 1, reported = 2 },
+        },
+    },
+    {
+        name = 'date-reported',
+        match = {
+            pattern = '^('..PAT_DATE_RFC3339..')$',
+            set = { reported = 1 },
+        },
+    },
+}
+
+PARSER_HOSTNAME = {
+    {
+        name = 'hostname/ip',
+        match = {
+            pattern = '^([^ /]+)/([0-9a-fA-F:.]+)',
+            set = { hostname = 1, src_ip = 2 },
+        },
+    },
+    {
+        name = 'hostname',
+        match = {
+            pattern = '^([^ ]+)',
+            set = { hostname = 1 },
+        },
+    },
+}
+
+PARSER_MAIN = {
+    {
+        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
+        -- 2023-11-30T09:35:20.411141+01:00/2018-10-31T18:00:00+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
+        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "sd": "<rfc5424-sd>", "msg": "msg..." }
+        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "msg": "multi\nlines\nmsg..." }
+        name = 'archive-line-v2',
+        match = {
+            pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) (.+)',
+            set = { _date = 1, facility = 2, severity = 3, _hostname = 4, app_name = 5, procid = 6, msgid = 7, _rest = 8 },
+        },
+        chain = {
+            { input = '_date', parser = PARSER_DATE },
+            { input = '_hostname', parser = PARSER_HOSTNAME },
+            {
+                input = '_rest',
+                parser = {
+                    {
+                        name = 'msg',
+                        match = { fn = function (input) return input:sub(1,2) == '- ' end },
+                        finalize = { fn = function (input, vars) vars.msg = input:sub(3); return true end },
+                    },
+                    {
+                        name = 'json-[sd-]msg',
+                        --match = { pattern = '^{.+' },
+                        match = { fn = function (input) return input:sub(1,1) == '{' end },
+                        finalize = {
+                            fn = function (input, vars)
+                                local success, data = pcall(json.decode, vars._rest);
+                                if not success or not data.msg then return false end
+                                vars.msg = data.msg
+                                if data.sd then vars.sd = data.sd end
+                                return true
+                            end,
+                        },
+                    },
+                },
+            },
+        }
+    },
+    {
+        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
+        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
+        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy: msg...
+        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy[32098]: msg...
+        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
+        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
+        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy: msg...
+        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy[32098]: msg...
+        name = 'archive-line-v1',
+        match = {
+            pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^:]+): (.*)',
+            set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, message = 6 },
+        },
+        chain = {
+            { input = '_date', parser = PARSER_DATE },
+            { input = '_hostname', parser = PARSER_HOSTNAME },
+            {
+                input = '_tag',
+                parser = {
+                    {
+                        name = 'program[pid]',
+                        match = {
+                            pattern = '^([^%[]+)%[([^%]]+)%]$',
+                            set = { app_name = 1, procid = 2 },
+                        },
+                    },
+                    {
+                        name = 'program[]',
+                        match = {
+                            pattern = '^([^%[]+)%[%]$',
+                            set = { app_name = 1 },
+                        },
+                    },
+                    {
+                        name = 'program',
+                        match = {
+                            pattern = '^([^%[]+)$',
+                            set = { app_name = 1 },
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
+
+SYSLOG_FACILITY_TEXT2NUM = {
+    kern = 0,
+    user = 1,
+    mail = 2,
+    daemon = 3,
+    auth = 4,
+    syslog = 5,
+    lpr = 6,
+    news = 7,
+    uucp = 8,
+    cron = 9,
+    authpriv = 10,
+    ftp = 11,
+    ntp = 12,
+    audit = 13,
+    alert = 14,
+    clock = 15,
+    local0 = 16,
+    local1 = 17,
+    local2 = 18,
+    local3 = 19,
+    local4 = 20,
+    local5 = 21,
+    local6 = 22,
+    local7 = 23,
+}
+
+SYSLOG_SEVERITY_TEXT2NUM = {
+    emerg = 0,
+    alert = 1,
+    crit = 2,
+    err = 3,
+    warning = 4,
+    notice = 5,
+    info = 6,
+    debug = 7,
+}
+
+function perr(message)
+    io.stderr:write(PROGNAME..': '..message..'\n');
+    io.stderr:flush()
+end
+
+function debug(message)
+    if (not DEBUG) then return end
+    perr(message)
+end
+
+function num2pri(facility, severity)
+    return (facility << 3) + severity;
+end
+
+function text2pri(facility, severity)
+    local ifac = SYSLOG_FACILITY_TEXT2NUM[facility]
+    local isev = SYSLOG_SEVERITY_TEXT2NUM[severity]
+    return num2pri(ifac, isev);
+end
+
+function parse(input, defs, vars)
+    function try_def_match(def)
+        local cap
+        perr('def='..def.name..', input='..input);
+        if (def.match.pattern) then
+            perr('def='..def.name..', test pattern');
+            cap = { input:match(def.match.pattern) }
+            if (#cap == 0) then
+                return false
+            end
+        end
+        if (def.match.fn) then
+            perr('def='..def.name..', test fn');
+            if (not def.match.fn(input, def, vars, cap, table.unpack(def.match.args or {}))) then
+                return false
+            end
+        end
+        if (def.match.set) then
+            for kk,vv in pairs(def.match.set) do
+                vars[kk] = cap[vv]
+            end
+        end
+        return true
+    end
+
+    for i,v in ipairs(defs) do
+        if (not v.match or try_def_match(v)) then
+            if (v.finalize) then
+                perr('def='..v.name..', finalize fn');
+                if (not v.finalize.fn(input, vars, table.unpack(v.finalize.args or {}))) then
+                    return false, 'finalize failed'
+                end
+            end
+            if (v.chain) then
+                for ii,vv in ipairs(v.chain) do
+                    local ret, err = parse(vars[vv.input], vv.parser, vars);
+                    if (not ret) then
+                        return false, err
+                    end
+                end
+            end
+            return true
+        end
+    end
+
+    return false, 'no match'
+end
+
+
+function process(line)
+    local vars = {}
+    local ret, err = parse(line, PARSER_MAIN, vars)
+
+    perr('Parse '..(ret and 'OK' or 'ERR')..', vars='..json.encode(vars));
+
+    if (not ret) then
+        perr('Unsupported format ('..err..'): '..
+            (LOG_FILE or '-')..':'..LOG_ILINE..': '..
+            (#line <= 100 and line or line:sub(1, 100)..'...'))
+        return
+    end
+
+
+--    local cap, out
+--
+--    for i,v in ipairs(FMT_LOG) do
+--        cap = { line:match(v.pattern) }
+--        if (#cap > 0) then
+--            out = ''
+--            curdate = nil
+--
+--            -- pri / facility / severity
+--            if v.facility and v.severity then
+--                out = out..'<'..text2pri(cap[v.facility], cap[v.severity])..'>'
+--            else
+--                out = out..'<'..num2pri(DEFAULT_FACILITY_NUM, DEFAULT_SEVERITY_NUM)..'>'
+--            end
+--            -- reported time
+--            if v.reported then
+--                out = out..cap[v.reported]
+--            else
+--                if not curdate then curdate = date_rfc3339() end
+--                out = out..curdate
+--            end
+--            -- hostname
+--            if v.hostname then
+--                out = out..' '..cap[v.hostname]
+--            else
+--                out = out..' '..DEFAULT_HOSTNAME
+--            end
+--            -- tag
+--            if v.tag then
+--                out = out..' '..cap[v.tag]..':'
+--            else
+--                out = out..' '..DEFAULT_TAG..':'
+--            end
+--            -- reinject id
+--            out = out..' rjid='..LOG_RJID
+--            -- source
+--            if v.source then
+--                out = out..' src='..cap[v.source]
+--            else
+--                out = out..' src='..LOG_SOURCE
+--            end
+--            -- type
+--            if v.type then
+--                out = out..' type='..cap[v.type]
+--            else
+--                out = out..' type='..LOG_TYPE
+--            end
+--            -- received
+--            if v.received then
+--                out = out..' received='..cap[v.received]
+--            else
+--                if not curdate then curdate = date_rfc3339() end
+--                out = out..' received='..curdate
+--            end
+--            -- message
+--            if v.message then
+--                out = out..' msg='..cap[v.message]
+--            else
+--                out = out..' msg='
+--            end
+--            -- done
+--            io.write(out..'\n');
+--            io.flush()
+--            return
+--        end
+--    end
+
+end
+
+function exit_usage(status)
+    print('Usage: '..PROGNAME..' [option]\
+Read log archives from stdin, format for reinject on stdout\n\
+Available options:\
+  -i, --id          Set reinject identifier (default yyyymmddHHMMSS)\
+  -t, --type        Set log type (default syslog)\
+  -s, --source      Set source IP (defaut from hostname field or 127.0.0.1)\
+  -H, --hostname    Set default syslog hostname\
+  -T, --tag         Set default syslog tag\
+  -h, --help        Display this help\n\
+Expected input is a stream of lines in the following format:\
+  @reported/@received facility.severity hostname/ip program[pid]: message\
+  @reported/@received facility.severity hostname program[pid]: message')
+    os.exit(status or 0)
+end
+
+function main(arg)
+    local i = 1
+    while i <= #arg do
+        if arg[i] == '-i' or arg[i] == '--id' then
+            i = i + 1; DEFAULT_RJID = arg[i]
+        elseif arg[i] == '-t' or arg[i] == '--type' then
+            i = i + 1; DEFAULT_TYPE = arg[i]
+        elseif arg[i] == '-s' or arg[i] == '--source' then
+            i = i + 1; DEFAULT_SOURCE = arg[i]
+        elseif arg[i] == '-H' or arg[i] == '--hostname' then
+            i = i + 1; DEFAULT_HOSTNAME = arg[i]
+        elseif arg[i] == '-T' or arg[i] == '--tag' then
+            i = i + 1; DEFAULT_TAG = arg[i]
+        elseif arg[i] == '-h' or arg[i] == '--help' then
+            exit_usage(0)
+        else
+            exit_usage(1)
+        end
+        i = i + 1
+    end
+
+    LOG_RJID = DEFAULT_RJID
+    LOG_TYPE = DEFAULT_TYPE
+    LOG_SOURCE = DEFAULT_SOURCE
+    LOG_ILINE = 0
+    LOG_FILE = nil
+
+    local line = nil
+
+    while true do
+        line = io.read('*line')
+        if line == nil then break end
+
+        LOG_ILINE = LOG_ILINE + 1
+        status, err = pcall(process, line)
+        if not status then
+            perr(err)
+        end
+    end
+end
+
+status, err = pcall(main, arg)
+if not status then
+    perr(err)
+    os.exit(2)
+end
