@@ -1,0 +1,355 @@
+#!/bin/bash
+#
+# Copyright(C) 2020 Benoit DOLEZ @ ZENETYS
+# This script is licensed under MIT License (http://opensource.org/licenses/MIT)
+#
+
+export LC_ALL=C
+shopt -s nullglob
+set -o pipefail
+
+PROGNAME=${0##*/}
+HOSTNAME=$(< /proc/sys/kernel/hostname)
+HOSTNAME=${HOSTNAME%%.*}
+DRY_RUN=1
+BECOMEROOT=0
+LOCK_FILE="/dev/shm/$PROGNAME.lock"
+LOCK_TAKEN=
+
+CONFIG=${ZSYNC_CONFIG:-$HOME/.zsync.cfg}
+[[ -r $CONFIG ]] || CONFIG=/etc/ztools/zsync.cfg
+TIMEOUT=10
+PEERS=()
+INCLUDES=()
+EXCLUDES=()
+USE_RSYNC_UPDATE= # set USE_RSYNC_UPDATE=1 in config to use rsync --update
+SUDO_REMOTE=""
+
+if tty -s >/dev/null 2>&1; then
+    declare -A C=(
+        [info]=$'\x1b[1m'
+        [warning]=$'\x1b[7;33m'
+        [error]=$'\x1b[7;91m'
+        [fatal]=$'\x1b[7;1;91m'
+        [blue]=$'\x1b[7;34m'
+        [reset]=$'\x1b[m'
+    )
+    HAS_TTY=1
+else
+    declare -A C=()
+    HAS_TTY=
+fi
+
+if type -P colordiff >/dev/null; then
+    HAS_COLORDIFF=1
+else
+    HAS_COLORDIFF=
+fi
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+
+    echo "\
+Usage: $PROGNAME [OPTION]... [FILE]...
+Rsync wrapper for cluster/HA platforms
+
+Options:
+    -c, --config    Path to configuration file
+    -f, --force     Disable dry-run mode
+    -H, --host      Set target host
+    -d, --diff      View diff on text files
+    -i, --include   Add include rule
+    -e, --exclude   Add exclude rule
+    -h, --help      Display this help
+
+Current configuration file: $CONFIG
+
+Use of options -i and/or -e ignores the include/exclude rules
+defined in the configuration file. Similarly, use of option -H
+ignores the peers defined in the configuration file.
+
+These two forms are equivalent:
+    $PROGNAME -i INC1 -i INC2 -e EXC1
+    $PROGNAME -e EXC1 INC1 INC2
+"
+    exit "$status"
+}
+
+function info() {
+    local i;
+    local d=$(date +%Y-%m-%dT%H:%M:%S.%3N%z);
+    local l=info
+    [[ ${1:0:2} == -- ]] && l=${1:2} && shift
+    for i in "$@"; do
+        printf '%s %s %s%s%s %s: %s\n' "$d" "$HOSTNAME" "${C[$l]}" "$l" "${C[reset]}" "$PROGNAME" "$i";
+    done
+}
+
+function fatal() {
+    info --${FUNCNAME[0]} "$@"
+    exit 1
+}
+
+function error() {
+    info --${FUNCNAME[0]} "$@"
+}
+
+function warning() {
+    info --${FUNCNAME[0]} "$@"
+}
+
+function debug() {
+    (( DEBUG == 0 )) && return 0
+    info --${FUNCNAME[0]} "$@"
+}
+
+function take_lock_or_fatal() {
+    if ! ln -sT "/proc/$$" "$LOCK_FILE" 2>/dev/null; then
+        [[ -e "$LOCK_FILE" ]] || release_lock
+        if ! ln -sT "/proc/$$" "$LOCK_FILE" 2>/dev/null; then
+            fatal "Cannot take lock $LOCK_FILE"
+        fi
+    fi
+    LOCK_TAKEN=1
+}
+
+function release_lock() {
+    rm -f "$LOCK_FILE" || return 1
+    LOCK_TAKEN=
+}
+
+function on_exit() {
+    if [[ -n $LOCK_TAKEN ]]; then
+        release_lock
+    fi
+    echo -n "${C[reset]}"
+}
+
+function confirm() {
+    echo -n "$1"
+    read -r
+    if [[ "$REPLY" != [Yy] ]]; then
+        info "Sync aborted at user request"
+        return 1
+    fi
+}
+
+function show_diff() {
+    local difflist=$1 ; shift
+    local hash action mtime owner file
+    local -a ascii_files=( )
+
+    while read hash acode action mtime perm owner file ; do
+        printf "# %s %s %s %s %s %s\n" \
+               "$acode" "$action" \
+               "$mtime" "$perm" "$owner" "$file"
+        if [[ ${acode:1:2} == "fc"     ]] &&
+           (( ${#ascii_files[@]} <= 10 )) &&
+           [[ $(file $file) =~ ASCII   ]]; then
+            ascii_files+=( "$file" )
+            (( ${#ascii_files[@]} > 10 )) &&
+                warning "Too many text files for diff, display the first 10"
+        fi
+    done < "$tempfile"
+
+    if (( ${#ascii_files[@]} > 0 )); then
+        # echo "ASCII : ${ascii_files[*]}" >&2
+        local tempdir=$(mktemp -d) || fatal "can't create temporary directory"
+        mkdir -p "$tempdir/old"
+        ln -s / "$tempdir/new"
+        (
+            IFS=$'\t'
+            function do_remote() {
+                tar zc -C / "${@#/}"
+            }
+            declare -f do_remote
+            echo "do_remote$IFS${ascii_files[*]}"
+        ) |
+            "${SSHCMD[@]}" $i "[[ -x $0 ]] && CMD='$0 --do-remote' || CMD='bash'; $SUDO_REMOTE \$CMD" |
+            tar zx -C "$tempdir/old"
+        (
+            cd $tempdir
+            find old -type f -printf "%P\0" |
+                xargs -0 -l -I{} diff --unidirectional-new-file -u old/{} new/{} |
+                if [[ -n $HAS_TTY && -n $HAS_COLORDIFF ]]; then
+                    colordiff
+                else
+                    cat
+                fi
+        )
+        rm -rf "$tempdir"
+    fi
+}
+
+function do_remote() {
+    local IFS=$'\t'
+    local -a FILES=( )
+    while read CMD REST; do
+       [[ $CMD == do_remote ]] && FILES=( $REST )
+    done
+    if [[ ${#FILES[@]} -gt 0 ]]; then
+        tar zc -C / "${FILES[@]}"
+    fi
+    return $?
+}
+
+function do_remote_rsync() {
+    [[ $1 == --server ]] || return 1
+    rsync "$@"
+    return $?
+}
+
+function do_rsync() {
+    local i retval=0 peer_retval
+    local rsync_opts=(
+        --archive # -rlptgoD
+        ${USE_RSYNC_UPDATE:+--update}
+        --one-file-system
+        --compress
+        --checksum
+        --relative
+        --omit-dir-times
+        --delete
+        --rsync-path "[[ -x $0 ]] && CMD='$0 --do-rsync' || CMD='rsync' ; $SUDO_REMOTE \$CMD"
+        -e "${SSHCMD[*]}"
+    )
+
+    local dry_run_format=' # %i %o %M %B %U:%G  /%f'
+    local sync_format=' > %o /%f'
+    local tempfile=$(mktemp) || fatal "can't create temporary directory"
+
+    for i in "${EXCLUDES[@]}"; do
+        rsync_opts+=( --exclude "$i" )
+    done
+
+    for i in "${PEERS[@]}"; do
+        # bypass myself
+        [[ ${i#*@} == $HOSTNAME ]] && continue
+        if [[ -n $HAS_TTY ]]; then
+            info "${DRY_RUN:+DRY-RUN }rsync to ${C[blue]}${i}${C[reset]}..."
+
+            rsync "${rsync_opts[@]}" --dry-run --out-format "$dry_run_format" "${INCLUDES[@]}" "$i:/" > "$tempfile"
+            peer_retval=$?
+
+            if (( peer_retval != 0 )); then
+                error "Rsync to $i returned error code $peer_retval"
+                if (( peer_retval == 255 )); then
+                    error "Try: ssh-copy-id${SSH_USER:+ -l "$SSH_USER"}${SSH_IDENTITY:+ -i "$SSH_IDENTITY"} -o StrictHostKeyChecking=ask $i"
+                fi
+                retval=1
+                continue
+            fi
+
+            # bypass if diff empty
+            [[ -s $tempfile ]] || continue
+
+            if [[ -n $DIFF ]]; then
+                show_diff "$tempfile"
+            else
+                cat "$tempfile"
+            fi
+
+            # bypass in dry-run mode
+            [[ -n $DRY_RUN ]] && continue
+
+            confirm "Please confirm to ${C[error]}sync${C[reset]} files? [N/y] " || continue
+        else
+            info "Rsync to $i..."
+        fi
+
+        rsync "${rsync_opts[@]}" --out-format "$sync_format" "${INCLUDES[@]}" "$i:/"
+        peer_retval=$?
+
+        if (( peer_retval == 0 )); then
+            info "Done rsync to $i"
+        else
+            error "Rsync to $i returned error code $peer_retval"
+            retval=1
+        fi
+    done
+    rm -f "$tempfile"
+    return "$retval"
+}
+
+peers=()
+includes=()
+excludes=()
+argv=( "$@" )
+
+while (( $# > 0 )); do
+    case "$1" in
+        --x-debug) XDEBUG=1 ;;
+        -c|--config) CONFIG=$2; shift ;;
+        -f|--force) DRY_RUN= ;;
+        -R|--become-root) BECOMEROOT=1 ;;
+        -d|--diff) DIFF=1 ;;
+        -H|--host) peers+=( "$2" ); shift ;;
+        -i|--include) includes+=( "$2" ); shift ;;
+        -e|--exclude) excludes+=( "$2" ); shift ;;
+        --do-remote) do_remote; exit $? ;;
+        --do-rsync)  do_remote_rsync "${@:2}"; exit $? ;;
+        -h|--help) exit_usage ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *)  includes+=( "$1" ) ;;
+    esac
+    shift
+done
+
+includes+=( "$@" )
+
+[[ -n $XDEBUG ]] && set -x
+
+trap on_exit EXIT
+
+if [[ -n $CONFIG && -r $CONFIG ]]; then
+    if ! source "$CONFIG"; then
+        fatal "Cannot load configuration file '$CONFIG'"
+    fi
+fi
+
+# This script is ment to be run as root.
+if (( $BECOMEROOT == 1 && $UID != 0 )); then
+    sudo_opts=( -u root )
+    [[ -t 0 ]] || sudo_opts=( -n )
+    exec sudo -u root "${sudo_opts[@]}" -- "$0" "${argv[@]}"
+elif (( $BECOMEROOT == 1 )); then
+    SUDO_REMOTE='[ "$UID" != 0 ] && SUDO="sudo -n -- "; $SUDO'
+fi
+
+if (( ${#peers[@]} > 0 )); then
+    PEERS=( "${peers[@]}" )
+fi
+
+[[ -z $PEERS ]] && fatal "No peers to sync with"
+
+[[ $SSH_IDENTITY && ! -r $SSH_IDENTITY ]] &&
+  fatal "Cannot read SSH identity '$SSH_IDENTITY'"
+
+SSHCMD=(
+    ssh -T
+    ${SSH_USER:+-l "$SSH_USER"}
+    ${SSH_IDENTITY:+-o IdentityFile="$SSH_IDENTITY"}
+    -o ConnectTimeout=$TIMEOUT
+    -o IdentitiesOnly=yes
+    -o BatchMode=no
+    -o ClearAllForwardings=yes
+    -o CheckHostIP=yes
+    -o StrictHostKeyChecking=ask
+)
+
+(( ${#includes[@]} > 0 )) && INCLUDES=( "${includes[@]}" )
+(( ${#excludes[@]} > 0 )) && EXCLUDES=( "${excludes[@]}" )
+
+[[ -z $INCLUDES ]] && fatal "Noting to include for sync"
+
+for i in "${INCLUDES[@]}"; do
+    if [[ ${i:0:1} != / ]]; then
+        fatal "Expected absolute path for include '$i'"
+    fi
+done
+
+[[ -z $DRY_RUN ]] && take_lock_or_fatal
+
+do_rsync
