@@ -1,3 +1,5 @@
+.*.swp
+.~
 RPMS/
 SOURCES/*.?z
 SRPMS/
