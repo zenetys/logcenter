@@ -30,6 +30,14 @@ function version() {
   echo "${PROGFILE##*/}${VERSION:+ $VERSION} - $AUTHOR - $LICENSE"
 }
 
+function on_exit() {
+  if [[ -n $GITREV && $SPECFILE == *.gitrev ]]; then
+    rm -f "$SPECDIR/$SPECFILE"
+  fi
+}
+
+trap on_exit EXIT
+
 declare QUIET=$QUIET
 declare VERBOSE=$VERBOSE
 declare XDEBUG=$XDEBUG
@@ -41,7 +49,7 @@ declare REPO=$REPO
 declare UPDATE=
 declare KEEP=
 declare NOKEEP=
-declare PROJECTDIR=$PROJECTDIR
+declare GITREV=
 declare SOURCEDIR=$SOURCEDIR
 declare OUTPUTDIR=$OUTPUTDIR
 declare PREBUILDSCRIPT=$PREBUILDSCRIPT
@@ -81,6 +89,8 @@ while (( $# > 0 )); do
     --keep) KEEP=1 ;;
     ## --nokeep: never keep build environment on error
     --nokeep) NOKEEP=1 ;;
+    ## --gitrev: create source0 tarball from git revision
+    --gitrev) GITREV=$2 ; shift ;;
     # generic args
     --) shift ; break ;;
     -*) usage "Unknown parameter '$1'" && exit 1 ;;
@@ -145,17 +155,14 @@ else
   PREBUILDSCRIPTFILE=${PREBUILDSCRIPT##*/}
 fi
 
-[[ -z $PROJECTDIR ]] && PROJECTDIR=$PWD
 [[ -z $SOURCEDIR ]] && SOURCEDIR=$PWD
 [[ -z $OUTPUTDIR ]] && OUTPUTDIR=$PWD
-[[ ${PROJECTDIR:0:1} != "/" ]] && PROJECTDIR=$PWD/$PROJECTDIR
 [[ ${SOURCEDIR:0:1} != "/" ]] && SOURCEDIR=$PWD/$SOURCEDIR
 [[ ${OUTPUTDIR:0:1} != "/" ]] && OUTPUTDIR=$PWD/$OUTPUTDIR
 [[ -n $REPO && ${REPO:0:1} != "/" ]] && REPO=$PWD/$REPO
 
 echo "SPECFILE: $SPECFILE"
 echo "SPECDIR: $SPECDIR"
-echo "PROJECTDIR: $PROJECTDIR"
 echo "SOURCEDIR: $SOURCEDIR"
 echo "OUTPUTDIR: $OUTPUTDIR"
 echo "PREBUILDSCRIPT: ${PREBUILDSCRIPT:-none}"
@@ -340,6 +347,37 @@ then
   RPMBUILDOPTS+=( --noclean )
 fi
 
+# Prepare env and script to be run inside the container
+BGROUP=$(id -gn)
+BUSER=${USER:-$(id -un)}
+BHOME=~
+
+# Handle $GITREV:
+# - create a source tarball from the current directory, assuming it is a git
+# - use it as source0
+# - change version accordingly (git describe) in spec file
+function gitrev2rpm() {
+  local gitdesc gitdate
+  gitdesc=$(git describe --tags --match 'v?*' --abbrev=7 --always "$1")
+  if [[ $gitdesc =~ ^(v(.+)(-[0-9]+-g))?([0-9a-f]+)$ ]]; then
+    gitdate=$(date -d "$(git log -n 1 --format='%ci' "$1")" +%Y%m%d%H%M%S)
+    REPLY=( "${BASH_REMATCH[2]:-0.0.0}^${gitdate}g${BASH_REMATCH[4]}.${BUSER:0:3}" "${BASH_REMATCH[4]}" )
+  else
+    REPLY=( "${gitdesc:1}" "${gitdesc:1}" )
+  fi
+}
+if [[ -n $GITREV ]]; then
+  gitrev2rpm "$GITREV"
+  project=${PWD##*/}
+  sed -re "s,(^\\s*Version\\s*:\\s*).*,\\1${REPLY[0]}," \
+    -e "s|(^\\s*source0\\s*:\\s*).*|\\1$project-dev.tar.gz|i" \
+    "$SPECDIR/$SPECFILE" > "$SPECDIR/$SPECFILE.gitrev"
+  SPECFILE="$SPECFILE.gitrev"
+  git archive --format tar.gz --prefix "$project-${REPLY[1]}/" \
+    -o "$SOURCEDIR/$project-dev.tar.gz" "$GITREV" ./ \
+    ':!rpmbuild-docker' ':!*.spec' ':!SPECS/'
+fi
+
 # Options for docker
 DOCKER_OPTS=(
   "${DOCKER_OPTS_DIST[@]}"
@@ -348,7 +386,6 @@ DOCKER_OPTS=(
   --mount "type=bind,src=$CACHEBASE/cache-yum-$DIST,dst=/var/cache/yum"
   --mount "type=bind,src=$CACHEBASE/cache-yum-$DIST,dst=/var/cache/dnf"
   --mount "type=bind,src=$CACHEBASE/cache-shared,dst=/tmp/cache-shared"
-  --mount "type=bind,src=$PROJECTDIR,dst=/tmp/PROJECT"
   --mount "type=bind,src=$SOURCEDIR,dst=/tmp/SOURCES"
   --mount "type=bind,src=$OUTPUTDIR/SRPMS,dst=/tmp/SRPMS"
   --mount "type=bind,src=$OUTPUTDIR/RPMS,dst=/tmp/RPMS"
@@ -362,13 +399,9 @@ if [[ -n $PREBUILDSCRIPT ]] ; then
   DOCKER_OPTS+=( --mount "type=bind,src=$PREBUILDSCRIPT,dst=/tmp/$PREBUILDSCRIPTFILE" )
 fi
 
-# Prepare env and script to be run inside the container
-BGROUP=$(id -gn)
-BUSER=${USER:-$(id -un)}
-BHOME=~
 
 function build_exit() {
-  local status=${?:-0}
+  local status=${1:-0}
   [[ -n $NOKEEP ]] && exit "$status"
   [[ -n $KEEP || $status != 0 ]] && sleep infinity
   exit "$status"
@@ -393,8 +426,7 @@ function build_dl() {
   fi
 }
 function build_main() {
-  set -fxe
-  trap build_exit EXIT
+  set -fx
   OIFS=$IFS
 
   mkdir -p "$BHOME"
@@ -415,7 +447,7 @@ EOF
   fi
 
   if [[ -n $PREBUILDSCRIPTFILE ]] ; then
-    "/tmp/$PREBUILDSCRIPTFILE"
+    "/tmp/$PREBUILDSCRIPTFILE" || build_exit $?
   fi
 
   rpmbuildopts=(
@@ -428,47 +460,6 @@ EOF
     --define "dist .$DIST"
     "${RPMSPECOPTS[@]}"
   )
-  function pgit() {
-    build_runas "$BUSER" git --git-dir "/tmp/PROJECT/.git" "$@"
-  }
-  function gitrev2rpm() {
-    local gitdesc gitdate
-    gitdesc=$(pgit describe --tags --match 'v?*' --abbrev=7 --always "$1")
-    if [[ $gitdesc =~ ^(v(.+)(-[0-9]+-g))?([0-9a-f]+)$ ]]; then
-      gitdate=$(date -d "$(pgit show -s --format=%ci "$1")" +%Y%m%d%H%M%S)
-      REPLY=( "${BASH_REMATCH[2]:-0.0.0}^${gitdate}g${BASH_REMATCH[4]}.${BUSER:0:3}" "${BASH_REMATCH[4]}" )
-    else
-      REPLY=( "${gitdesc:1}" "${gitdesc:1}" )
-    fi
-  }
-  function yum() {
-    command yum --setopt install_weak_deps=False "$@"
-  }
-
-  cp "/tmp/$SPECFILE"{,.gen}
-  SPECFILE+=.gen
-
-  # download sources if needed
-  if [[ $DOWNLOAD == 1 ]] ; then
-    dlsources=( $(rpmspec -P "/tmp/$SPECFILE" "${rpmspecopts[@]}" |
-      sed -nr -e 's,^(source|patch)[0-9]*\s*:\s*(\S+).*,\2,ip') )
-    for i in "${dlsources[@]}"; do
-        if [[ $i == git@* ]]; then # ment to be once only
-            yum install -y git
-            gitrev=${i#git@}
-            gitrev2rpm "$gitrev"
-            gitname=${PROJECT%${PROJECT##*[!/]}}; gitname=${gitname##*/}
-            gitname=logcenter
-            gitarchive="$gitname-${REPLY[1]}.tar.gz"
-            sed -i -re "s,(^\\s*Version\\s*:\\s*).*,\\1${REPLY[0]}," \
-              -e "s|(^\\s*Source[0-9]*\s*:\s*)$i|\\1${gitarchive##*/}|i" \
-              "/tmp/$SPECFILE"
-            pgit archive --format tar.gz --prefix "${gitarchive%.tar.gz}/" -o "/tmp/SOURCES/$gitarchive" "$gitrev"
-        elif [[ $i == *://* ]]; then
-            RUNAS="$BUSER" build_dl "$i" /tmp/SOURCES
-        fi
-    done
-  fi
 
   IFS=$'\n'
   buildreq=( $(rpmspec -P "/tmp/$SPECFILE" "${rpmspecopts[@]}" |
@@ -477,12 +468,22 @@ EOF
     sed -re 's/^ *([^ ]( +[^ ]|[^ ])*) *$/\1/') )
   IFS=$OIFS
   if [[ -n $buildreq ]]; then
-    yum install -y "${buildreq[@]}"
+    yum install -y "${buildreq[@]}" || build_exit $?
+  fi
+
+  # download sources if needed
+  if [[ $DOWNLOAD == 1 ]] ; then
+    dlsources=( $(rpmspec -P "/tmp/$SPECFILE" "${rpmspecopts[@]}" |
+      sed -nr -e 's,^(source|patch)[0-9]*\s*:\s*(\S+).*,\2,i;T;/:\/\//p') )
+    for i in "${dlsources[@]}"; do
+        RUNAS="$BUSER" build_dl "$i" /tmp/SOURCES || build_exit $?
+    done
   fi
 
   # Having _topdir /tmp causes problems in el6/el7 because it is not long enough
   # https://access.redhat.com/solutions/1426113
-  build_runas "$BUSER" rpmbuild "${rpmbuildopts[@]}" -ba "/tmp/$SPECFILE"
+  build_runas "$BUSER" rpmbuild "${rpmbuildopts[@]}" -ba "/tmp/$SPECFILE" ||
+      build_exit $?
 
   if [[ -n $REPO && -n $UPDATE ]] ; then
     for repo in RPMS SRPMS; do
@@ -490,6 +491,7 @@ EOF
       build_runas "$BUSER" createrepo --update "/tmp/local-repo/$repo"
     done
   fi
+  build_exit 0
 }
 
 # Build RPM in the container
