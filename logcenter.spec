@@ -37,9 +37,11 @@ tar xvzf %{SOURCE0} --strip-components 1 -C logcenter
 cd logcenter
 mkdir -p -m 755 %{buildroot}/etc/logcenter
 mkdir -p -m 755 %{buildroot}/opt/logcenter
+mkdir -p -m 755 %{buildroot}/var/log/logcenter
 cp -RT --preserve=timestamp ./opt/logcenter/ %{buildroot}/opt/logcenter/
 cd ..
 
 %files
 /etc/logcenter
 /opt/logcenter
+/var/log/logcenter
