@@ -8,7 +8,7 @@ set -f
 export LC_ALL=C
 umask 0077
 PROGNAME=${0##*/}
-ZLC_ENV=${ZLC_ENV:-/etc/logcenter/rsyslog/rsyslog.env}
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
 
 function exit_usage() {
     local status=${1:-0}
