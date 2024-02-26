@@ -8,7 +8,7 @@ set -f
 export LC_ALL=C
 umask 0077
 PROGNAME=${0##*/}
-DAYS=
+DAYS=${ZLC_UNCOMPRESSED_DAYS:-1}
 QUIET=
 DRY_RUN=
 XZ_OPTS=( -9 )
