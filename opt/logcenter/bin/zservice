@@ -70,11 +70,23 @@ function check-config-sshd() {(
 )}
 
 function check-config-rsyslog() {(
-    set -a
-    [[ -r /etc/sysconfig/rsyslog ]] && source /etc/sysconfig/rsyslog
-    [[ -r /etc/kompot/rsyslog/rsyslog.env ]] && source /etc/kompot/rsyslog/rsyslog.env
-    set +a
-    rsyslogd -N5
+    local envfiles f
+    if [[ $PLATFORM == runit ]]; then
+        envfiles=($(sed -nre 's|.*source[ ]*(.*rsyslog[^ ]*).*|\1|p' \
+            "$RUNIT_SV_DIR/rsyslog/run"))
+    else
+        envfiles=($(systemctl show rsyslog -p EnvironmentFiles --value |
+            sed -nre 's,^([^ ]+).*,\1,p'))
+    fi
+    (
+        set -a
+        for f in "${envfiles[@]}"; do
+            [[ -f "$f" && -r "$f" ]] || continue
+            source "$f"
+        done
+        set +a
+        rsyslogd -N5
+    )
 )}
 
 # systemd implementation
