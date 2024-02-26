@@ -22,6 +22,9 @@ URL: https://github.com/zenetys/logcenter
 
 Source0: %zenetys_git_source logcenter
 
+#Requires: lua
+#Requires: rsyslog8z
+
 %description
 Logcenter integration
 
