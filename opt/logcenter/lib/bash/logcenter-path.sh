@@ -1,3 +1,3 @@
-PATH+=:/opt/logcenter/bin
-[[ -d /etc/logcenter/bin ]] && PATH+=:/etc/logcenter/bin
+[[ :$PATH: != *:/opt/logcenter/bin:* ]] && PATH+=:/opt/logcenter/bin
+[[ -d /etc/logcenter/bin && :$PATH: != *:/etc/logcenter/bin:* ]] && PATH+=:/etc/logcenter/bin
 export PATH
