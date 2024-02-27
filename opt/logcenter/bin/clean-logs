@@ -1,0 +1,119 @@
+#!/bin/bash
+#
+# Copyright(C) 2024 @ ZENETYS
+# This script is licensed under MIT License (http://opensource.org/licenses/MIT)
+#
+
+set -f
+export LC_ALL=C
+PROGNAME=${0##*/}
+DAYS=
+QUIET=
+DRY_RUN=
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [-n] [-q] [-d DAYS]
+Delete logs older than n day(s)
+
+Available options:
+  -d, --days    NUM     Delete logs older than n day(s).
+  -q, --quiet           Display errors only.
+  -n, --dry-run         Dry-run mode, do not change anything.
+  -h, --help            Display this help."
+    exit "$status"
+}
+
+function _log() {
+    local now=$(date +%Y-%m-%dT%H:%M:%S.%3N%:z)
+    local LOGGER_SEVERITY=${LOGGER_SEVERITY:-info}
+    local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
+    [[ -t 0 ]] || logger -t "$PROGNAME[$$]" -p "$LOGGER_SEVERITY" -- "${DRY_RUN:+DRY-RUN ** }$*"
+    [[ -n $QUIET && $STDOUT_LABEL == INFO ]] && return 0
+    echo "$now $STDOUT_LABEL $PROGNAME: ${DRY_RUN:+DRY-RUN ** }$*"
+}
+
+function info() { LOGGER_SEVERITY=info STDOUT_LABEL=INFO _log "$@"; }
+function warning() { LOGGER_SEVERITY=warning STDOUT_LABEL=WARNING _log "$@"; }
+function error() { LOGGER_SEVERITY=err STDOUT_LABEL=ERROR _log "$@"; }
+function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+function load_env_or_fatal() {
+    source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
+    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
+    DAYS=$ZLC_ARCHIVES_RETENTION_DAYS # may be overriden by script argument
+    return 0
+}
+
+[[ $UID == 0 ]] ||
+    fatal 'This script must be run as root'
+
+load_env_or_fatal
+
+while (( $# > 0 )); do
+    case "$1" in
+        -d|--days) DAYS=$2; shift ;;
+        -q|--quiet) QUIET=1 ;;
+        -n|--dry-run) DRY_RUN=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+[[ -n $DAYS && -z ${DAYS//[0-9]} ]] ||
+    fatal 'Invalid retention days, not a number'
+
+find_opts=(
+    -mindepth 3 -maxdepth 3
+    -type f
+    -name '????-??-??.*log*'
+    -mtime "+$DAYS"
+)
+
+total=0
+success=0
+error=0
+
+time_main_start=$(date +%s)
+
+info "BEGIN TASK"
+info "Variables: ZLC_OUTPUT_ARCHIVES_DIR=${ZLC_OUTPUT_ARCHIVES_DIR:-<empty>}, \
+DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
+info "Find options: ${find_opts[*]}"
+
+while read -r; do
+    info "Delete $REPLY"
+    (( total++ ))
+
+    if [[ -n $DRY_RUN ]]; then
+        info "DRY-RUN enabled, skip to next"
+        continue
+    fi
+
+    rm "$REPLY"
+    if (( $? == 0 )); then
+        (( success++ ))
+    else
+        (( error++ ))
+        error "Call to rm failed, error deleting $REPLY"
+    fi
+
+done < <(
+    find -L "$ZLC_OUTPUT_ARCHIVES_DIR/" "${find_opts[@]}" |sort -V
+)
+
+time_main_stop=$(date +%s)
+message="END TASK -- elapsed: $(( time_main_stop - time_main_start ))s, \
+files: $total, success: $success, error: $error"
+
+if (( error > 0 )); then
+    error "$message"
+    exit 1
+else
+    info "$message"
+    exit 0
+fi
