@@ -16,7 +16,7 @@ Abstraction script to manage services on different platforms"
 }
 
 function fatal() {
-    echo "FATAL: $PROGNAME: ${PLATFORM:+$[$PLATFORM] }$*" >&2
+    echo "FATAL: $PROGNAME: ${PLATFORM:+[$PLATFORM] }$*" >&2
     exit 99
 }
 
