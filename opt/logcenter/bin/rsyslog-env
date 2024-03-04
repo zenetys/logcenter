@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+PROGNAME=${0##*/}
+MAINCONF=/etc/logcenter/logcenter.conf
+function log() {
+    if [[ -t 0 ]]; then
+        echo "$PROGNAME: ${LEVEL:+$LEVEL: }$*"
+    else
+        logger -t "$PROGNAME" --id="$$" -s ${LEVEL:+-p "$LEVEL"} -- "$*"
+    fi >&2
+}
+function info() { LEVEL=info log "$@"; }
+function error() { LEVEL=info log "$@"; }
+[[ -x $1 ]] || { error 'Argument is not executable'; exit 1; }
+set -a
+source "$MAINCONF" || { error "Failed to source $MAINCONF"; exit 1; }
+set +a
+# cleanup potential for loop var from sourced file
+for i in $(declare -px |sed -nre 's,^declare -x ([^=]+)=.*,\1,p'); do
+    [[ $i == ${i^^} ]] && continue
+    [[ $i == *_proxy ]] && continue
+    info "Removing $i from environment"
+    unset "$i"
+done
+exec "$@"

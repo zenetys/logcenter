@@ -70,7 +70,9 @@ function check-config-sshd() {(
 )}
 
 function check-config-rsyslog() {(
-    local envfiles f
+    # FIXME: do better normlization in runit run files for parsing
+    # sourced env files and exec command
+    local envfiles f cmd=( /usr/sbin/rsyslogd )
     if [[ $PLATFORM == runit ]]; then
         envfiles=($(sed -nre 's|.*source[ ]*(.*rsyslog[^ ]*).*|\1|p' \
             "$RUNIT_SV_DIR/rsyslog/run"))
@@ -78,15 +80,21 @@ function check-config-rsyslog() {(
         envfiles=($(systemctl show rsyslog -p EnvironmentFiles --value |
             sed -nre 's,^([^ ]+).*,\1,p'))
     fi
-    (
-        set -a
-        for f in "${envfiles[@]}"; do
-            [[ -f "$f" && -r "$f" ]] || continue
-            source "$f"
-        done
-        set +a
-        rsyslogd -N5
-    )
+    set -a
+    for f in "${envfiles[@]}"; do
+        [[ -f "$f" && -r "$f" ]] || continue
+        source "$f"
+    done
+    set +a
+    unset f
+    if [[ $PLATFORM == systemd ]]; then
+        declare -a "cmd=( $(systemctl show rsyslog -p ExecStart --value |
+            sed -nre 's,^\{ path=[^ ]+ ; argv\[\]=(.+) ; ignore_errors=.*,\1,p') )"
+    fi
+    unset $(declare -px |sed -nre 's,^declare -x ([^=]+)=.*,\1,p' |
+        grep -vE '^(PATH|LANG)$')
+    [[ -x $cmd ]] || fatal 'Failed to parse rsyslog exec command'
+    "${cmd[@]}" -N5
 )}
 
 # systemd implementation
