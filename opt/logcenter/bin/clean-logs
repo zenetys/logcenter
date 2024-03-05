@@ -70,7 +70,7 @@ done
 find_opts=(
     -mindepth 3 -maxdepth 3
     -type f
-    -name '????-??-??.*log*'
+    -name "????-??-??*.log*"
     -mtime "+$DAYS"
 )
 

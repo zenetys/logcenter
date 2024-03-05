@@ -61,7 +61,6 @@ function load_env_or_fatal() {
     [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
     source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
     [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
-    [[ -n $ZLC_SELF_SHORT_ID ]] && ZLC_SELF_SHORT_ID_EXT=".$ZLC_SELF_SHORT_ID"
     [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_OUTPUT_ARCHIVES_DIR, not a directory'
     [[ -n $ZLC_SIGFILED_SOCKNAME ]] && export ${!ZLC_SIGFILED_*}
     DAYS=$ZLC_ARCHIVES_UNCOMPRESSED_DAYS # may be overriden by script argument
@@ -104,8 +103,8 @@ else
     find_opts+=( -mtime "+$DAYS" )
 fi
 find_opts+=(
-    -name "*$ZLC_SELF_SHORT_ID_EXT.log"
-    -not -name "${current_log_yyyy_mm_dd}${ZLC_SELF_SHORT_ID_EXT}.log"
+    -name "*$ZLC_SELF_ID_EXT.log"
+    -not -name "${current_log_yyyy_mm_dd}${ZLC_SELF_ID_EXT}.log"
 )
 
 total=0
@@ -117,7 +116,7 @@ time_main_start=$(date +%s)
 
 info "BEGIN TASK"
 info "Variables: ZLC_OUTPUT_ARCHIVES_DIR=${ZLC_OUTPUT_ARCHIVES_DIR:-<empty>}, \
-ZLC_SELF_SHORT_ID=${ZLC_SELF_SHORT_ID:-<empty>}, \
+ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, \
 DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
 
@@ -138,7 +137,7 @@ while read -r; do
         # here. Monitoring of unsigned logs must be done by another process.
         SECONDS=0
         sigdir="${REPLY%/*}/sig"
-        sigfname="${REPLY##*/}${ZLC_SELF_SHORT_ID_EXT}.sig"
+        sigfname="${REPLY##*/}${ZLC_SELF_ID_EXT}.sig"
         if mkdir -p -m 0750 "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir" &&
            sigout=$(sigfiled sign "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir/$sigfname"); then
 
