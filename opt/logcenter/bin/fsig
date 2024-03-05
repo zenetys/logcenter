@@ -1,0 +1,123 @@
+#!/bin/bash
+
+shopt -s nullglob
+export LC_ALL=C
+PROGNAME=${0##*/}
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
+
+VERIFY=
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] LOGFILE [SIGFILE]
+Wrapper to sigfiled to ease file signature of log archives
+
+Available options:
+  -v, --verify      Verify signature
+  -h, --help        Display this help
+
+Signature file is placed in a sig/ subdir of the source file."
+    exit "$status"
+}
+
+function fatal() {
+    echo "FATAL: $PROGNAME: $*"
+    exit 2
+}
+
+function load_env_or_fatal() {
+    [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
+    source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
+    # note: $ZLC_SELF_ID_EXT may be empty of undefined
+    [[ -z $ZLC_SIGFILED_SOCKNAME ]] && fatal 'Bad environment, ZLC_SIGFILED_SOCKNAME not set'
+    [[ -z $ZLC_SIGFILED_PUBKEYFILE ]] && fatal 'Bad environment, ZLC_SIGFILED_PUBKEYFILE not set'
+    ZLC_SIGFILED_KEYFILE=$ZLC_SIGFILED_PUBKEYFILE
+    export ${!ZLC_SIGFILED_*}
+}
+
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -v|--verify) VERIFY=1 ;;
+        -h|--help) exit_usage ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+
+[[ -z $ARGS ]] && exit_usage 1
+(( ${#ARGS[@]} > 2 )) && exit_usage 1
+
+load_env_or_fatal
+
+function abspath() {
+    if [[ ${1:0:1} == / ]]; then
+        REPLY=$1
+    else
+        REPLY="$PWD/$1"
+    fi
+}
+
+# $1: datfile as absolute path
+function compose_sigfile_from_datfile() {
+    local sigdir="${1%/*}/sig"
+    local sigfile=${1##*/}
+    [[ ${sigfile: -3} == .xz ]] && sigfile=${sigfile%.*}
+    # eg: lc1 can sign lc2 files, which gives, yyyy-mm-dd.lc2.log.lc1.sig
+    sigfile+="$ZLC_SELF_ID_EXT.sig"
+    REPLY="$sigdir/$sigfile"
+}
+
+# $1: datfile as absolute path
+function find_sigfile_from_datfile() {
+    local sigdir="${1%/*}/sig"
+    local sigfile=${1##*/}
+    [[ ${sigfile: -3} == .xz ]] && sigfile=${sigfile%.*}
+    REPLY=( "$sigdir/$sigfile"[.]sig "$sigdir/$sigfile".*.sig )
+}
+
+abspath "${ARGS[0]}"
+datfile=$REPLY
+
+if [[ -n ${ARGS[1]} ]]; then
+    abspath "${ARGS[1]}"
+    sigfile=$REPLY
+else
+    sigfile=
+fi
+
+if [[ -n $VERIFY ]]; then
+    # mode verify
+    if [[ -z $sigfile ]]; then
+        find_sigfile_from_datfile "$datfile"
+        sigfile=( "${REPLY[@]}" )
+    fi
+    if [[ -z $sigfile ]]; then
+        ret=1
+        echo "No signature"
+    else
+        ret=0
+        for i in "${sigfile[@]}"; do
+            echo "$i"
+            sigfiled --verify "$datfile" "$i" || ret=1
+        done
+    fi
+    exit $ret
+else
+    # mode sign
+    if [[ -z $sigfile ]]; then
+        compose_sigfile_from_datfile "$datfile"
+        sigfile=$REPLY
+    fi
+    mkdir -p -m 0750 "${sigfile%/*}" || exit 1
+    out=$(sigfiled sign "$datfile" "$sigfile"); ret=$?
+    echo -n "$out"
+    (( $ret == 0 )) && echo -n " $sigfile"
+    echo
+    exit $ret
+fi

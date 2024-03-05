@@ -1,0 +1,84 @@
+#!/bin/bash
+
+shopt -s nullglob
+export LC_ALL=C
+PROGNAME=${0##*/}
+SIGN=
+MIN_DATE=
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION]...
+Find logs archives without signature, optionally sign them.
+
+Available options:
+  -s, --sign                Sign the files found
+  -F, --filter FILTER       Add find -wholename filter
+  --min-date YYYY-MM-DD     Check only logs from this date
+  -h, --help                Display this help
+
+The --min-date option is based on the YYYY-MM-DD date portion
+of the filename, not on the mtime.
+"
+    exit "$status"
+}
+
+function fatal() {
+    echo "FATAL: $PROGNAME: $*"
+    exit 2
+}
+
+function load_env_or_fatal() {
+    # proper $PATH may be needed for fsig
+    [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
+    source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
+    # note: $ZLC_SELF_ID_EXT may be empty of undefined
+    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
+    [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_OUTPUT_ARCHIVES_DIR, not a directory'
+}
+
+findopts=( -true )
+while (( $# > 0 )); do
+    case "$1" in
+        -s|--sign) SIGN=1 ;;
+        -F|--filter) findopts+=( -a -wholename "$2" ); shift ;;
+        --min-date) MIN_DATE=$2; shift ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+load_env_or_fatal
+
+errors=0
+
+while read -r; do
+    fname=${REPLY##*/}
+    date=${fname%%.*}
+    [[ -n $MIN_DATE && "$date" < "$MIN_DATE" ]] && continue
+    sigdir="${REPLY%/*}/sig"
+    [[ ${fname: -3} == .xz ]] && fname=${fname%.*}
+    sigfiles=( "$sigdir/$fname"[.]sig "$sigdir/$fname".*.sig )
+    (( ${#sigfiles[@]} > 0 )) && continue
+    signame="${fname}${ZLC_SELF_ID_EXT}.sig"
+    echo "$REPLY"
+    (( total++ ))
+    if [[ -n $SIGN ]]; then
+        echo -n '  => '
+        fsig "$REPLY"
+        (( $? == 0 )) || (( errors++ ))
+    fi
+done < <(
+    find "$ZLC_OUTPUT_ARCHIVES_DIR/" \
+        -type f \
+        \( -name '????-??-??.log.xz' -o -name '????-??-??.*.log.xz' \) \
+        \( "${findopts[@]}" \) |
+            # just for sorting by YYYY-MM-DD then full path
+            sed -re "s,.*/([0-9-]+)\.[^/]+,\1\t\0," |sort -V |awk -F $'\t' '{ print $2 }'
+)
+
+exit $(( errors > 0 ? 1 : 0 ))
