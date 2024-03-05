@@ -34,7 +34,7 @@ done
 
 [[ -n $QUIET ]] && exec >/dev/null 2>&1
 
-rsyslog-env rsyslogd -N5
+logcenter-env rsyslogd -N5
 ret=$?
 if (( ret == 0 )); then
     echo "$PROGNAME: OK"
