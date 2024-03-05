@@ -1,0 +1,44 @@
+#!/bin/bash
+
+[[ -f /etc/profile.d/logcenter-path.sh ]] &&
+    source /etc/profile.d/logcenter-path.sh
+
+set -f
+PROGNAME=${0##*/}
+QUIET=
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [-q]
+Check rsyslog configuration with proper environment"
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage ;;
+        -q|--quiet) QUIET=1 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+envfiles=($(systemctl show rsyslog -p EnvironmentFiles --value |
+    sed -nre 's,^([^ ]+).*,\1,p'))
+for f in "${envfiles[@]}"; do
+    [[ -f "$f" && -r "$f" ]] || continue
+    set -a; source "$f"; set +a
+done
+
+[[ -n $QUIET ]] && exec >/dev/null 2>&1
+
+rsyslog-env rsyslogd -N5
+ret=$?
+if (( ret == 0 )); then
+    echo "$PROGNAME: OK"
+else
+    echo "$PROGNAME: ERROR"
+fi
+exit "$ret"
