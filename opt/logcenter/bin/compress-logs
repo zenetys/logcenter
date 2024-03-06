@@ -11,8 +11,8 @@ PROGNAME=${0##*/}
 DAYS=
 QUIET=
 DRY_RUN=
-XZ_OPTS=( -9 )
 LOCK="/dev/shm/$PROGNAME.lock"
+ZLC_XZ_OPTS=( -9 )
 ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
 
 function exit_usage() {
@@ -116,7 +116,7 @@ time_main_start=$(date +%s)
 
 info "BEGIN TASK"
 info "Variables: ZLC_OUTPUT_ARCHIVES_DIR=${ZLC_OUTPUT_ARCHIVES_DIR:-<empty>}, \
-ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, \
+ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, ZLC_XZ_OPTS=${ZLC_XZ_OPTS[*]:-<empty>}, \
 DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
 
@@ -150,7 +150,7 @@ while read -r; do
 
     # Compress the file.
     SECONDS=0
-    nice -n 19 xz "${XZ_OPTS[@]}" ${QUIET:+-q} \
+    nice -n 19 xz "${ZLC_XZ_OPTS[@]}" ${QUIET:+-q} \
         < "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" \
         > "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
 
