@@ -138,7 +138,7 @@ while read -r; do
         SECONDS=0
         sigdir="${REPLY%/*}/sig"
         sigfname="${REPLY##*/}${ZLC_SELF_ID_EXT}.sig"
-        if mkdir -p -m 0750 "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir" &&
+        if mkdir -p -m 0700 "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir" &&
            sigout=$(sigfiled sign "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir/$sigfname"); then
 
             info "Signing $REPLY done in ${SECONDS}s${sigout:+, $sigout}"
