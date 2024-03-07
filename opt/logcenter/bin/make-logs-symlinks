@@ -6,7 +6,7 @@
 
 set -f
 export LC_ALL=C
-umask 0077
+QUIET=
 PROGNAME=${0##*/}
 ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
 
@@ -44,7 +44,6 @@ function load_env_or_fatal() {
     return 0
 }
 
-
 [[ $UID == 0 ]] ||
     fatal 'This script must be run as root'
 
@@ -64,34 +63,70 @@ if [[ -n $DRY_RUN ]]; then
     function ln() { info "EXEC: $FUNCNAME $*"; }
 fi
 
-find "$ZLC_OUTPUT_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 -printf '%P\n' |
-    grep -E '^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$' |
+BY_NAME_DIR="$ZLC_OUTPUT_ARCHIVES_DIR/@by-name"
+BY_IP_DIR="$ZLC_OUTPUT_ARCHIVES_DIR/@by-ip"
+
+# $1: target
+# $2: symlink
+function make_symlink() {
+    local target=$1; [[ $target == */* ]] || target="./$target"
+    local symlink=$2; [[ $symlink == */* ]] || symlink="./$symlink"
+    if [[ -e "$symlink" && $(readlink "$symlink") == "$target" ]]; then
+        info "Symlink $symlink already exists"
+        return 0
+    fi
+    if ! [[ -d ${symlink%/*} ]] &&
+       ! install -d -o "$ZLC_OUTPUT_ARCHIVES_USER" -g "$ZLC_OUTPUT_ARCHIVES_GROUP" -m 0750 "${symlink%/*}"; then
+        error "mkdir failed: ${symlink%/*}"
+        return 1
+    fi
+    if ! ln -Tsnf "$target" "$symlink"; then
+        error "ln failed: $symlink"
+        return 1
+    fi
+    return 0
+}
+
+find "$ZLC_OUTPUT_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
+        -not -name "${BY_NAME_DIR##*/}" \
+        -not -name "${BY_IP_DIR##*/}" \
+        -printf '%P\n' |
     sort -V |
-    while read -r ip; do
-
-        if [[ $ip == 127.0.0.1 ]]; then
-            ptr=$(hostname --fqdn)
-            if [[ $ptr == *.* ]]; then
-                ptr="${ptr%%.*}-localhost.${ptr#*.}"
+    while read -r dir; do
+        if [[ $dir =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+            if [[ $dir == 127.0.0.1 ]]; then
+                by_name=$(hostname --fqdn)
+                if [[ $by_name == *.* ]]; then
+                    by_name="${by_name%%.*}-localhost.${by_name#*.}"
+                else
+                    by_name+="-localhost"
+                fi
             else
-                ptr+="-localhost"
+                by_name=( $(host -t PTR "$dir" |
+                    sed -nre 's,^.* domain name pointer (.+)\.$,\1,p' |
+                    tr '[A-Z]' '[a-z]') )
             fi
+            info "IP: $dir, PTR: ${by_name[*]:-<not-found>}"
+            by_ip=( "$dir" )
         else
-            ptr=( $(host "$ip" |sed -nre 's,^.* domain name pointer (.+)\.$,\1,p' |tr '[A-Z]' '[a-z]') )
+            by_name=( "$dir" )
+            by_ip=( $({ host -t A "$dir"; host -t AAAA "$dir"; } |
+                sed -nre 's,^.* has address (.+)$,\1,p' |
+                tr '[A-Z]' '[a-z]') )
+            info "Name: $dir, IP: ${by_ip[*]:-<not-found>}"
         fi
-        info "IP: $ip, PTR: ${ptr[*]:-<not-found>}"
 
-        for p in "${ptr[@]}"; do
-            if [[ -e "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p" && $(readlink "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p") == "../$ip" ]]; then
-                info "Symlink $ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p already exists"
-                continue
-            fi
-            if ! [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/by-name ]] && !
-               ! mkdir -p "$ZLC_OUTPUT_ARCHIVES_DIR/by-name"; then
-                error "mkdir failed: $ZLC_OUTPUT_ARCHIVES_DIR/by-name"
-                continue
-            fi
-            ln -Tsnf "../$ip" "$ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p" ||
-                error "ln failed: $ZLC_OUTPUT_ARCHIVES_DIR/by-name/$p"
+        for l in "${by_name[@]}"; do
+            make_symlink "../$dir" "$BY_NAME_DIR/$l"
         done
+        for l in "${by_ip[@]}"; do
+            make_symlink "../$dir" "$BY_IP_DIR/$l"
+        done
+    done
+
+# delete broken links
+find -L "$BY_NAME_DIR/" "$BY_IP_DIR/" -mindepth 1 -maxdepth 1 -type l |
+    while read -r; do
+        info "Remove dangling symlink $REPLY"
+        rm "$REPLY"
     done
