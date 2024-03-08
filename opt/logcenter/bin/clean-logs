@@ -43,7 +43,7 @@ function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
 
 function load_env_or_fatal() {
     source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
-    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
     DAYS=$ZLC_ARCHIVES_RETENTION_DAYS # may be overriden by script argument
     return 0
 }
@@ -81,7 +81,7 @@ error=0
 time_main_start=$(date +%s)
 
 info "BEGIN TASK"
-info "Variables: ZLC_OUTPUT_ARCHIVES_DIR=${ZLC_OUTPUT_ARCHIVES_DIR:-<empty>}, \
+info "Variables: ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
 DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
 
@@ -103,7 +103,7 @@ while read -r; do
     fi
 
 done < <(
-    find -L "$ZLC_OUTPUT_ARCHIVES_DIR/" "${find_opts[@]}" |sort -V
+    find -L "$ZLC_ARCHIVES_DIR/" "${find_opts[@]}" |sort -V
 )
 
 time_main_stop=$(date +%s)

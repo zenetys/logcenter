@@ -40,7 +40,7 @@ function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
 
 function load_env_or_fatal() {
     source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
-    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
     return 0
 }
 
@@ -63,8 +63,8 @@ if [[ -n $DRY_RUN ]]; then
     function ln() { info "EXEC: $FUNCNAME $*"; }
 fi
 
-BY_NAME_DIR="$ZLC_OUTPUT_ARCHIVES_DIR/@by-name"
-BY_IP_DIR="$ZLC_OUTPUT_ARCHIVES_DIR/@by-ip"
+BY_NAME_DIR="$ZLC_ARCHIVES_DIR/@by-name"
+BY_IP_DIR="$ZLC_ARCHIVES_DIR/@by-ip"
 
 # $1: target
 # $2: symlink
@@ -76,7 +76,7 @@ function make_symlink() {
         return 0
     fi
     if ! [[ -d ${symlink%/*} ]] &&
-       ! install -d -o "$ZLC_OUTPUT_ARCHIVES_USER" -g "$ZLC_OUTPUT_ARCHIVES_GROUP" -m 0750 "${symlink%/*}"; then
+       ! install -d -o "$ZLC_ARCHIVES_USER" -g "$ZLC_ARCHIVES_GROUP" -m 0750 "${symlink%/*}"; then
         error "mkdir failed: ${symlink%/*}"
         return 1
     fi
@@ -87,7 +87,7 @@ function make_symlink() {
     return 0
 }
 
-find "$ZLC_OUTPUT_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
+find "$ZLC_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
         -not -name "${BY_NAME_DIR##*/}" \
         -not -name "${BY_IP_DIR##*/}" \
         -printf '%P\n' |

@@ -60,8 +60,8 @@ function load_env_or_fatal() {
     # proper $PATH may be needed for sigfiled
     [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
     source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
-    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
-    [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_OUTPUT_ARCHIVES_DIR, not a directory'
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
+    [[ -d $ZLC_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_ARCHIVES_DIR, not a directory'
     [[ -n $ZLC_SIGFILED_SOCKNAME ]] && export ${!ZLC_SIGFILED_*}
     DAYS=$ZLC_ARCHIVES_UNCOMPRESSED_DAYS # may be overriden by script argument
     return 0
@@ -115,7 +115,7 @@ warning=0
 time_main_start=$(date +%s)
 
 info "BEGIN TASK"
-info "Variables: ZLC_OUTPUT_ARCHIVES_DIR=${ZLC_OUTPUT_ARCHIVES_DIR:-<empty>}, \
+info "Variables: ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
 ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, ZLC_XZ_OPTS=${ZLC_XZ_OPTS[*]:-<empty>}, \
 DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
@@ -138,8 +138,8 @@ while read -r; do
         SECONDS=0
         sigdir="${REPLY%/*}/sig"
         sigfname="${REPLY##*/}${ZLC_SELF_ID_EXT}.sig"
-        if mkdir -p -m 0700 "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir" &&
-           sigout=$(sigfiled sign "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$sigdir/$sigfname"); then
+        if mkdir -p -m 0700 "$ZLC_ARCHIVES_DIR/$sigdir" &&
+           sigout=$(sigfiled sign "$ZLC_ARCHIVES_DIR/$REPLY" "$ZLC_ARCHIVES_DIR/$sigdir/$sigfname"); then
 
             info "Signing $REPLY done in ${SECONDS}s${sigout:+, $sigout}"
         else
@@ -151,8 +151,8 @@ while read -r; do
     # Compress the file.
     SECONDS=0
     nice -n 19 xz "${ZLC_XZ_OPTS[@]}" ${QUIET:+-q} \
-        < "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" \
-        > "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
+        < "$ZLC_ARCHIVES_DIR/$REPLY" \
+        > "$ZLC_ARCHIVES_DIR/$xfiletmp"
 
     if (( $? == 0 )); then
         (( success++ ))
@@ -160,22 +160,22 @@ while read -r; do
     else
         (( error++ ))
         error "Call to xz failed, error compressing $REPLY"
-        rm "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
+        rm "$ZLC_ARCHIVES_DIR/$xfiletmp"
         continue
     fi
 
     # Restore user/group, perms, mtime.
-    chown --reference "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
+    chown --reference "$ZLC_ARCHIVES_DIR/$REPLY" "$ZLC_ARCHIVES_DIR/$xfiletmp"
     if (( $? != 0 )); then
         warning "Call to chown failed on $xfiletmp"
         (( warning++ ))
     fi
-    chmod --reference "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
+    chmod --reference "$ZLC_ARCHIVES_DIR/$REPLY" "$ZLC_ARCHIVES_DIR/$xfiletmp"
     if (( $? != 0 )); then
         warning "Call to chmod failed on $xfiletmp"
         (( warning++ ))
     fi
-    touch --reference "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY" "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp"
+    touch --reference "$ZLC_ARCHIVES_DIR/$REPLY" "$ZLC_ARCHIVES_DIR/$xfiletmp"
     if (( $? != 0 )); then
         warning "Call to touch (mtime) failed on $xfiletmp"
         (( warning++ ))
@@ -191,29 +191,29 @@ while read -r; do
     #
     # Any case, we still have the data.
 
-    rm "$ZLC_OUTPUT_ARCHIVES_DIR/$REPLY"
+    rm "$ZLC_ARCHIVES_DIR/$REPLY"
     if (( $? != 0 )); then
         warning "Call to rm failed on $REPLY"
         (( warning++ ))
     fi 
 
     xfile="$REPLY.xz"
-    if [[ -e $ZLC_OUTPUT_ARCHIVES_DIR/$xfile ]]; then
+    if [[ -e $ZLC_ARCHIVES_DIR/$xfile ]]; then
         for (( i = 1 ; ; i++ )); do
-            if [[ ! -e $ZLC_OUTPUT_ARCHIVES_DIR/$REPLY.$i.xz ]]; then
+            if [[ ! -e $ZLC_ARCHIVES_DIR/$REPLY.$i.xz ]]; then
                 xfile="$REPLY.$i.xz"
                 break
             fi
         done
     fi
-    mv "$ZLC_OUTPUT_ARCHIVES_DIR/$xfiletmp" "$ZLC_OUTPUT_ARCHIVES_DIR/$xfile"
+    mv "$ZLC_ARCHIVES_DIR/$xfiletmp" "$ZLC_ARCHIVES_DIR/$xfile"
     if (( $? != 0 )); then
         warning "Call to mv failed, could not rename $xfiletmp to ${xfile##*/}"
         (( warning++ ))
     fi
 
 done < <(
-    find -L "$ZLC_OUTPUT_ARCHIVES_DIR/" "${find_opts[@]}" -printf '%P\n' |sort -V
+    find -L "$ZLC_ARCHIVES_DIR/" "${find_opts[@]}" -printf '%P\n' |sort -V
 )
 
 time_main_stop=$(date +%s)

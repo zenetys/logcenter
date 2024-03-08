@@ -36,8 +36,8 @@ function load_env_or_fatal() {
     [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
     source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
     # note: $ZLC_SELF_ID_EXT may be empty of undefined
-    [[ -z $ZLC_OUTPUT_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_OUTPUT_ARCHIVES_DIR not set'
-    [[ -d $ZLC_OUTPUT_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_OUTPUT_ARCHIVES_DIR, not a directory'
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
+    [[ -d $ZLC_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_ARCHIVES_DIR, not a directory'
 }
 
 findopts=( -true )
@@ -73,7 +73,7 @@ while read -r; do
         (( $? == 0 )) || (( errors++ ))
     fi
 done < <(
-    find "$ZLC_OUTPUT_ARCHIVES_DIR/" \
+    find "$ZLC_ARCHIVES_DIR/" \
         -type f \
         \( -name '????-??-??.log.xz' -o -name '????-??-??.*.log.xz' \) \
         \( "${findopts[@]}" \) |
