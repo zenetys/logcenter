@@ -125,8 +125,11 @@ find "$ZLC_OUTPUT_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
     done
 
 # delete broken links
-find -L "$BY_NAME_DIR/" "$BY_IP_DIR/" -mindepth 1 -maxdepth 1 -type l |
-    while read -r; do
-        info "Remove dangling symlink $REPLY"
-        rm "$REPLY"
-    done
+for i in "$BY_NAME_DIR" "$BY_IP_DIR"; do
+    [[ -d $i/. ]] || continue
+    find -L "$i/" -mindepth 1 -maxdepth 1 -type l |
+        while read -r; do
+            info "Remove dangling symlink $REPLY"
+            rm "$REPLY"
+        done
+done
