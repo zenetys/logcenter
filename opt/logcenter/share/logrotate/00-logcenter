@@ -1,0 +1,30 @@
+# Assume standard addon files in /etc/logrotate.d will be handled
+# after this file, so postrotate scripts from standard addons should
+# be triggered.
+
+/var/log/logcenter/*.debug
+{
+    daily
+    dateext
+    compress
+    missingok
+    rotate 1
+}
+
+/var/log/logcenter/es-errors.log
+{
+    daily
+    dateext
+    compress
+    missingok
+    rotate 3
+}
+
+/var/log/logcenter/pstats.log
+{
+    daily
+    dateext
+    compress
+    missingok
+    rotate 7
+}
