@@ -1,0 +1,13 @@
+[Unit]
+Description=rsync log archives from secondary nodes
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+ExecStart=/opt/logcenter/bin/logcenter-env /opt/logcenter/bin/pull-archives -i 60
+SyslogIdentifier=pull-archives
+
+[Install]
+WantedBy=multi-user.target

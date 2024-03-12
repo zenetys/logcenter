@@ -1,0 +1,354 @@
+#!/bin/bash
+
+# This script is ment to be run from the primary node.
+# It rsync files from the backup node.
+
+set -f
+export LC_ALL=C
+umask 0027
+PROGNAME=${0##*/}
+OIFS=$IFS
+INTERVAL=0
+QUIET=
+DRY_RUN=
+TIMEOUT=10
+LOCK_FILE="/dev/shm/$PROGNAME.lock"
+LOCK_TAKEN=
+if [[ -t 0 ]]; then HAS_TTY=1; else HAS_TTY=; fi
+ZLC_PULL_ARCHIVES_PRIMARY=
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [-n] [-q] [-i NUM]
+Pull log files from the secondary nodes, cleanup if necessary
+
+Available options:
+  -i, --interval=NUM    Run continuously every NUM seconds.
+  -q, --quiet           Display errors only.
+  -n, --dry-run         Dry-run mode, do not change anything.
+  -h, --help            Display this help."
+    exit "$status"
+}
+
+declare -r MYPID=$$
+function _log() {
+    local now=$(date +%Y-%m-%dT%H:%M:%S.%3N%:z)
+    local tag=${ZLC_SELF_ID_EXT#.}; tag="$PROGNAME@${tag:-${HOSTNAME%%.*}}"
+    local LOGGER_SEVERITY=${LOGGER_SEVERITY:-info}
+    local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
+    local message="${DRY_RUN:+DRY-RUN ** }${CURRENT_PEER:+P:${CURRENT_PEER%%.*} -- }$*"
+    [[ -n $HAS_TTY ]] || { logger -t "$tag" --id="$MYPID" -p "$LOGGER_SEVERITY" -- "$message"; return 0; }
+    [[ -n $QUIET && $STDOUT_LABEL == INFO ]] && return 0
+    echo "$now $STDOUT_LABEL $tag: $message"
+}
+
+function info() { LOGGER_SEVERITY=info STDOUT_LABEL=INFO _log "$@"; }
+function warning() { LOGGER_SEVERITY=warning STDOUT_LABEL=WARNING _log "$@"; }
+function error() { LOGGER_SEVERITY=err STDOUT_LABEL=ERROR _log "$@"; }
+function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+function take_lock_or_fatal() {
+    if ! ln -sT "/proc/$$" "$LOCK_FILE" 2>/dev/null; then
+        [[ -e "$LOCK_FILE" ]] || release_lock
+        if ! ln -sT "/proc/$$" "$LOCK_FILE" 2>/dev/null; then
+            fatal "Cannot take lock $LOCK_FILE"
+        fi
+    fi
+    LOCK_TAKEN=1
+}
+
+function release_lock() {
+    rm -f "$LOCK_FILE" || return 1
+    LOCK_TAKEN=
+}
+
+ON_EXIT_EXTRA=()
+function on_exit() {
+    local e
+    if [[ -n $LOCK_TAKEN ]]; then release_lock; fi
+    for e in "${ON_EXIT_EXTRA[@]}"; do "$e"; done
+}
+
+function dry_run_cmd_wrap() {
+    if [[ -z $DRY_RUN ]]; then
+        "$@"
+    fi
+}
+
+function is_primary() { [[ ${HOSTNAME%%.*} == ${ZLC_PULL_ARCHIVES_PRIMARY%%.*} ]]; }
+function is_secondary() { ! is_primary; }
+function require_primary() { is_primary || fatal 'Not on primary node' >&2; }
+function require_secondary() { is_secondary || fatal 'Not on a secondary node' >&2; }
+
+function clean_temp_dir_if_exists() {
+    if [[ -n $ZLC_PULL_ARCHIVES_TEMP_DIR && -d $ZLC_PULL_ARCHIVES_TEMP_DIR/. ]]; then
+        rm -rf "$ZLC_PULL_ARCHIVES_TEMP_DIR"
+    fi
+}
+
+# $1: partial .log file
+# $2: fill .log.xz file
+function check_sum_partial_fullz() {
+    local plines psum fsum
+    # get number of lines in partial file, ignore last line
+    plines=$(wc -l "$1") || return 1
+    plines=${plines%%[$'\t ']*}
+    (( plines -= 1 ))
+    # need at least one line of data
+    (( plines < 1 )) && return 0
+    # get checksum of the partial file
+    psum=$(head -n "$plines" "$1" |sha1sum) || return 1
+    psum=${psum%%[$'\t ']*}
+    # get checksum of the fullz file (assume xz)
+    fsum=$(xzcat "$2" |head -n "$plines" |sha1sum) || return 1
+    fsum=${fsum%%[$'\t ']*}
+    # return 0 if both checksums match
+    [[ "$psum" == "$fsum" ]]
+}
+
+# To be run on the primary
+# Pull archives via rsync+ssh from each secondary node
+function do_primary() {
+    clean_temp_dir_if_exists
+    install -d -D -m 0750 -o "${ZLC_ARCHIVES_USER:-root}" -g "${ZLC_ARCHIVES_GROUP:-adm}" \
+        "$ZLC_PULL_ARCHIVES_TEMP_DIR"
+    (( $? == 0 )) || { error "Could not create tempdir $ZLC_PULL_ARCHIVES_TEMP_DIR"; return 1; }
+
+    local sync_files=0 error=0 warning=0
+    function do_one_peer() {
+        #info 'Pull archives from peer'
+        exec 3>&1
+        IFS=$'\n'
+        local output; output=($(
+            rsync "${RSYNC_OPTS[@]}" "$CURRENT_PEER:$ZLC_ARCHIVES_DIR/" \
+                "$ZLC_PULL_ARCHIVES_TEMP_DIR/"  |
+            {
+                while IFS=$'\t' read -r flags size file; do
+                    if [[ ${flags:0:2} == '>f' ]]; then # file received
+                        info "Received $file, size $size" >&3 # log
+                        echo "$file" # capture
+                    fi
+                done
+            }
+            exit "${PIPESTATUS[0]}"
+        ))
+        local retval=$?
+        IFS=$OIFS
+        exec 3>&-
+        if (( retval != 0 )); then
+            error "Rsync from peer failed status $retval"
+            ((error++))
+            return 1
+        fi
+
+        #info 'Check and move pulled archives to the local tree'
+        local to_delete_on_remote=() file
+        for file in "${output[@]}"; do
+            (( sync_files++ ))
+            if ! mkdir -p "$ZLC_ARCHIVES_DIR/${file%/*}"; then
+                error "Failed to create directory ${file%/*}"
+                (( error++ ))
+                continue
+            fi
+
+            if [[ ${file: -3} == .xz || ${file: -4} == .sig ]]; then
+                if ! dry_run_cmd_wrap ln -T "$ZLC_PULL_ARCHIVES_TEMP_DIR/$file" "$ZLC_ARCHIVES_DIR/$file"; then
+                    error "Failed to copy $file (force=0)"
+                    (( error++ ))
+                    continue
+                fi
+                # mark for removal on peer
+                to_delete_on_remote+=( "$file" )
+
+                # For .xz only (not .sig)
+                # x.log.xz has been copied, delete potential x.log
+                # This is touchy because we do not like doing deletes on the primary node.
+                # The sums of <l> lines in x.log must match the sum of <l> lines in x.log.xz
+                # in order to accept a delete (were <l> is the number of lines in .x.log,
+                # minus 1 for a truncated last line error margin).
+                if [[ ${file: -3} == .xz && -e $ZLC_ARCHIVES_DIR/${file%.xz} ]]; then
+                    if check_sum_partial_fullz "$ZLC_ARCHIVES_DIR/${file%.xz}" "$ZLC_PULL_ARCHIVES_TEMP_DIR/$file"; then
+                        if ! dry_run_cmd_wrap rm "$ZLC_ARCHIVES_DIR/${file%.xz}"; then
+                            warning "Could not delete ${file%.xz}"
+                            (( warning++ ))
+                        fi
+                    else
+                        warning "Not deleting ${file%.xz}, checksum with ${file##*/} failed"
+                        (( warning++ ))
+                    fi
+                fi
+            else # assume $file == *.log (rsync filters)
+                # This is also a delete. The check sum trick from above would be too much
+                # time consuming when this script is run regularly, like every minute for instance.
+                # Should we ensure there is no corresponding .log.xz already because this case
+                # should normally not happen?
+                # For now the .log are assumed to be live (current day) and will be overridden
+                # on every sync.
+                if ! dry_run_cmd_wrap ln -Tf "$ZLC_PULL_ARCHIVES_TEMP_DIR/$file" "$ZLC_ARCHIVES_DIR/$file"; then
+                    error "Failed to copy $file (force=1)"
+                    (( error++ ))
+                fi
+            fi
+        done
+
+        #info 'Clean pulled archive on peer'
+        if (( ${#to_delete_on_remote[@]} > 0 )); then
+            local qcmd
+            printf -v qcmd '%q ' "$0" --do-secondary-clean ${DRY_RUN:+-n}
+            qcmd="$SUDO_REMOTE $qcmd"
+            IFS=$'\n'; output=($(IFS=$'\n'; echo "${to_delete_on_remote[*]}" |
+                "${SSH_CMD[@]}" "$CURRENT_PEER" "$qcmd" 2>&1)); retval=$?; IFS=$OIFS
+            local line op rest=
+            for line in "${output[@]}"; do
+                [[ ${line:0:7} == '#PROTO#' ]] || { rest+="${reset:+, }$line"; continue; }
+                line=${line:7}; op=${line%% *}; line=${line#* }
+                case "$op" in
+                    info) info "(peer) $line" ;;
+                    warning) warning "(peer) $line"; ((warning++)) ;;
+                    error) error "(peer) $line"; ((error++)) ;;
+                esac
+            done
+            if (( retval != 0 )); then
+                error "Clean script on peer retval $retval, OUTPUT: $rest"
+                ((error++))
+            fi
+        fi
+    }
+
+    local time_main_start=$(date +%s)
+    info "BEGIN TASK -- ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
+ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, \
+QUIET=${QUIET:-<empty>}"
+    local peer
+    for peer in "${ZLC_PULL_ARCHIVES_SECONDARY[@]}"; do
+        CURRENT_PEER=$peer do_one_peer
+    done
+    local time_main_stop=$(date +%s)
+    local message="END TASK -- elapsed: $(( time_main_stop - time_main_start ))s, \
+sync_files: $sync_files, error: $error, warning: $warning"
+    if (( error > 0 )); then error "$message"; return 1
+    elif (( warning > 0 )); then warning "$message"; return 0
+    else info "$message"; return 0; fi
+}
+
+function do_secondary_rsync() {
+    [[ $1 == --server ]] || return 1
+    exec rsync "$@"
+}
+
+function do_secondary_clean() {
+    exec 2> >(while read -r; do
+        echo "$REPLY" >&2
+        echo "#PROTO#stderr $REPLY"
+    done)
+    local file
+    while read -r file; do
+        if dry_run_cmd_wrap rm "$ZLC_ARCHIVES_DIR/$file"; then
+            echo "#PROTO#info "$(info "Deleted (secondary) $file")
+        else
+            echo "#PROTO#warning "$(info "Could not delete (secondary) $file")
+        fi
+    done
+}
+
+##
+
+[[ $UID == 0 ]] || fatal 'This script must be run as root'
+
+ACTION=
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -i|--interval) INTERVAL=$2; shift ;;
+        -q|--quiet) QUIET=1 ;;
+        -n|--dry-run) DRY_RUN=1 ;;
+        --do-secondary-rsync) ACTION=secondary-rsync ;;
+        --do-secondary-clean) ACTION=secondary-clean ;;
+        -h|--help) exit_usage ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+
+source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
+[[ -z $ZLC_SELF_ID_EXT ]] && fatal 'Bad environment, ZLC_SELF_ID_EXT not set'
+[[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
+[[ -d $ZLC_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_ARCHIVES_DIR, not a directory'
+[[ -z $ZLC_PULL_ARCHIVES_PRIMARY ]] && fatal 'Bad environment, ZLC_PULL_ARCHIVES_PRIMARY not set'
+
+if is_primary; then
+    [[ -z $ZLC_PULL_ARCHIVES_TEMP_DIR ]] && fatal 'Bad environment, ZLC_PULL_ARCHIVES_TEMP_DIR not set'
+    [[ -d $ZLC_PULL_ARCHIVES_TEMP_DIR/. ]] || fatal 'Invalid ZLC_PULL_ARCHIVES_TEMP_DIR, not a directory'
+    [[ $(stat -c %d "$ZLC_ARCHIVES_DIR/.") == $(stat -c %d "$ZLC_PULL_ARCHIVES_TEMP_DIR/.") ]] ||
+        fatal 'ZLC_ARCHIVES_DIR and ZLC_PULL_ARCHIVES_TEMP_DIR must be on the same FS for hardlinks'
+    declare -gr ZLC_PULL_ARCHIVES_TEMP_DIR="$ZLC_PULL_ARCHIVES_TEMP_DIR/$PROGNAME.$$.$RANDOM"
+fi
+
+declare -r SUDO_REMOTE='[ "$UID" = 0 ] && _SUDO= || _SUDO="sudo -n --"; $_SUDO'
+
+trap on_exit EXIT
+
+if [[ $ACTION == secondary-rsync ]]; then
+    require_secondary
+    do_secondary_rsync "${ARGS[@]}"
+elif [[ $ACTION == secondary-clean ]]; then
+    require_secondary
+    do_secondary_clean "${ARGS[@]}"
+else
+    require_primary
+    take_lock_or_fatal
+    ON_EXIT_EXTRA+=( clean_temp_dir_if_exists )
+
+    SSH_CMD=(
+        ssh -T
+        ${ZLC_PULL_ARCHIVES_SSH_USER:+-l "$ZLC_PULL_ARCHIVES_SSH_USER"}
+        ${ZLC_PULL_ARCHIVES_SSH_IDENTITY:+-o IdentityFile="$ZLC_PULL_ARCHIVES_SSH_IDENTITY"}
+        ${ZLC_PULL_ARCHIVES_SSH_LOGLEVEL:+-o LogLevel="$ZLC_PULL_ARCHIVES_SSH_LOGLEVEL"}
+        -o ConnectTimeout="$TIMEOUT"
+        -o IdentitiesOnly=yes
+        -o BatchMode=yes
+        -o ClearAllForwardings=yes
+        -o CheckHostIP=yes
+        -o StrictHostKeyChecking=yes
+    )
+
+    RSYNC_OPTS=(
+        --compare-dest "$ZLC_ARCHIVES_DIR/"
+        ${DRY_RUN:+--dry-run}
+        --archive # -rlptgoD
+        --one-file-system
+        --omit-dir-times
+        --no-perms
+        --no-owner
+        --no-group
+        --prune-empty-dirs
+        --filter '- /@*'
+        --filter "- *$ZLC_SELF_ID_EXT.log"
+        --filter "- *$ZLC_SELF_ID_EXT.log.xz"
+        --filter "- *$ZLC_SELF_ID_EXT.sig"
+        # we assume here that a secondary node won't have files from another
+        # secondary node, so we just protect "our" files
+        --filter '+ *.log'
+        --filter '+ *.log.xz'
+        --filter '+ *.sig'
+        --filter '-,! */'
+        --out-format $'%i\t%l\t%f'
+        --rsync-path # value set just below
+    )
+    printf -v RSYNC_OPTS[${#RSYNC_OPTS[@]}] '%q ' "$0" --do-secondary-rsync ${DRY_RUN:+-n} --
+    RSYNC_OPTS[${#RSYNC_OPTS[@]}-1]="$SUDO_REMOTE ${RSYNC_OPTS[${#RSYNC_OPTS[@]}-1]}"
+    RSYNC_OPTS+=( -e ) # value set just below
+    printf -v RSYNC_OPTS[${#RSYNC_OPTS[@]}] '%q ' "${SSH_CMD[@]}"
+
+    while :; do
+        ( do_primary ); retval=$?
+        (( INTERVAL == 0 )) && exit "$retval"
+        sleep "$INTERVAL"
+    done
+fi

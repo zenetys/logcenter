@@ -1,0 +1,2 @@
+Cmnd_Alias CMD_PULL_ARCHIVES = /opt/logcenter/bin/pull-archives --do-secondary-*
+zsync ALL=(root) NOPASSWD: CMD_PULL_ARCHIVES
