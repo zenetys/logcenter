@@ -114,8 +114,7 @@ warning=0
 
 time_main_start=$(date +%s)
 
-info "BEGIN TASK"
-info "Variables: ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
+info "BEGIN TASK -- ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
 ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, ZLC_XZ_OPTS=${ZLC_XZ_OPTS[*]:-<empty>}, \
 DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
