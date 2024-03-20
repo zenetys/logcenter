@@ -2,6 +2,8 @@
 set -e
 PROGNAME=${0##*/}
 MAINCONF=/etc/logcenter/logcenter.conf
+FILTER=
+
 function log() {
     if [[ -t 0 ]]; then
         echo "$PROGNAME: ${LEVEL:+$LEVEL: }$*"
@@ -11,9 +13,28 @@ function log() {
 }
 function info() { LEVEL=info log "$@"; }
 function fatal() { LEVEL=err log "$@"; exit 1; }
+
+while (( $# > 0 )); do
+    case "$1" in
+        --) shift; break ;;
+        -f) FILTER=$2; shift 2 ;;
+        *) break ;;
+    esac
+done
+
 prog=$(type -P "$1")
 [[ -z $prog ]] && fatal "Executable not found: $prog"
-set -a
-source "$MAINCONF" || fatal "Source failed: $MAINCONF"
-set +a
+
+declare -A orivars=()
+declare var
+for var in $(declare -p |sed -nre 's,^declare [^ ]+ ([^=]+)(=.*)?,\1,p'); do
+    orivars["$var"]=1
+done
+source "$MAINCONF"
+while read -r flags var; do
+    [[ -n ${orivars[$var]} ]] && continue
+    [[ -n $FILTER && ! $var =~ $FILTER ]] && continue
+    export "$var"
+done < <(declare -p |sed -nre 's,^declare ([^ ]+) ([^=]+)=.*,\1 \2,p')
+
 exec "$@"
