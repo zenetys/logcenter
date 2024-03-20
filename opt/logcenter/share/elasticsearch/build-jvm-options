@@ -1,0 +1,14 @@
+#!/bin/bash
+
+awk '
+/MemTotal:/ { mem = int($2/1024/2); }
+END {
+    mem_max = 26*1024;
+    mem = mem > mem_max ? mem_max : mem;
+    print "-Xms"mem"m"; print "-Xmx"mem"m";
+    print "-XX:-HeapDumpOnOutOfMemoryError";
+    print "-Xlog:disable";
+    print "-Xlog:all=warning:stderr:utctime,level,tags";
+    print "-Xlog:gc*,gc+age=trace,safepoint:file=/var/log/elasticsearch/gc.log:utctime,level,pid,tags:filecount=2,filesize=16m";
+}
+' /proc/meminfo

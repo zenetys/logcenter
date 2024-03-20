@@ -1,0 +1,37 @@
+cluster.name: elasticsearch
+node.name: ${HOSTNAME}
+
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+bootstrap.memory_lock: true
+
+network.host: ${HOSTNAME}
+discovery.seed_providers: file
+# remove after cluster initial bootstrap on first node
+#cluster.initial_master_nodes: ${HOSTNAME}
+
+#cluster.routing.allocation.disk.watermark.low: 85%
+#cluster.routing.allocation.disk.watermark.high: 90%
+#cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+#gateway.expected_data_nodes: 2
+
+xpack.security.enabled: true
+#xpack.security.enrollment.enabled: true
+
+xpack.security.http.ssl:
+  enabled: true
+  key: /etc/elasticsearch/certs/node.key
+  certificate: /etc/elasticsearch/certs/node.crt
+  certificate_authorities: /etc/elasticsearch/certs/ca.crt
+
+xpack.security.transport.ssl:
+  enabled: true
+  verification_mode: certificate
+  key: /etc/elasticsearch/certs/node.key
+  certificate: /etc/elasticsearch/certs/node.crt
+  certificate_authorities: /etc/elasticsearch/certs/ca.crt
+
+ingest.geoip.downloader.eager.download: true
+#ingest.geoip.downloader.endpoint: http://127.0.0.1:8001/overview.json
