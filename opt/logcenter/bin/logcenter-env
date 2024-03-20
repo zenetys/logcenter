@@ -34,6 +34,12 @@ source "$MAINCONF"
 while read -r flags var; do
     [[ -n ${orivars[$var]} ]] && continue
     [[ -n $FILTER && ! $var =~ $FILTER ]] && continue
+    # arrays to comma separated string for convenience
+    if [[ $flags == -a* ]]; then
+        tmp=$(IFS=,; var+='[*]'; echo "${!var}")
+        unset "$var"
+        declare "$var=$tmp"
+    fi
     export "$var"
 done < <(declare -p |sed -nre 's,^declare ([^ ]+) ([^=]+)=.*,\1 \2,p')
 
