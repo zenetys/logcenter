@@ -1,1 +1,1 @@
-export ZSYNC_CONFIG=/etc/logcenter/zsync.cfg
+export ZSYNC_CONFIG=/etc/logcenter/zsync.conf
