@@ -1,0 +1,1 @@
+40 1 * * * root /opt/logcenter/bin/update-geoip -c /etc/logcenter/update-geoip.conf -q

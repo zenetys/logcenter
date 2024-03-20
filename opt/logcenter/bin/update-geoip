@@ -1,0 +1,153 @@
+#!/bin/bash
+
+set -f
+PROGNAME=${0##*/}
+CONFIG=
+TMPDIR=/dev/shm
+DESTDIR=/var/lib/geoip
+SOURCEDIR=
+KEY=
+DATABASE=GeoLite2-Country,GeoLite2-City,GeoLite2-ASN
+POSTCMD=
+TTL=$((86400/2))
+PROXY=
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...]
+Update Maxmind geoip databases
+
+Available options:
+  -c, --config  Configuration file
+  -p, --pre     Pre command to run at start, exit != 0 to abort
+  -P, --post    Post command to run after install
+  -k, --key     Maxmind key
+  -d, --db      Maxmind database(s), comma separated, eg: GeoLite2-Country
+  -D, --dir     Target directory
+  -S, --srcdir  Source directory, do not download
+  -T, --ttl     Abort is target directory is yonger than TTL
+  -q, --quiet   Do not print info when logging on stderr.
+  -h, --help    Display this help."
+    exit "$status"
+}
+
+function _log() {
+    local now=$(date +%Y-%m-%dT%H:%M:%S.%3N%:z)
+    local LOGGER_SEVERITY=${LOGGER_SEVERITY:-info}
+    local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
+    [[ -t 0 ]] || logger -t "$PROGNAME[$$]" -p "$LOGGER_SEVERITY" -- "$*"
+    [[ -n $QUIET && $STDOUT_LABEL == INFO ]] && return 0
+    echo "$now $STDOUT_LABEL $PROGNAME: $*"
+}
+
+function info() { LOGGER_SEVERITY=info STDOUT_LABEL=INFO _log "$@"; }
+function warning() { LOGGER_SEVERITY=warning STDOUT_LABEL=WARNING _log "$@"; }
+function error() { LOGGER_SEVERITY=err STDOUT_LABEL=ERROR _log "$@"; }
+function fatal() { LOGGER_SEVERITY=crit STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+# not used here but available in pre/post command when using bash functions
+function exec_quiet() {(
+    [[ -n $QUIET ]] && exec 1>/dev/null
+    "$@"
+)}
+
+# $1: database name
+function getdb() {
+    if [[ -z $SOURCEDIR ]]; then
+        local url="https://download.maxmind.com/app/geoip_download?suffix=tar.gz&edition_id=$1&license_key=$KEY"
+        curl ${PROXY:+-x "$PROXY"} -o "$1.tar.gz" -fsS --connect-timeout 10 -m 30 -L "$url"
+    else
+        cp -a "$SOURCEDIR/$1.tar.gz" ./
+    fi
+}
+
+function on_exit() {
+    if [[ -d "$TMPDIR/$PROGNAME" ]]; then
+        rm -rf "$TMPDIR/$PROGNAME"
+    fi
+}
+
+QUIET=${QUIET:-}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -c|--config) CONFIG=$2; shift ;;
+        -p|--pre) PRECMD=$2; shift ;;
+        -P|--post) POSTCMD=$2; shift ;;
+        -k|--key) KEY=$2; shift ;;
+        -d|--db) DATABASE=$2; shift ;;
+        -D|--dir) DESTDIR=$2; shift ;;
+        -S|--srcdir) SOURCEDIR=$2; shift ;;
+        -T|--ttl) TTL=$2; shift ;;
+        -q|--quiet) QUIET=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n $CONFIG ]]; then
+    source "$CONFIG" || fatal 'Failed to source config file'
+    # if working with a config file and no key is defined,
+    # assume that feature is disabled and exit quietly
+    [[ -z $KEY ]] && exit 0
+elif [[ -z $KEY ]]; then
+    fatal 'Maxmind key required, check usage'
+fi
+
+[[ $DESTDIR == /* ]] || DESTDIR="$PWD/$DESTDIR"
+[[ -n $SOURCEDIR && $SOURCEDIR != /* ]] && SOURCEDIR="$PWD/$SOURCEDIR"
+
+if [[ -d $DESTDIR/. ]]; then
+    if (( ($(date +%s) - $(stat -Lc %Y "$DESTDIR")) < TTL )); then
+        info 'Abort due to target directory mtime not old enought'
+        exit 0
+    fi
+else
+    mkdir -p "$DESTDIR" || fatal 'Failed to create target directory'
+fi
+
+[[ -w $DESTDIR ]] || fatal 'Target directory not writable'
+
+if [[ -n $PRECMD ]]; then
+    info 'Run pre command'
+    if ! REPLY=$(DATABASE="$DATABASE" SOURCEDIR="$SOURCEDIR" \
+                    DESTDIR="$DESTDIR" "$PRECMD"); then
+        info "Abort due to pre command${REPLY:+ ($REPLY)}"
+        exit 0
+    fi
+fi
+
+trap on_exit EXIT
+mkdir -p "$TMPDIR/$PROGNAME" || fatal 'Failed to create temporary directory'
+cd "$TMPDIR/$PROGNAME" || fatal 'Failed to cd in temporary directory'
+
+success=0
+
+for db in ${DATABASE//,/ }; do
+    info "Download $db archive"
+    if ! getdb "$db"; then
+        error "Failed to retrieve database $db archive"
+        continue
+    fi
+    info "Extract $db archive"
+    if ! tar xzf "$db.tar.gz"; then
+        error "Failed to extract database $db archive"
+        continue
+    fi
+    (( success++ ))
+done
+
+(( success > 0 )) || fatal 'No usable database'
+
+info 'Install databases'
+find ./ -name '*.mmdb' -exec cp -a {} "$DESTDIR/" \; ||
+    fatal 'Failed to install databases'
+
+if [[ -n $POSTCMD ]]; then
+    info 'Run post command'
+    DATABASE="$DATABASE" DESTDIR="$DESTDIR" "$POSTCMD" ||
+        fatal 'Post comand failed'
+fi
