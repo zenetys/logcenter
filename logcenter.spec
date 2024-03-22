@@ -22,6 +22,8 @@ URL: https://github.com/zenetys/logcenter
 
 Source0: %zenetys_git_source logcenter
 
+BuildArch: noarch
+
 #Requires: bind-utils
 #Requires: lua
 #Requires: rsyslog8z
