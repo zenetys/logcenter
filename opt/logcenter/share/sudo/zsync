@@ -1,2 +1,3 @@
 Cmnd_Alias CMD_ZSYNC = /opt/logcenter/bin/zsync
+Defaults!CMD_ZSYNC !requiretty
 zsync ALL=(root) NOPASSWD: CMD_ZSYNC
