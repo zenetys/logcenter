@@ -23,16 +23,19 @@ done
 #     option and URI / is used as default
 #
 # netrc logic:
-#   - if $ES_NETRC is set, pass --netrc-file $ES_NETRC to curl
+#   - if $ES_NETRC is set, pass --netrc-file $ES_NETRC to curl if not empty
 #   - otherwise if ~/.netrc.es exists, pass --netrc-file ~/.netrc.es to curl
 #   - otherwise if ~/.netrc exists, pass --netrc and --netrc-optional to curl
 #
 # curl insecure logic
-#   - if $ES_CACERT is set, pass --cacert $ES_CACERT to curl
+#   - if $ES_CACERT is set, pass --cacert $ES_CACERT to curl if not empty
 #   - otherwise if $ES_INSECURE is not set or set to 1, pass -k to curl
 #
 function es-curl() {
-    local curl_opts url cmd
+    local i curl_opts url cmd
+
+    # allow overriding of ES_* config variables by their ES_LOCAL_* counterparts
+    for i in ${!ES_LOCAL_*}; do declare -a "${i/_LOCAL}=( \"\${$i[@]}\" )"; done
 
     curl_opts=(
         -sS --connect-timeout "${ES_CURL_CONNECT_TIMEOUT:-10}"
@@ -42,18 +45,18 @@ function es-curl() {
 
     if [[ -z "${ES_CURL_FAIL_WITH_BODY+defined}" || "$ES_CURL_FAIL_WITH_BODY" == '1' ]]; then
         curl_opts+=( --fail-with-body )
-    else
+    elif [[ -z "${ES_CURL_FAIL+defined}" || "$ES_CURL_FAIL" == '1' ]]; then
         curl_opts+=( -f )
     fi
 
-    if [[ -n $ES_CACERT ]]; then
-        curl_opts+=( --cacert "$ES_CACERT" )
+    if [[ -n "${ES_CACERT+defined}" ]]; then
+        [[ -n $ES_CACERT ]] && curl_opts+=( --cacert "$ES_CACERT" )
     elif [[ -z "${ES_INSECURE+defined}" || "$ES_INSECURE" == '1' ]]; then
         curl_opts+=( -k )
     fi
 
-    if [[ -n $ES_NETRC ]]; then
-        curl_opts+=( --netrc-file "$ES_NETRC" )
+    if [[ -n "${ES_NETRC+defined}" ]]; then
+        [[ -n $ES_NETRC ]] && curl_opts+=( --netrc-file "$ES_NETRC" )
     elif [[ -r ~/.netrc.es ]]; then
         curl_opts+=( --netrc-file ~/.netrc.es )
     elif [[ -r ~/.netrc ]]; then
