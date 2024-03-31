@@ -7,6 +7,8 @@ path.logs: /var/log/elasticsearch
 bootstrap.memory_lock: true
 
 network.host: ${HOSTNAME}
+# also bind the http interface on 127.0.0.1 for convenience
+http.bind_host: ${HOSTNAME}, 127.0.0.1
 discovery.seed_providers: file
 # remove after cluster initial bootstrap on first node
 #cluster.initial_master_nodes: ${HOSTNAME}
