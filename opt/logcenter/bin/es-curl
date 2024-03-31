@@ -32,7 +32,9 @@ done
 #   - otherwise if $ES_INSECURE is not set or set to 1, pass -k to curl
 #
 function es-curl() {
-    local curl_opts=(
+    local curl_opts url cmd
+
+    curl_opts=(
         -sS --connect-timeout "${ES_CURL_CONNECT_TIMEOUT:-10}"
         -H 'Content-Type: application/json'
         ${ES_API_KEY:+-H "Authorization: ApiKey $ES_API_KEY"}
@@ -58,7 +60,6 @@ function es-curl() {
         curl_opts+=( --netrc --netrc-optional )
     fi
 
-    local url
     if [[ $1 == *://* ]]; then
         url=$1
         shift
@@ -72,7 +73,7 @@ function es-curl() {
         [[ ${1:0:1} != '-' ]] && { url+=$1; shift; }
     fi
 
-    local cmd=( curl "${curl_opts[@]}" "${ES_CURL_OPTS[@]}" "$@" "$url" )
+    cmd=( curl "${curl_opts[@]}" "${ES_CURL_OPTS[@]}" "$@" "$url" )
     [[ -n $ES_DEBUG ]] && echo "DEBUG: es-curl: ${cmd[*]@Q}" >&2
     "${cmd[@]}"
 }
