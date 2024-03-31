@@ -1,0 +1,142 @@
+#!/bin/bash
+
+set -f
+PROGNAME=${0##*/}
+
+declare -A TYPES=(
+    ['user']=''
+    ['es-monitoring']='
+        "remote_monitoring_agent": {
+            "cluster": [
+                "manage_index_templates",
+                "manage_ingest_pipelines",
+                "monitor",
+                "cluster:admin/ilm/get",
+                "cluster:admin/ilm/put",
+                "cluster:monitor/xpack/watcher/watch/get",
+                "cluster:admin/xpack/watcher/watch/put",
+                "cluster:admin/xpack/watcher/watch/delete"
+            ],
+            "index": [
+                {
+                    "names": [ ".monitoring-*" ],
+                    "privileges": [ "all" ]
+                },
+                {
+                    "names": [ "metricbeat-*" ],
+                    "privileges": [
+                        "index",
+                        "create_index",
+                        "view_index_metadata",
+                        "indices:admin/aliases",
+                        "indices:admin/rollover"
+                    ]
+                }
+            ]
+        },
+        "remote_monitoring_collector": {
+            "cluster": [ "monitor" ],
+            "indices": [
+                {
+                    "names": [ "*" ],
+                    "privileges": [ "monitor" ],
+                    "allow_restricted_indices": true
+                },
+                {
+                    "names": [ ".kibana*" ],
+                    "privileges": [ "read" ],
+                    "allow_restricted_indices": true
+                }
+            ]
+        }
+    '
+)
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME -n NAME -t TYPE [OPTION...]
+Script to create Elasticsearch API keys
+
+Available options:
+    -n, --name      API key name
+    -t, --type      API key type
+    -u, --user      Run as user instead of elastic
+    -r, --replace   Invalidate by name before creating
+    -h, --help      Display this help
+
+Supported types:"
+    echo "${!TYPES[*]}" |sort -u |xargs |fold -s -w 50 |
+        sed -e 's! !, !g' -e 's,^,    ,'
+    exit "$status"
+}
+
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+TYPE=
+NAME=
+USER=
+REPLACE=
+while (( $# > 0 )); do
+    case "$1" in
+        -n|--name) NAME=$2; shift ;;
+        -t|--type) TYPE=$2; shift ;;
+        -u|--user) USER=$2; shift ;;
+        -r|--replace) REPLACE=1 ;;
+        -h|--help) exit_usage 0 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+[[ -z $TYPE ]] && exit_usage 1
+[[ -z ${TYPES[$TYPE]+defined} ]] && exit_usage 1
+[[ -z $NAME ]] && exit_usage 1
+
+cenv=(); copts=()
+if [[ -n $USER ]]; then
+    # force user auth
+    cenv+=( ES_LOCAL_API_KEY= )
+    copts+=( -u "$USER" )
+else
+    # whoami? it is not possible to create an API key (with privileges) when
+    # authenticated via API key
+    whoami=( $(es-curl /_security/_authenticate |jq -r '"\(.username)\n\(.authentication_type)"') )
+    [[ -z ${whoami[0]} ]] && fatal 'Failed to authenticate'
+    [[ ${whoami[1]} == api_key ]] && copts+=( -H "es-security-runas-user: ${whoami[0]}" )
+fi
+
+if [[ -n $REPLACE ]]; then
+    existing_by_name=$(es-curl /_security/api_key --get --data-urlencode "name=$NAME" |
+        jq -rc '.api_keys |map(.id)')
+fi
+
+data=$(jq -n --arg n "$NAME" --argjson rd "{${TYPES[$TYPE]}}" '{name: $n, role_descriptors: $rd}' |
+    env "${cenv[@]}" es-curl /_security/api_key -X POST -d @- "${copts[@]}")
+[[ -z $data ]] && fatal 'Query failed'
+
+if [[ -n $REPLACE && -n $existing_by_name ]]; then
+    es-curl /_security/api_key -X DELETE -d "{ \"ids\": $existing_by_name }" > /dev/null
+fi
+
+id=$(echo "$data" |jq -r .id)
+[[ -z $id ]] && fatal 'Missing id data'
+api_key=$(echo "$data" |jq -r .api_key)
+[[ -z $api_key ]] && fatal 'Missing api_key data'
+authorization=$(echo "$data" |jq -r .encoded)
+if [[ -z $authorization ]]; then
+    # some versions of elasticsearch do not give .encoded
+    authorization=$(echo -n "$id:$api_key" |base64)
+    [[ -z $authorization ]] && fatal 'Failed to build authorization header'
+    data=$(echo "$data" |jq --arg a "$authorization" '. + { encoded: $a }')
+fi
+
+# display api key detail
+echo "$data" |jq
+
+{   echo '## cURL command line usage:'
+    echo "## curl -H 'Authorization: ApiKey $authorization' ..."
+    echo '## Beats YAML property:'
+    echo "## api_key: '$id:$api_key'"
+} >&2

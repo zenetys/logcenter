@@ -1,0 +1,67 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+FIELDS=( id creation name type username _is_active _has_role_descriptors )
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...]
+Script to list Elasticsearch API keys
+
+Available options:
+    -f, --filter    Query filter: filter_name=filter_value
+    -t, --tsv       Enable TSV output, disable pretty columns
+    -r, --raw       Enable raw JSON output
+    -a, --all       Shortcut for -f active_only=false (script default true)
+    -h, --help      Display this help
+
+For a list of supported query filters, check Elasticsearch documentation:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-get-api-key.html#security-api-get-api-key-query-params
+"
+    exit "$status"
+}
+
+curlopts=( --get --data-urlencode active_only=true )
+while (( $# > 0 )); do
+    case "$1" in
+        -t|--tsv) TSV=1 ;;
+        -r|--raw) RAW=1 ;;
+        -f|--filter) curlopts+=( --data-urlencode "$2" ); shift ;;
+        -a|--all) curlopts+=( --data-urlencode active_only=false ) ;;
+        -h|--help) exit_usage 0 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+{
+    [[ -z $RAW ]] && (IFS=$'\t'; echo "${FIELDS[*]}")
+    es-curl /_security/api_key "${curlopts[@]}" |
+        if [[ -z $RAW ]]; then
+            jq -r --arg FIELDS "$(IFS=,; echo "${FIELDS[*]}")" --argjson NOW "$(date +%s%3N)" '
+            .api_keys |map(
+                . as $in |
+                ($FIELDS |split(",")) |
+                reduce .[] as $i ([]; . +
+                    [$in | (
+                        if $i == "_has_role_descriptors" then
+                            (if .role_descriptors == {} then "NO" else "YES" end)
+                        elif $i == "_is_active" then
+                            (if .invalidated or (.expiration and $NOW >= .expiration) then "NO" else "YES" end)
+                        else getpath([$i]) end
+                    )]) |
+                @tsv
+            )[]
+            '
+        else
+            jq -c
+        fi
+} |
+if [[ -z $TSV && -z $RAW ]]; then
+    column -t -s $'\t'
+else
+    cat
+fi
