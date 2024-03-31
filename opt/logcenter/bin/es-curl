@@ -66,9 +66,7 @@ function es-curl() {
         if [[ -n $ES_BASE ]]; then
             url=$ES_BASE
         else
-            local host=${ES_HOST:-127.0.0.1}
-            local port=${ES_PORT:-9200}
-            url="${ES_PROTO:-https}://$host:$port"
+            url="${ES_PROTO:-https}://${ES_HOST:-127.0.0.1}:${ES_PORT:-9200}"
         fi
         [[ ${1:0:1} != '/' ]] && url+='/'
         [[ ${1:0:1} != '-' ]] && { url+=$1; shift; }
