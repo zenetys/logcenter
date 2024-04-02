@@ -1,0 +1,321 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+ECS_GITHUB_OWNER=elastic
+ECS_GITHUB_REPO=ecs
+OBJECT_PREFIX=zlc
+declare -r TMPDIR="${TMPDIR:-/tmp}/$PROGNAME.$RANDOM"
+
+function exit_usage() {
+    echo "\
+Usage: $PROGNAME normed-file-name.extension
+Helper to install all sort of objects in Elasticsearch
+
+Available options:
+    -t, --type   VALUE      Force object type
+    -n, --name   VALUE      Force object name
+    -k, --keep              Keep downloaded files
+    -P, --proxy  VALUE      HTTP proxy for external requests (github ecs)
+    -d, --debug             Enable debug
+    -h, --help              Display this help
+"
+    exit 1
+}
+
+function info() { echo "${LABEL:-INFO}: $PROGNAME: $*"; }
+function error() { LABEL=ERROR info "$@"; }
+function fatal() { LABEL=FATAL info "$@"; exit 2; }
+
+function on_exit() {
+    if [[ -n $KEEP_DOWNLOADED_FILES && -n $DOWNLOADED_FILES ]]; then
+        cp -a "${DOWNLOADED_FILES[@]}" "$PWD/"
+    fi
+    if [[ -d $TMPDIR ]]; then
+        rm -rf "$TMPDIR"
+    fi
+}
+
+function mycurl() {
+    curl -sS -f ${EXTERNAL_PROXY:+-x "$EXTERNAL_PROXY"} \
+        --connect-timeout "${CURL_CONNECT_TIMEOUT:-10}" "$@"
+}
+
+# $1: object name
+function guess_object_type_from_object_name() {
+    local supported_object_type
+    for supported_object_type in $(declare -F -f |sed -nre 's,^.* do_file_type_(.+),\1,p'); do
+        if [[ "$1" == "$supported_object_type"-* || "$1" == *-"$supported_object_type"-* ]]; then
+            REPLY=$supported_object_type
+            return 0
+        fi
+    done
+    REPLY=
+    return 1
+}
+
+# $1: file
+function convert_to_json() {
+    local file=$1; shift
+
+    if [[ $file == *.json ]]; then
+        cat "$file"
+        return $?
+    elif [[ $file == *.yaml ]]; then
+        yq -Moj "$file"
+        return $?
+    elif [[ $file == *.painless ]]; then
+        jq -MRs '{"script":{"lang":"painless","source":.}}' < "$file"
+        return $?
+    fi
+    return 1
+}
+
+# $1: method
+# $2: URI
+# $3: input file
+function push_to_es() {
+    local data curlout
+    # convert_to_json "$3" |es-curl "$2" -X "$1" -d @-
+
+    if [[ -n $DEBUG ]]; then
+        echo "DEBUG: >> raw input"
+        cat "$3"
+        echo "DEBUG: << raw input"
+    fi
+
+    if ! data=$(convert_to_json "$3"); then
+        REPLY='Convert to JSON failed'
+        return 1
+    fi
+    if [[ -n $DEBUG ]]; then
+        echo "DEBUG: >> begin data piped to curl"
+        echo "$data"
+        echo "DEBUG: << end data piped to curl"
+    fi
+
+    if ! curlout=$(echo "$data" |es-curl "$2" -X "$1" -d @- 2>&1); then
+        echo "$curlout" >&2
+        REPLY='Elasticsearch query failed'
+        return 1
+    fi
+    if [[ -n $DEBUG ]]; then
+        echo "DEBUG: >> begin curl output"
+        echo "$curlout"
+        echo "DEBUG: << end curl output"
+    fi
+
+    REPLY=
+    return 0
+}
+
+# $1: object name
+# $2: file
+function do_file_type_component() {
+    push_to_es PUT "/_component_template/$1" "$2"
+}
+
+# $1: object name
+# $2: file
+function do_file_type_lifecycle() {
+    push_to_es PUT "/_ilm/policy/$1" "$2"
+}
+
+# $1: object name
+# $2: file
+function do_file_type_pipeline() {
+    push_to_es PUT "/_ingest/pipeline/$1" "$2"
+}
+
+# $1: object name
+# $2: file
+function do_file_type_template() {
+    push_to_es PUT "/_index_template/$1" "$2"
+}
+
+# $1: object name
+# $2: file
+function do_file_type_script() {
+    push_to_es PUT "/_scripts/$1" "$2"
+}
+
+# $1: ecs[:version]
+function download_ecs_tarball() {
+    local version=${1#*:}
+    [[ $version == $1 ]] && version=
+    version=${version#v}
+
+    if [[ -z $version ]]; then
+        version=$(mycurl "https://api.github.com/repos/$ECS_GITHUB_OWNER/$ECS_GITHUB_REPO/releases/latest" |
+            jq -r '.tag_name |sub("^v"; "")')
+        if [[ $? != 0 || -z $version ]]; then
+            REPLY='Failed to find lastest ecs version number'
+            return 1
+        fi
+    fi
+
+    if ! mkdir -p "$TMPDIR/ecs"; then
+        REPLY='Failed to create tmpdir'
+        return 1
+    fi
+
+    local url="https://github.com/$ECS_GITHUB_OWNER/$ECS_GITHUB_REPO/archive/refs/tags/v$version.tar.gz"
+    local tarball="$TMPDIR/ecs-$version.tar.gz"
+    info "Downloading $url..."
+    if ! mycurl -L "$url" -o "$tarball"; then
+        REPLY='Download failed'
+        return 1
+    fi
+
+    DOWNLOADED_FILES+=( "$tarball" )
+    REPLY=$tarball
+    return 0
+}
+
+# $1: file
+function guess_tarball() {
+    # ecs tarball
+    tar tzf "$1" 2>/dev/null |grep -qE '^[^/]+/generated/elasticsearch/composable/component/ecs\.json$'
+    if (( $? == 0 )); then
+        REPLY=ecs
+        return 0
+    fi
+
+    REPLY=
+    return 1
+}
+
+# $1: file
+function do_tarball_type_ecs() {
+    local file=$1
+
+    if ! mkdir -p "$TMPDIR/ecs"; then
+        REPLY='Failed to create tmpdir'
+        return 1
+    fi
+
+    if ! tar xzf "$file" --strip-components 1 -C "$TMPDIR/ecs"; then
+        REPLY='Failed to extract tarball'
+        return 1
+    fi
+
+    local retval=0
+    find "$TMPDIR/ecs/generated/elasticsearch/composable/component" \
+        -mindepth 1 -maxdepth 1 -type f -name '*.json' |while read -r file; do
+
+        local fname=${file##*/}
+        FORCED_OBJECT_TYPE=component \
+        FORCED_OBJECT_NAME="${OBJECT_PREFIX}-component-ecs-${fname%.json}" \
+           do_file "$file" || retval=1
+    done
+    REPLY=
+    return "$retval"
+}
+
+function do_tarball() {
+    if ! guess_tarball "$file"; then
+        error "Unsupported tarball file: $file"
+        return 1
+    fi
+    local tarball_type=$REPLY
+
+    if ! declare -f -F "do_tarball_type_${tarball_type}" >/dev/null; then
+        error "Unsupported tarball type: $file ($tarball_type)"
+        return 1
+    fi
+
+    if ! "do_tarball_type_${tarball_type}" "$file"; then
+        error "${REPLY:-Failed}: $file ($tarball_type)"
+    fi
+
+    info "OK: $file ($tarball_type)"
+    return 0
+}
+
+# $1: file
+function do_file() {
+    local file=$1
+
+    if [[ $file == ecs || $file == ecs:* ]]; then
+        if ! download_ecs_tarball "$file"; then
+            error "${REPLY:-Failed}: $file (download)"
+            return 1
+        fi
+        file=$REPLY
+    fi
+
+    local filename=${file##*/}
+    local object_type=$FORCED_OBJECT_TYPE
+    local object_name=${FORCED_OBJECT_NAME:-${filename%.*}}
+
+    if [[ $file == *.tar.gz ]]; then
+        do_tarball "$file"
+        return $?
+    fi
+
+    if [[ -z $object_type ]]; then
+        if ! guess_object_type_from_object_name "$filename"; then
+            error "Cannot guess object type from filename: $file"
+            return 1
+        fi
+        object_type=$REPLY
+    fi
+
+    if ! declare -f -F "do_file_type_${object_type}" >/dev/null; then
+        error "Unsupported object type: $file ($object_type)"
+        return 1
+    fi
+
+    if ! "do_file_type_${object_type}" "$object_name" "$file"; then
+        error "${REPLY:-Failed}: $file ($object_type, $object_name)"
+        return 1
+    fi
+
+    info "OK: $file ($object_type, $object_name)"
+    return 0
+}
+
+DEBUG=
+FORCED_OBJECT_TYPE=
+FORCED_OBJECT_NAME=
+KEEP_DOWNLOADED_FILES=
+DOWNLOADED_FILES=()
+EXTERNAL_PROXY=
+args=()
+while (( $# > 0 )); do
+    case "$1" in
+        -t|--type) FORCED_OBJECT_TYPE=$2; shift ;;
+        -n|--name) FORCED_OBJECT_NAME=$2; shift ;;
+        -k|--keep) KEEP_DOWNLOADED_FILES=1 ;;
+        -P|--proxy) EXTERNAL_PROXY=$2; shift ;;
+        -d|--debug) DEBUG=1; export ES_DEBUG=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+args+=( "$@" )
+
+[[ -z $args ]] && exit_usage 1
+
+if (( ${#args[@]} > 1 )) && [[ -n $FORCED_OBJECT_NAME ]]; then
+    fatal "Forced name unsupported with multiple files arguments"
+fi
+
+if ! type -P es-curl >/dev/null; then
+    if [[ -x ${0%/*}/es-curl ]]; then
+        hash -p "${0%/*}/es-curl" es-curl
+    else
+        fatal 'Command es-curl is required'
+    fi
+fi
+
+trap on_exit EXIT
+
+retval=0
+for i in "${args[@]}"; do
+    do_file "$i" || retval=1
+done
+
+exit "$retval"
