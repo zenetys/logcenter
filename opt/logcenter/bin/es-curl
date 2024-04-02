@@ -67,6 +67,7 @@ function es-curl() {
     # arguments, eg: application/x-ndjson for bulk requests on some versions.
     [[ "${@,,}" == *content-type:* ]] ||
         curl_opts+=( -H 'Content-Type: application/json' )
+
     if [[ $1 == *://* ]]; then
         url=$1
         shift
@@ -99,14 +100,15 @@ if [[ ${PROGNAME:0:3} == 'es-' ]] && declare -F -f "$PROGNAME" >/dev/null; then
     else
         # custom bash / run on remote host
         declare -a "ES_BASH_CMD=( $ES_BASH_CMD )"
-        {   cmd=( "$PROGNAME" "$@" )
-            declare -p cmd
-            cat "$0"
+        {   cat "$0"
             if [[ -n $ES_SEND_ENV ]]; then
                 ES_ENV_FORWARDED=1
                 declare -p ${!ES_*} |grep -v ES_BASH_CMD
             fi
+            cmd=( "$PROGNAME" "$@" )
+            declare -p cmd
             echo '"${cmd[@]}"'
+            [[ -t 0 ]] || cat
         } | "${ES_BASH_CMD[@]}"
     fi
 elif [[ ! $PROGNAME =~ ^-?bash$ ]]; then
