@@ -39,7 +39,6 @@ function es-curl() {
 
     curl_opts=(
         -sS --connect-timeout "${ES_CURL_CONNECT_TIMEOUT:-10}"
-        -H 'Content-Type: application/json'
         ${ES_API_KEY:+-H "Authorization: ApiKey $ES_API_KEY"}
     )
 
@@ -63,6 +62,11 @@ function es-curl() {
         curl_opts+=( --netrc --netrc-optional )
     fi
 
+    # Cheap workaound to call curl with -H 'Content-Type: application/json' by
+    # default, but allowing callers to pass a custom Content-Type header in
+    # arguments, eg: application/x-ndjson for bulk requests on some versions.
+    [[ "${@,,}" == *content-type:* ]] ||
+        curl_opts+=( -H 'Content-Type: application/json' )
     if [[ $1 == *://* ]]; then
         url=$1
         shift
