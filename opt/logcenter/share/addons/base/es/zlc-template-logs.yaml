@@ -1,0 +1,15 @@
+version: 2
+index_patterns:
+  - logs-*-zlc
+  - logs-*-zlc.*
+priority: 500
+composed_of:
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+ignore_missing_component_templates:
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+data_stream: {}

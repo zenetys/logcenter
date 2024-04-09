@@ -1,0 +1,40 @@
+/* version 2 */
+
+/**
+ * Script to cleanup and normalize cef object parsed by rsyslog liblognorm.
+ */
+
+if (!(ctx.cef instanceof Map))
+    return;
+
+/**
+ * rsyslog liblognorm cef parser put the first letter of CEF base keys
+ * in uppercase, eg: DeviceVendor, DeviceProduct,etc. Rename base keys
+ * to lowercase the first letter.
+ */
+
+def to_add = [ /* [ new_key, value ], ... */ ];
+def it = ctx.cef.entrySet().iterator();
+while (it.hasNext()) {
+    def e = it.next();
+    def key = e.getKey();
+    def kfirst = key.charAt(0);
+    if (Character.isUpperCase(kfirst)) {
+        def kfixed = Character.toLowerCase(kfirst) + key.substring(1);
+        to_add.add([ kfixed, e.getValue() ]);
+        it.remove();
+    }
+}
+for (int i = 0; i < to_add.length; i++)
+    ctx.cef[to_add[i][0]] = to_add[i][1];
+
+/**
+ * Rename cef.signatureID to cef.deviceEventClassId.
+ * Note: cef.SignatureID was renamed cef.signatureID before.
+ */
+
+def cefSignatureID = ctx?.cef?.signatureID;
+if (cefSignatureID != null) {
+    ctx.cef.deviceEventClassId = cefSignatureID;
+    ctx.cef.remove('signatureID');
+}

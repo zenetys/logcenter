@@ -1,0 +1,30 @@
+/* version: 1 */
+
+void walk(Map tree, Map parent, String name, ArrayList empty_strings) {
+  def it = tree.entrySet().iterator();
+  def to_walk = [ /* [ key, value ], ... */ ];
+  int i;
+  while (it.hasNext()) {
+    def e = it.next();
+    def key = e.getKey();
+    def value = e.getValue();
+    if ((value == null) ||
+        (value instanceof List && value.isEmpty()))
+      it.remove();
+    else if (value instanceof String) {
+      for (i = 0; i < empty_strings.length; i++) {
+        if (value.equals(empty_strings[i])) {
+          it.remove();
+          break;
+        }
+      }
+    }
+    else if (value instanceof Map)
+      to_walk.add([ key, value ]);
+  }
+  for (i = 0; i < to_walk.length; i++)
+    walk(to_walk[i][1], tree, to_walk[i][0], empty_strings);
+  if (tree.isEmpty() && parent != null && name != null)
+    parent.remove(name);
+}
+walk(ctx, null, null, params.empty_strings);

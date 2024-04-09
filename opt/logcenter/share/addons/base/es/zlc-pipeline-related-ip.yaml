@@ -1,0 +1,36 @@
+version: 3
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  - append:
+        field: related.ip
+        value: '{{{ source.ip }}}'
+        allow_duplicates: false
+        if: ctx.source?.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ source.nat.ip }}}'
+        allow_duplicates: false
+        if: ctx.source?.nat?.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ destination.ip }}}'
+        allow_duplicates: false
+        if: ctx.destination?.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ destination.nat.ip }}}'
+        allow_duplicates: false
+        if: ctx.destination?.nat?.ip != null
+  - foreach:
+      field: dns.resolved_ip
+      if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List
+      processor:
+        append:
+          field: related.ip
+          value: '{{{ _ingest._value }}}'
+          allow_duplicates: false

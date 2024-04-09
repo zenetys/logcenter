@@ -1,0 +1,115 @@
+version: 3
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  # Store ingest time.
+  - set:
+      field: event.ingested
+      copy_from: _ingest.timestamp
+
+  # Use @timestamp as default event.created.
+  - set:
+      field: event.created
+      copy_from: '@timestamp'
+      ignore_empty_value: true
+      override: false
+
+  # Processors require keys to be unflatten in order to match fields.
+  - dot_expander:
+      field: '*'
+
+  # Hook for a per-datastream pipeline.
+  - pipeline:
+      name: zlc-pipeline-logs-{{{ data_stream.dataset }}}
+      if: ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null
+      ignore_missing_pipeline: true
+
+  - split:
+      field: event.category
+      separator: '[,\s]+'
+      if: ctx?.event?.category instanceof String
+
+  # Set default @timestamp value.
+  - set:
+      field: '@timestamp'
+      copy_from: _ingest.timestamp
+      override: false
+
+  - user_agent:
+      field: user_agent.original
+      ignore_missing: true
+  - lowercase:
+      field: email.bcc.address
+      ignore_missing: true
+  - lowercase:
+      field: email.cc.address
+      ignore_missing: true
+  - lowercase:
+      field: email.from.address
+      ignore_missing: true
+  - lowercase:
+      field: email.reply_to.address
+      ignore_missing: true
+  - lowercase:
+      field: email.sender.address
+      ignore_missing: true
+  - lowercase:
+      field: email.to.address
+      ignore_missing: true
+  - lowercase:
+      field: host.name
+      ignore_missing: true
+  - lowercase:
+      field: url.domain
+      ignore_missing: true
+  - lowercase:
+      field: user.name
+      ignore_missing: true
+
+  - pipeline:
+      name: zlc-pipeline-geoip
+      if: ctx._?.pipeline_geoip != false
+      ignore_missing_pipeline: true
+
+  # Hook for a per-datastream custom pipeline.
+  - pipeline:
+      name: zlc-pipeline-logs-{{{ data_stream.dataset }}}@custom
+      if: ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null
+      ignore_missing_pipeline: true
+
+  # Remove null or empty fields.
+  - script:
+      id: zlc-script-ingest-remove-empty-fields
+      params:
+        empty_strings:
+          - ''
+          - '-'
+
+  - pipeline:
+      name: zlc-pipeline-related-ip
+      if: ctx._?.pipeline_related_ip != false
+      ignore_missing_pipeline: true
+
+  - append:
+        field: related.user
+        value: '{{{ user.name }}}'
+        allow_duplicates: false
+        if: ctx.user?.name != null
+  - append:
+        field: related.user
+        value: '{{{ destination.user.name }}}'
+        allow_duplicates: false
+        if: ctx.destination?.user?.name != null
+  - append:
+        field: related.user
+        value: '{{{ source.user.name }}}'
+        allow_duplicates: false
+        if: ctx.source?.user?.name != null
+
+  - remove:
+      field: _
+      ignore_missing: true
