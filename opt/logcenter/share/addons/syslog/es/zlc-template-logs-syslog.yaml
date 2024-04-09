@@ -1,0 +1,50 @@
+version: 2
+index_patterns:
+  - logs-syslog-zlc
+  - logs-syslog-zlc.*
+priority: 700
+composed_of:
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-syslog@custom
+ignore_missing_component_templates:
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-syslog@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+
+      log.syslog.severity.code:
+        type: long
+      event.severity:
+        type: alias
+        path: log.syslog.severity.code
+
+      log.syslog.severity.name:
+        type: keyword
+      log.level:
+        type: alias
+        path: log.syslog.severity.name
+
+      log.syslog.appname:
+        type: keyword
+        fields:
+          text:
+            type: match_only_text
+      process.name:
+        type: alias
+        path: log.syslog.appname
+
+      log.syslog.procid:
+        type: keyword
+        fields:
+          long:
+            type: long
+      process.pid:
+        type: alias
+        path: log.syslog.procid.long
