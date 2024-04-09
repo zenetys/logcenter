@@ -1,0 +1,56 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+FIELDS=( username enabled roles )
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...]
+Script to list Elasticsearch users
+
+Available options:
+    -t, --tsv       Enable TSV output, disable pretty columns
+    -r, --raw       Enable raw JSON output
+    -h, --help      Display this help
+"
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -t|--tsv) TSV=1 ;;
+        -r|--raw) RAW=1 ;;
+        -h|--help) exit_usage 0 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+{
+    [[ -z $RAW ]] && (IFS=$'\t'; echo "${FIELDS[*]}")
+    es-curl /_security/user |
+        if [[ -z $RAW ]]; then
+            jq -r --arg FIELDS "$(IFS=,; echo "${FIELDS[*]}")" '
+            to_entries |map(.value) |map(
+                . as $in |
+                ($FIELDS |split(",")) |
+                reduce .[] as $i ([]; . +
+                    [$in | (
+                        if $i == "roles" then (.roles |@json)
+                        else getpath([$i]) end
+                    )]) |
+                @tsv
+            )[]
+            '
+        else
+            jq -c
+        fi
+} |
+if [[ -z $TSV && -z $RAW ]]; then
+    column -t -s $'\t'
+else
+    cat
+fi

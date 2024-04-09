@@ -1,0 +1,107 @@
+#!/bin/bash
+
+set -f
+PROGNAME=${0##*/}
+
+declare -A TYPES=(
+    ['writer']='zlc-role-writer'
+)
+
+declare -A ROLES=(
+    ['zlc-role-writer']='
+{
+  "cluster": [ "monitor" ],
+  "indices": [
+    {
+      "names": [ "logs-*", "metrics-*" ],
+      "privileges": [ "auto_configure", "create" ]
+    }
+  ]
+}'
+)
+
+function _log() { echo "$STDOUT_LABEL: $*" >&2; }
+function info() { STDOUT_LABEL=INFO _log "$@"; }
+function fatal() { STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME -n NAME -t TYPE [OPTION...]
+Script to create Elasticsearch users
+
+Available options:
+    -n, --name      User name to create
+    -p, --password  Password for the user instead of random
+    -r, --role      Role(s) to assign to the user, comma separated list
+    -t, --type      Assign roles based on predefined type
+    -f, --force     First delete the user if it exists
+    -P, --showpass  Print password on stdout if it was generated
+    -h, --help      Display this help
+
+Supported types:"
+    echo "${!TYPES[*]}" |sort -u |xargs |fold -s -w 50 |
+        sed -e 's! !, !g' -e 's,^,    ,'
+    exit "$status"
+}
+
+NAME=
+ROLE=()
+TYPE=
+FORCE=
+while (( $# > 0 )); do
+    case "$1" in
+        -n|--name) NAME=$2; shift ;;
+        -p|--pass) PASS=$2; shift ;;
+        -r|--role) ROLE+=( ${2//,/ } ); shift ;;
+        -t|--type) TYPE=$2; shift ;;
+        -f|--force) FORCE=1 ;;
+        -P|--showpass) SHOWPASS=1 ;;
+        -h|--help) exit_usage 0 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+[[ -z $NAME ]] && exit_usage 1
+[[ -n $TYPE && -z ${TYPES[$TYPE]} ]] && exit_usage 1
+ROLE+=( ${TYPES[$TYPE]//,/ } )
+[[ -z $ROLE ]] && exit_usage 1
+[[ -n $PASS && ${#PASS} -lt 10 ]] && fatal 'Given password too short (min 10)'
+[[ -n $PASS ]] && SHOWPASS=
+
+out=$(ES_LOCAL_CURL_FAIL= es-curl "/_security/user/$NAME" -o /dev/null -w '%{http_code}')
+if [[ $out == 200 ]]; then
+    if [[ -n $FORCE ]]; then
+        info "Delete existing user: $NAME"
+        es-curl "/_security/user/$NAME" -X DELETE >/dev/null
+        (( $? == 0 )) || fatal "Failed to delete existing user: $NAME"
+    else
+        fatal "User already exist: $NAME"
+    fi
+fi
+
+info "Roles to be assigned: ${ROLE[@]}"
+for r in "${ROLE[@]}"; do
+    [[ -z $r ]] && continue
+    out=$(ES_LOCAL_CURL_FAIL= es-curl "/_security/role/$r" -o /dev/null -w '%{http_code}')
+    if [[ $out == 404 ]]; then
+        # role does not exist, maybe we can add it?
+        if [[ -n ${ROLES[$r]} ]]; then
+            info "Creating role: $r"
+            echo "${ROLES[$r]}" |es-curl "/_security/role/$r" -X POST -d @- >/dev/null
+            (( $? == 0 )) || fatal "Role did not exist and creation failed: $r"
+        else
+            fatal "Role does not exist: $r"
+        fi
+    fi
+done
+
+[[ -z $PASS ]] && PASS=$(LC_ALL=C tr -dc 'A-Za-z0-9_@./:=,-' </dev/urandom | head -c 20)
+info "Creating user: $NAME"
+pass=$PASS jq -n --arg r "${ROLE[*]}" '{ password: $ENV.pass, roles: ($r|split(" ")) }' |
+    es-curl "/_security/user/$NAME" -X POST -d @- >/dev/null
+(( $? == 0 )) || fatal "Failed to create user: $NAME"
+[[ -n $SHOWPASS ]] && echo "$PASS"
+exit 0
