@@ -1,0 +1,125 @@
+#!/bin/bash
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: ${0##*/} INDEX
+Dump field types from index mapping
+
+Available options:
+    -i, --index     Print index
+    -h, --help      Display this help
+"
+    exit "$status"
+}
+
+PRINT_INDEX=
+PRINT_RAW=
+args=()
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -i|--index) PRINT_INDEX=1 ;;
+        -r|--raw) PRINT_RAW=1 ;;
+        -*) exit_usage 1 ;;
+        --) shift; break ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+args+=( "$@" )
+
+INDEX=${args[0]}
+[[ -z $INDEX ]] && exit_usage 1
+
+es-curl "$INDEX" |
+    jq -r '
+def isscalar:
+    . == null or . == true or . == false or
+    type == "number" or type == "string";
+
+def flatten_keys:
+    def _flatten_iterable:
+        . as $in |
+        reduce (
+            [paths(isscalar)] |
+            map(
+                to_entries |del(
+                    . as $x |
+                    [$x[] |select(.value|type != "string") |.key] |first as $begin |
+                    $x[] |select($begin and .key >= $begin)
+                ) |
+                map(.value) |join(".")
+            ) |
+            unique |
+            map(split("."))[]
+        ) as $p (
+            null;
+            ($in |getpath($p)) as $v |
+                (if ($p|length) == 0 then [] else [$p |join(".")] end) as $target_path |
+                if ($v|type) == "array" then
+                    setpath($target_path; $v |map(.|flatten_keys))
+                else
+                    setpath($target_path; $v)
+                end
+        );
+    if isscalar then .
+    else . |_flatten_iterable end;
+
+to_entries |
+    map({
+        index: .key,
+        fields: (
+            .value.mappings.properties |
+                flatten_keys |
+                . as $root |
+                with_entries(
+                    select(.key |test("\\.type$")) |
+
+                    .key as $orikey |
+                    .key = (.key |
+                        gsub("\\.properties|\\.type$"; "") |
+                        gsub("\\.fields\\.(?<f>[^.]+)$"; "[.\(.f)]")
+                    ) |
+                    if (.value == "alias") then
+                        ($root |getpath([$orikey|sub("\\.type$";".path")])) as $alias_target |
+                        ($root |getpath(  [($alias_target |gsub("\\.";".properties.")) + ".type"]   )) as $alias_type |
+                        .value = "alias\t\($alias_target)\t\($alias_type)"
+                    else
+                        .value = "\(.value)\t\t"
+                    end
+                )
+            )
+    }) |
+    map(
+        .index as $index |
+        .fields |
+        to_entries |
+        map("\($index)\t\(.key)\t\(.value)")
+    )[][]
+    ' |
+    awk -F '\t' -v "PRINT_INDEX=$PRINT_INDEX" '
+    BEGIN {
+        OFS = FS;
+        line = 0;
+    }
+    {
+        field_sig = $2$3;
+        if ($3 == "alias")
+            field_sig = field_sig $5;
+        if (last_field_sig[$2] != "" && last_field_sig[$2] != field_sig)
+            field_error[$2] = "***";
+        field_by_line[line] = $2;
+        data[line++] = $0;
+        last_field_sig[$2] = field_sig;
+    }
+    END {
+        for (i = 0; i < line; i++) {
+            if (!PRINT_INDEX)
+                sub(/^[^\t]+\t/, "", data[i]);
+            print data[i], field_error[field_by_line[i]];
+        }
+    }' |
+    LC_ALL=C sort -u |
+    { [[ -n $PRINT_RAW ]] && cat || column -t -s $'\t'; }
