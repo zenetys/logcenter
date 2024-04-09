@@ -87,6 +87,7 @@ function make_symlink() {
     return 0
 }
 
+info "Option ZLC_ARCHIVES_FQDN_SRC=${ZLC_ARCHIVES_FQDN_SRC:-<empty>}"
 find "$ZLC_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
         -not -name "${BY_NAME_DIR##*/}" \
         -not -name "${BY_IP_DIR##*/}" \
@@ -116,6 +117,9 @@ find "$ZLC_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
             info "Name: $dir, IP: ${by_ip[*]:-<not-found>}"
         fi
 
+        if [[ $ZLC_ARCHIVES_FQDN_SRC != on ]]; then
+            by_name=( "${by_name[@]%%.*}" )
+        fi
         for l in "${by_name[@]}"; do
             make_symlink "../$dir" "$BY_NAME_DIR/$l"
         done
