@@ -1,0 +1,60 @@
+version: 2
+template:
+  mappings:
+    dynamic_templates:
+      - fortigate_long:
+          path_match:
+            - 'fortigate.*byte'
+            - 'fortigate.count*'
+            - 'fortigate.*count'
+            - 'fortigate.cpu'
+            - 'fortigate.craction'
+            - 'fortigate.crscore'
+            - 'fortigate.*delta'
+            - 'fortigate.disk'
+            - 'fortigate.duration'
+            - 'fortigate.freediskstorage'
+            - 'fortigate.mem'
+            - 'fortigate.nextstat'
+            - 'fortigate.*rate'
+            - 'fortigate.*pkt'
+            - 'fortigate.*port'
+            - 'fortigate.proto'
+            - 'fortigate.*size'
+            - 'fortigate.*time'
+            - 'fortigate.totalsession'
+            - 'fortigate.used'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - fortigate_float:
+          path_match:
+            - 'fortigate.auditscore'
+          match_mapping_type: string
+          mapping:
+            type: float
+
+      - fortigate_ip:
+          path_match:
+            - 'fortigate.*ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - fortinet_text:
+          path_match:
+            - fortigate.msg
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - fortinet_keyword_and_text:
+          path_match:
+            - 'fortigate.*name'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

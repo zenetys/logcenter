@@ -1,0 +1,243 @@
+version: 2
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  - pipeline:
+      name: zlc-pipeline-fortigate-cef-norm
+      if: ctx?.cef != null
+
+  - fail:
+      message: 'fortigate.* fields expected'
+      if: (ctx.fortigate instanceof Map) == false
+
+  - set:
+      field: _
+      value:
+        # Do not set geoip and related.ip from the default pipeline.
+        # It is done here using fortigate.* fields as input.
+        pipeline_geoip: false
+        pipeline_related_ip: false
+
+  - set: { field: observer.vendor, value: Fortinet, override: false }
+  - set: { field: observer.product, value: Fortigate, override: false }
+  - set: { field: observer.type, value: firewall, override: false }
+
+  # Set @timestamp from fortigate fields, it is very accurate but we have
+  # to assume the firewall time is correct (should be fine for a firewall).
+  - script:
+      lang: painless
+      source: |
+        def eventtime = ctx.fortigate.eventtime;
+        if (eventtime != null) {
+            if (eventtime instanceof String)
+                eventtime = Long.parseLong(eventtime);
+            ctx._eventtime_ms = eventtime / 1000000;
+        }
+  - date:
+      field: _eventtime_ms
+      target_field: '@timestamp'
+      formats:
+        - UNIX_MS
+      timezone: '{{{ fortigate.tz }}}'
+      if: ctx._eventtime_ms != null
+  - remove:
+      field:
+        - _eventtime_ms
+
+  # Cleanup fields with N/A values.
+  - script:
+      lang: painless
+      source: |
+        def fortigate = ctx?.fortigate;
+        if (fortigate != null) {
+            fortigate.entrySet().removeIf(
+                entry -> entry.getValue() == 'N/A' ||
+                         entry.getValue() == 'undefined'
+            );
+        }
+
+  - pipeline:
+      name: zlc-pipeline-fortigate-type-{{{ fortigate.type }}}
+      ignore_missing_pipeline: true
+
+  # alias: event.code                      fortigate.logid      keyword
+  # alias: log.level                       fortigate.level      keyword
+  # alias: observer.serial_number          fortigate.devid      keyword
+  # alias: event.action                    fortigate.action     keyword
+  # alias: transaction.id                  fortigate.sessionid  keyword
+  # alias: source.ip                       fortigate.srcip      ip
+  # alias: destination.ip                  fortigate.dstip      ip
+  # alias: source.port                     fortigate.srcport    long
+  # alias: destination.port                fortigate.dstport    long
+  # alias: source.mac                      fortigate.srcmac     keyword
+  # alias: destination.mac                 fortigate.dstmac     keyword
+  # alias: source.nat.ip                   fortigate.transip    ip
+  # alias: source.nat.port                 fortigate.transport  long
+  # alias: destination.nat.ip              fortigate.tranip     ip
+  # alias: destination.nat.port            fortigate.tranport   long
+  # alias: observer.ingress.interface.name fortigate.srcintf    keyword text
+  # alias: observer.egress.interface.name  fortigate.dstintf    keyword text
+  # alias: network.iana_number             fortigate.proto      keyword
+  # alias: rule.id                         fortigate.policyid   keyword
+  # alias: rule.uuid                       fortigate.poluuid    keyword
+  # alias: rule.name                       fortigate.policyname keyword text
+  # alias: destination.bytes               fortigate.rcvdbyte   long
+  # alias: destination.packets             fortigate.rcvdpkt    long
+  # alias: source.bytes                    fortigate.sentbyte   long
+  # alias: source.packets                  fortigate.sentpkt    long
+  # alias: dns.id                          fortigate.xid        keyword
+  # alias: dns.question.name               fortigate.qname      keyword
+  # alias: dns.question.type               fortigate.qtype      keyword
+  # alias: dns.question.class              fortigate.qclass     keyword
+
+  # ECS event.duration is nanoseconds...
+  - script:
+      lang: painless
+      source: |
+        def duration = ctx.fortigate?.duration;
+        if (duration != null) {
+            if (duration instanceof String)
+                duration = Long.parseLong(ctx.fortigate.duration);
+            if (ctx.event == null)
+                ctx.event = [:];
+            ctx.event.duration = duration * 1000000000;
+        }
+
+  # Field fortigate.mac is uppercase on event logs, normalize it.
+  - lowercase:
+      field: fortigate.mac
+      ignore_missing: true
+      if: ctx.fortigate.type == 'event'
+
+  # Copy fortigate.service to network.protocol and normalize it lowercase.
+  - script:
+      lang: painless
+      source: |
+        if (ctx.fortigate.type != 'event') {
+            def service = ctx.fortigate?.service;
+            if (service != null) {
+                if (ctx.network == null)
+                    ctx.network = [:];
+                ctx.network.protocol = service.toLowerCase();
+            }
+        }
+
+  # Both fortigate.user and fortigate.unauthuser should not happen.
+  # Similarly, both fortigate.dstuser and fortigate.dstunauthuser should
+  # not happen.
+  - set:
+      field: source.user.name
+      copy_from: fortigate.user
+      ignore_empty_value: true
+  - set:
+      field: source.user.name
+      copy_from: fortigate.unauthuser
+      ignore_empty_value: true
+      override: false
+  - set:
+      field: destination.user.name
+      copy_from: fortigate.dstuser
+      ignore_empty_value: true
+  - set:
+      field: destination.user.name
+      copy_from: fortigate.dstunauthuser
+      ignore_empty_value: true
+      override: false
+
+  # Set network.transport from fortigate.proto (iana number).
+  - script:
+      id: zlc-script-ingest-network-transport
+      params:
+        field_path: [ fortigate, proto ]
+
+
+  # Set dns.resolved_ip from fortigate.ipaddr, for utm logs when field
+  # fortigate.eventtype is dns-response.
+  - split:
+      field: fortigate.ipaddr
+      target_field: dns.resolved_ip
+      separator: ', '
+      ignore_missing: true
+      if: ctx.fortigate?.type == 'utm' && ctx.fortigate?.eventtype == 'dns-response'
+
+  # Add geoip fields based on fortigate.srcip and fortigate.dstip.
+  # Target fields are ECS standards, we assume standard ECS source.ip and
+  # destination.ip will be aliases in mapping.
+  - geoip:
+      field: fortigate.srcip
+      target_field: source.geo
+      properties:
+        - location
+        - country_iso_code
+        - country_name
+        - continent_name
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      field: fortigate.dstip
+      target_field: destination.geo
+      properties:
+        - location
+        - country_iso_code
+        - country_name
+        - continent_name
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      database_file: GeoLite2-ASN.mmdb
+      field: fortigate.srcip
+      target_field: source.as
+      properties:
+        - organization_name
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      database_file: GeoLite2-ASN.mmdb
+      field: fortigate.dstip
+      target_field: destination.as
+      properties:
+        - organization_name
+      ignore_missing: true
+      ignore_failure: true
+  - rename:
+      field: source.as.organization_name
+      target_field: source.as.organization.name
+      ignore_missing: true
+  - rename:
+      field: destination.as.organization_name
+      target_field: destination.as.organization.name
+      ignore_missing: true
+
+  # Set related.ip array.
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.srcip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate?.srcip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.transip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate?.transip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.dstip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate?.dstip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.tranip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate?.tranip != null
+  - foreach:
+      field: dns.resolved_ip
+      if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List
+      processor:
+        append:
+          field: related.ip
+          value: '{{{ _ingest._value }}}'
+          allow_duplicates: false

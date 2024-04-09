@@ -1,0 +1,50 @@
+version: 2
+
+# This was extracted from filebeat pipelines, it needs review:
+# https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/fortinet/firewall/ingest/event.yml
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  - set:
+      field: event.kind
+      value: event
+  - set:
+      field: event.kind
+      value: alert
+      if: ctx.fortigate?.attack != null || ['virus', 'ips'].contains(ctx.fortigate?.subtype)
+  - set:
+      field: event.action
+      value: '{{{ fortinet.firewall.action }}}'
+      ignore_empty_value: true
+  - set:
+      field: event.outcome
+      value: success
+      if: ctx.fortigate?.action != null
+  - append:
+      field: event.type
+      value: allowed
+      allow_duplicates: false
+      if: (['pass', 'passthrough', 'exempt'].contains(ctx.fortigate?.action))
+  - append:
+      field: event.type
+      value: denied
+      allow_duplicates: false
+      if: (['block', 'blocked', 'deny', 'close', 'server-rst', 'dropped'].contains(ctx.fortigate?.action))
+  - append:
+      field: event.type
+      value: info
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'dns'
+  - append:
+      field: event.category
+      value: network
+      allow_duplicates: false
+  - append:
+      field: event.category
+      value: intrusion_detection
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'ips'

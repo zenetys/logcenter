@@ -1,0 +1,38 @@
+version: 2
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  - script:
+      id: zlc-script-ingest-cef-rsyslog-norm
+  - script:
+      id: zlc-script-ingest-fortigate-cef-norm
+
+  - rename:
+      field: cef.deviceVendor
+      target_field: observer.vendor
+      ignore_missing: true
+  - rename:
+      field: cef.deviceProduct
+      target_field: observer.product
+      ignore_missing: true
+  - rename:
+      field: cef.deviceVersion
+      target_field: observer.version
+      ignore_missing: true
+  - remove:
+      # dup of fortigate.logid
+      field: cef.deviceEventClassId
+      ignore_missing: true
+  - remove:
+      # dup of fortigate.* fields
+      # documented as type:subtype + [eventtype] + [action] + [status]
+      field: cef.name
+      ignore_missing: true
+  - remove:
+      # redundant with fortigate.level (text)
+      field: cef.severity
+      ignore_missing: true

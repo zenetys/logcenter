@@ -1,0 +1,153 @@
+/* version 2 */
+
+if (!(ctx?.cef?.extensions instanceof Map))
+    return;
+
+/**
+ * We are going to populate fortigate.* fields, create the object if it
+ * does not already exist.
+ */
+
+if (!(ctx.fortigate instanceof Map))
+    ctx.fortigate = [:];
+
+/**
+ * Fortinet CEF logs have prefix FTNTFGT in extensions keys, ex:
+ * FTNTFGTapp=tcp/6379. The following moves these fields to fortigate.<key>,
+ * with the FTNTFGT prefix stripped from <key>.
+ */
+
+def to_add = [ /* [ stripped_key, value ], ... */ ];
+def it = ctx.cef.extensions.entrySet().iterator();
+while (it.hasNext()) {
+    def e = it.next();
+    def key = e.getKey();
+
+    if (key.startsWith('FTNTFGT')) {
+        to_add.add([ key.substring(7), e.getValue() ]);
+        it.remove();
+    }
+}
+if (to_add.length > 0) {
+    for (int i = 0; i < to_add.length; i++)
+        ctx.fortigate[to_add[i][0]] = to_add[i][1];
+}
+
+/**
+ * Extract fortigate.type from cef.extensions.cat. Format of cef.extensions.cat
+ * is fortigate.type:fortigate.subtype. Field fortigate.subtype should be already
+ * populated, so we only extract fortigate.type.
+ */
+
+if (ctx.cef.extensions.cat != null) {
+    def sep = ctx.cef.extensions.cat.indexOf(':');
+    if (sep > 0) { // found and not first
+        ctx.fortigate.type = ctx.cef.extensions.cat.substring(0, sep);
+        ctx.cef.extensions.remove('cat');
+    }
+}
+
+/**
+ * Rename cef.extensions.* fields to fortigate.* fields for normalization,
+ * this brings back to vanilla fortigate keys.
+ */
+
+if (ctx.fortigate.type == 'utm' &&
+    (ctx.fortigate.subtype == 'emailfilter' ||
+     ctx.fortigate.subtype == 'voip')) {
+
+    if (ctx.cef.extensions.duser != null) {    
+        ctx.fortigate.to = ctx.cef.extensions.duser;
+        ctx.cef.extensions.remove('duser');
+    }
+    if (ctx.cef.extensions.suser != null) {    
+        ctx.fortigate.from = ctx.cef.extensions.suser;
+        ctx.cef.extensions.remove('suser');
+    }
+}
+
+def cef2fortigate = [
+    // <cef.extensions.*>: <fortigate.*>
+    'act': 'action',
+    'app': 'service',
+    'c6a2': 'srcip',
+    'c6a3': 'dstip',
+    'cnt': 'count',
+    'destinationTranslatedAddress': 'tranip',
+    'destinationTranslatedPort': 'tranport',
+    'deviceDirection': 'direction',
+    'deviceExternalId': 'devid',
+    'deviceInboundInterface': 'srcintf',
+    'deviceOutboundInterface': 'dstintf',
+    'dhost': 'hostname',
+    'dpt': 'dstport',
+    'dst': 'dstip',
+    'duser': 'user',
+    'externalId': 'sessionid',
+    'fname': 'filename',
+    'fsize': 'filesize',
+    'in': 'rcvdbyte',
+    'msg': 'msg',
+    'outcome': 'status',
+    'out': 'sentbyte',
+    'proto': 'proto',
+    'reason': 'reason',
+    'requestClientApplication': 'agent',
+    'requestContext': 'catdesc',
+    'requestCookies': 'cookies',
+    'request': 'url',
+    'shost': 'srcname',
+    'sourceServiceName': 'role',
+    'sourceTranslatedAddress': 'transip',
+    'sourceTranslatedPort': 'transport',
+    'sproc': 'ui',
+    'spt': 'srcport',
+    'src': 'srcip',
+    'subtype': 'system'
+];
+
+for (e in cef2fortigate.entrySet()) {
+    def kcef = e.getKey();
+    def kfortigate = e.getValue();
+    if (ctx.cef.extensions[kcef] != null && ctx.fortigate[kfortigate] == null) {
+        ctx.fortigate[kfortigate] = ctx.cef.extensions[kcef];
+        ctx.cef.extensions.remove(kcef);
+    }
+}
+
+/**
+ * Update fortigate.direction values coming from CEF to match standard
+ * fortigate values: 0: incoming, 1: outgoing
+ */
+
+def cef_direction = ctx.fortigate?.direction;
+if (cef_direction == '0')
+    ctx.fortigate.direction = 'incoming';
+else if (cef_direction == '1')
+    ctx.fortigate.direction = 'outgoing';
+
+/**
+ * Set event.severity, numerical value for fortigate.level.
+ * Convert the cef.severity so it matches fortigate severity codes, which
+ * also match syslog severity codes.
+ */
+
+def cef_severity2fortigate = [
+    '8': 0,
+    '7': 1,
+    '6': 2,
+    '5': 3,
+    '4': 4,
+    '3': 5,
+    '2': 6,
+    '1': 7
+];
+
+if (ctx.cef.severity != null) {
+    def fortigate_severity = cef_severity2fortigate[ctx.cef.severity];
+    if (fortigate_severity != null) {
+        if (ctx?.event == null)
+            ctx.event = [:];
+        ctx.event.severity = fortigate_severity;
+    }
+}

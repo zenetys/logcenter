@@ -1,0 +1,76 @@
+version: 2
+
+# This was extracted from filebeat pipelines, it needs review:
+# https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/fortinet/firewall/ingest/event.yml
+
+on_failure:
+  - set:
+      field: error.message
+      value: '{{{ _ingest.on_failure_message }}}'
+
+processors:
+  - set:
+      field: event.kind
+      value: event
+  - set:
+      field: event.action
+      value: '{{{ fortinet.firewall.action }}}'
+      ignore_empty_value: true
+  - set:
+      field: event.outcome
+      value: failure
+      if: ctx.fortigate?.result == 'ERROR' || ctx.fortigate?.status == 'negotiate_error'
+  - set:
+      field: event.outcome
+      value: success
+      if: ctx.fortigate?.result == 'OK' || ['FSSO-logon', 'auth-logon', 'FSSO-logoff', 'auth-logout'].contains(ctx.fortigate?.action)
+  - append:
+      field: event.type
+      value:
+        - user
+        - start
+      allow_duplicates: false
+      if: (['FSSO-logon', 'auth-logon'].contains(ctx.fortigate?.action))
+  - append:
+      field: event.type
+      value:
+        - user
+        - end
+      allow_duplicates: false
+      if: (['FSSO-logoff', 'auth-logout'].contains(ctx.fortigate?.action))
+  - append:
+      field: event.type
+      value: connection
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'vpn'
+  - append:
+      field: event.category
+      value: network
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'vpn'
+  - append:
+      field: event.type
+      value: info
+      allow_duplicates: false
+      if: ctx.fortigate?.action == 'perf-stats'
+  - append:
+      field: event.category
+      value: host
+      if: ctx.fortigate?.action == 'perf-stats'
+  - append:
+      field: event.type
+      value: info
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'update'
+  - append:
+      field: event.category
+      value:
+        - host
+        - malware
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'update'
+  - append:
+      field: event.category
+      value: authentication
+      allow_duplicates: false
+      if: ctx.fortigate?.subtype == 'user'

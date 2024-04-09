@@ -1,0 +1,90 @@
+version: 2
+index_patterns:
+  - logs-firewall.fortigate-zlc
+  - logs-firewall.fortigate-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-firewall.fortigate-dynamic
+  - zlc-component-logs-firewall.fortigate-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.fortigate@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-firewall.fortigate-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.fortigate@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # Alias definition, generated with:
+      # sed -nre 's,^\s*# alias: ,,p' zlc-pipeline-logs-firewall.fortigate.yaml |{
+      #   srcmap=''; aliasmap=''
+      #   while read -r alias path type text; do
+      #     srcmap+="      $path: { type: ${type}${text:+, fields: { text: { type: match_only_text \} \}} }"$'\n'
+      #     aliasmap+="      $alias: { type: alias, path: $path }"$'\n'
+      #   done
+      #   printf 'template:\n  mappings:\n    properties:\n%s%s' "$srcmap" "$aliasmap"
+      # }
+      fortigate.logid: { type: keyword }
+      fortigate.level: { type: keyword }
+      fortigate.devid: { type: keyword }
+      fortigate.action: { type: keyword }
+      fortigate.sessionid: { type: keyword }
+      fortigate.srcip: { type: ip }
+      fortigate.dstip: { type: ip }
+      fortigate.srcport: { type: long }
+      fortigate.dstport: { type: long }
+      fortigate.srcmac: { type: keyword }
+      fortigate.dstmac: { type: keyword }
+      fortigate.transip: { type: ip }
+      fortigate.transport: { type: long }
+      fortigate.tranip: { type: ip }
+      fortigate.tranport: { type: long }
+      fortigate.srcintf: { type: keyword, fields: { text: { type: match_only_text } } }
+      fortigate.dstintf: { type: keyword, fields: { text: { type: match_only_text } } }
+      fortigate.proto: { type: keyword }
+      fortigate.policyid: { type: keyword }
+      fortigate.poluuid: { type: keyword }
+      fortigate.policyname: { type: keyword, fields: { text: { type: match_only_text } } }
+      fortigate.rcvdbyte: { type: long }
+      fortigate.rcvdpkt: { type: long }
+      fortigate.sentbyte: { type: long }
+      fortigate.sentpkt: { type: long }
+      fortigate.xid: { type: keyword }
+      fortigate.qname: { type: keyword }
+      fortigate.qtype: { type: keyword }
+      fortigate.qclass: { type: keyword }
+      event.code: { type: alias, path: fortigate.logid }
+      log.level: { type: alias, path: fortigate.level }
+      observer.serial_number: { type: alias, path: fortigate.devid }
+      event.action: { type: alias, path: fortigate.action }
+      transaction.id: { type: alias, path: fortigate.sessionid }
+      source.ip: { type: alias, path: fortigate.srcip }
+      destination.ip: { type: alias, path: fortigate.dstip }
+      source.port: { type: alias, path: fortigate.srcport }
+      destination.port: { type: alias, path: fortigate.dstport }
+      source.mac: { type: alias, path: fortigate.srcmac }
+      destination.mac: { type: alias, path: fortigate.dstmac }
+      source.nat.ip: { type: alias, path: fortigate.transip }
+      source.nat.port: { type: alias, path: fortigate.transport }
+      destination.nat.ip: { type: alias, path: fortigate.tranip }
+      destination.nat.port: { type: alias, path: fortigate.tranport }
+      observer.ingress.interface.name: { type: alias, path: fortigate.srcintf }
+      observer.egress.interface.name: { type: alias, path: fortigate.dstintf }
+      network.iana_number: { type: alias, path: fortigate.proto }
+      rule.id: { type: alias, path: fortigate.policyid }
+      rule.uuid: { type: alias, path: fortigate.poluuid }
+      rule.name: { type: alias, path: fortigate.policyname }
+      destination.bytes: { type: alias, path: fortigate.rcvdbyte }
+      destination.packets: { type: alias, path: fortigate.rcvdpkt }
+      source.bytes: { type: alias, path: fortigate.sentbyte }
+      source.packets: { type: alias, path: fortigate.sentpkt }
+      dns.id: { type: alias, path: fortigate.xid }
+      dns.question.name: { type: alias, path: fortigate.qname }
+      dns.question.type: { type: alias, path: fortigate.qtype }
+      dns.question.class: { type: alias, path: fortigate.qclass }
