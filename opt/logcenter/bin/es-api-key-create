@@ -109,7 +109,7 @@ fi
 
 if [[ -n $REPLACE ]]; then
     existing_by_name=$(es-curl /_security/api_key --get --data-urlencode "name=$NAME" |
-        jq -rc '.api_keys |map(.id)')
+        jq -rc '.api_keys |map(.id) |if (.|length) > 0 then . else "" end')
 fi
 
 data=$(jq -n --arg n "$NAME" --argjson rd "{${TYPES[$TYPE]}}" '{name: $n, role_descriptors: $rd}' |
