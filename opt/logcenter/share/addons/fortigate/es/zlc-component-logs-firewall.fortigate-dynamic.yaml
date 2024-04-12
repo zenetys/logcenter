@@ -42,14 +42,14 @@ template:
           mapping:
             type: ip
 
-      - fortinet_text:
+      - fortigate_text:
           path_match:
             - fortigate.msg
           match_mapping_type: string
           mapping:
             type: match_only_text
 
-      - fortinet_keyword_and_text:
+      - fortigate_keyword_and_text:
           path_match:
             - 'fortigate.*name'
           match_mapping_type: string
