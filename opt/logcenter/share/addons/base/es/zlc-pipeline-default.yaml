@@ -39,33 +39,14 @@ processors:
       copy_from: _ingest.timestamp
       override: false
 
-  - user_agent:
-      field: user_agent.original
-      ignore_missing: true
-  - lowercase:
-      field: email.bcc.address
-      ignore_missing: true
-  - lowercase:
-      field: email.cc.address
-      ignore_missing: true
-  - lowercase:
-      field: email.from.address
-      ignore_missing: true
-  - lowercase:
-      field: email.reply_to.address
-      ignore_missing: true
-  - lowercase:
-      field: email.sender.address
-      ignore_missing: true
-  - lowercase:
-      field: email.to.address
-      ignore_missing: true
-  - lowercase:
-      field: host.name
-      ignore_missing: true
-  - lowercase:
-      field: url.domain
-      ignore_missing: true
+  - user_agent: { field: user_agent.original, ignore_missing: true }
+  - lowercase: { field: email.bcc.address, ignore_missing: true }
+  - lowercase: { field: email.cc.address, ignore_missing: true }
+  - lowercase: { field: email.from.address, ignore_missing: true }
+  - lowercase: { field: email.reply_to.address, ignore_missing: true }
+  - lowercase: { field: email.sender.address, ignore_missing: true }
+  - lowercase: { field: email.to.address, ignore_missing: true }
+  - lowercase: { field: url.domain, ignore_missing: true }
 
   - pipeline:
       name: zlc-pipeline-geoip
