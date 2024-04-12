@@ -72,21 +72,10 @@ processors:
       if: ctx._?.pipeline_related_ip != false
       ignore_missing_pipeline: true
 
-  - append:
-        field: related.user
-        value: '{{{ user.name }}}'
-        allow_duplicates: false
-        if: ctx.user?.name != null
-  - append:
-        field: related.user
-        value: '{{{ destination.user.name }}}'
-        allow_duplicates: false
-        if: ctx.destination?.user?.name != null
-  - append:
-        field: related.user
-        value: '{{{ source.user.name }}}'
-        allow_duplicates: false
-        if: ctx.source?.user?.name != null
+  - pipeline:
+      name: zlc-pipeline-related-user
+      if: ctx._?.pipeline_related_user != false
+      ignore_missing_pipeline: true
 
   - remove:
       field: _

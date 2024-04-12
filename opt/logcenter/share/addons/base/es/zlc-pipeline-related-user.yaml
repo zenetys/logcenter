@@ -1,0 +1,22 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - append:
+        field: related.user
+        value: '{{{ user.name }}}'
+        allow_duplicates: false
+        if: ctx.user?.name != null
+  - append:
+        field: related.user
+        value: '{{{ source.user.name }}}'
+        allow_duplicates: false
+        if: ctx.source?.user?.name != null
+  - append:
+        field: related.user
+        value: '{{{ destination.user.name }}}'
+        allow_duplicates: false
+        if: ctx.destination?.user?.name != null
