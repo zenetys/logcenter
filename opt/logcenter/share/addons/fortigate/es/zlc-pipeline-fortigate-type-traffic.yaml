@@ -4,9 +4,8 @@ version: 2
 # https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/fortinet/firewall/ingest/traffic.yml
 
 on_failure:
-  - set:
-      field: error.message
-      value: '{{{ _ingest.on_failure_message }}}'
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
 
 processors:
   - set:
