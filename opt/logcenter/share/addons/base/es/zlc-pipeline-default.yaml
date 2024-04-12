@@ -5,6 +5,10 @@ on_failure:
   - set: { field: event.kind, value: pipeline_error }
 
 processors:
+  # Processors require keys to be unflatten in order to match fields.
+  - dot_expander:
+      field: '*'
+
   # Store ingest time.
   - set:
       field: event.ingested
@@ -16,10 +20,6 @@ processors:
       copy_from: '@timestamp'
       ignore_empty_value: true
       override: false
-
-  # Processors require keys to be unflatten in order to match fields.
-  - dot_expander:
-      field: '*'
 
   # Hook for a per-datastream pipeline.
   - pipeline:
