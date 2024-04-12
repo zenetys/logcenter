@@ -84,9 +84,9 @@ processors:
   - script:
       id: zlc-script-ingest-remove-empty-fields
       params:
-        empty_strings:
-          - ''
-          - '-'
+        empty_string_path: [ '_', 'remove_empty_string' ]
+        # fallback if _.remove_empty_string is null
+        empty_string: [ '', '-' ]
 
   - pipeline:
       name: zlc-pipeline-related-ip

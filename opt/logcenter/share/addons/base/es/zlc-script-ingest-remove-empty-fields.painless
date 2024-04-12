@@ -1,30 +1,42 @@
-/* version: 1 */
+/* version: 2 */
 
-void walk(Map tree, Map parent, String name, ArrayList empty_strings) {
-  def it = tree.entrySet().iterator();
-  def to_walk = [ /* [ key, value ], ... */ ];
-  int i;
-  while (it.hasNext()) {
-    def e = it.next();
-    def key = e.getKey();
-    def value = e.getValue();
-    if ((value == null) ||
-        (value instanceof List && value.isEmpty()))
-      it.remove();
-    else if (value instanceof String) {
-      for (i = 0; i < empty_strings.length; i++) {
-        if (value.equals(empty_strings[i])) {
-          it.remove();
-          break;
-        }
-      }
+/**
+ * params:
+ *   empty_string_path: [ '_', 'remove_empty_string' ]
+ *   # fallback if _.remove_empty_string not set
+ *   empty_string: [ '', '-' ]
+ */
+
+Object oget(Object o, ArrayList path) {
+    int i;
+    for (i = 0; i < path.length; i++) {
+        if (!(o instanceof Map))
+            return null;
+        o = ((Map)o).get(path[i]);
     }
-    else if (value instanceof Map)
-      to_walk.add([ key, value ]);
-  }
-  for (i = 0; i < to_walk.length; i++)
-    walk(to_walk[i][1], tree, to_walk[i][0], empty_strings);
-  if (tree.isEmpty() && parent != null && name != null)
-    parent.remove(name);
+    return o;
 }
-walk(ctx, null, null, params.empty_strings);
+
+boolean rmEmpty(Object o, ArrayList empty_string) {
+    if (o == null)
+        return true;
+    else if (o instanceof String && empty_string != null)
+        return empty_string.contains(o);
+    else if (o instanceof Map) {
+        ((Map)o).values().removeIf(x -> rmEmpty(x, empty_string));
+        return ((Map)o).size() == 0;
+    }
+    else if (o instanceof List) {
+        ((List) o).removeIf(x -> rmEmpty(x, empty_string));
+        return ((List)o).length == 0;
+    }
+    return false;
+}
+
+def empty_string = null;
+if (params?.empty_string_path instanceof ArrayList)
+    empty_string = oget(ctx, params.empty_string_path);
+if (empty_string == null && params?.empty_string instanceof ArrayList)
+    empty_string = params.empty_string;
+
+rmEmpty(ctx, empty_string);
