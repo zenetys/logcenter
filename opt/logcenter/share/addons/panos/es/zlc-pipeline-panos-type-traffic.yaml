@@ -1,0 +1,18 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - script:
+      lang: painless
+      source: |
+        ctx.event.kind = 'event';
+        ctx.event.category.add('network');
+
+        if (ctx.panos.action == 'allow')
+            ctx.event.outcome = 'success';
+        else
+            ctx.event.outcome = 'failure';
+

@@ -1,0 +1,20 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - script:
+      lang: painless
+      source: |
+        ctx.event.kind = 'event';
+        ctx.event.category.add('configuration');
+
+        if (ctx.panos.result == 'Succeeded')
+            ctx.event.outcome = 'success';
+        else if (ctx.panos.result == 'Failed' || ctx.panos.result == 'Unauthorized')
+            ctx.event.outcome = 'failure';
+        else if (ctx.panos.result == 'Submitted')
+            ctx.event.outcome = 'unknown';
+

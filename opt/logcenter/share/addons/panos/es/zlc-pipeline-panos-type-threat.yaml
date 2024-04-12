@@ -1,0 +1,21 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - script:
+      lang: painless
+      source: |
+        ctx.event.kind = 'alert';
+        ctx.event.category.addAll([ 'intrusion_detection', 'threat', 'network' ]);
+
+        if (ctx.panos.action == 'alert' || ctx.panos.action == 'allow' ||
+            ctx.panos.action == 'continue' || ctx.panos.action == 'override')
+            ctx.event.outcome = 'success';
+        else if (ctx.panos.action == 'block-continue' || ctx.panos.action == 'block-override')
+            ctx.event.outcome = 'unknown';
+        else if (ctx.panos.action != 'syncookie-sent')
+            ctx.event.outcome = 'failure';
+

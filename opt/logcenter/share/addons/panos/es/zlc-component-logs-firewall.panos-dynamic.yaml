@@ -1,0 +1,48 @@
+version: 2
+template:
+  mappings:
+    dynamic_templates:
+      - panos_date:
+          path_match:
+            - 'panos.receive_time'
+            - 'panos.time_generated'
+            - 'panos.start'
+            - 'panos.parent_start_time'
+          mapping:
+            ignore_malformed: false
+            type: date
+
+      - panos_long:
+          path_match:
+            - 'panos.bytes'
+            - 'panos.bytes_*'
+            - 'panos.chunks'
+            - 'panos.chunks_*'
+            - 'panos.*port'
+            - 'panos.elapsed'
+            - 'panos.*_count'
+            - 'panos.packets'
+            - 'panos.pkts_*'
+            - 'panos.repeatcnt'
+            - 'panos.risk_of_app'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - panos_ip:
+          path_match:
+            - 'panos.src'
+            - 'panos.dst'
+            - 'panos.natsrc'
+            - 'panos.natdst'
+            - 'panos.*_ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - panos_text:
+          path_match:
+            - 'panos.opaque'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text

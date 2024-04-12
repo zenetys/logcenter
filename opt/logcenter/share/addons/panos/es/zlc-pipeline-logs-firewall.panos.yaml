@@ -1,0 +1,309 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'panos.* fields expected'
+      if: (ctx.panos instanceof Map) == false
+
+  - set:
+      field: _
+      value:
+        # Do not set geoip and related.ip from the default pipeline.
+        # It is done here using fortigate.* fields as input.
+        pipeline_geoip: false
+        pipeline_related_ip: false
+        remove_empty_string: [ '', 'N/A', 'n/a' ]
+
+  - set: { field: observer.vendor, value: 'Palo Alto Networks', override: false }
+  - set: { field: observer.product, value: 'PAN-OS', override: false }
+  - set: { field: observer.type, value: firewall, override: false }
+
+  - script:
+      lang: painless
+      source: |
+        // Set @timestamp from panos.high_res_timestamp because it has
+        // milliseconds. Set _.tz with fallback to UTC so parsing of date
+        // fields other than panos.high_res_timestamp do no fail.
+        if (ctx.panos.high_res_timestamp != null && ctx.panos.high_res_timestamp != '') {
+            ctx['@timestamp'] = ctx.panos.high_res_timestamp;
+            def len = ctx.panos.high_res_timestamp.length();
+            if (len > 6) {
+                def tz = ctx.panos.high_res_timestamp.substring(len-6);
+                if (tz.startsWith('-') || tz.startsWith('+'))
+                    ctx._.tz = tz;
+            }
+        }
+        if (ctx._.tz == null)
+            ctx._.tz = 'Z';
+
+        // prepare for adding standard event fields
+        if (ctx.event == null)
+            ctx.event = [:];
+        if (ctx.event.category == null)
+            ctx.event.category = new ArrayList();
+        if (ctx.event.type == null)
+            ctx.event.type = new ArrayList();
+
+        if (ctx.panos.severity == 'critical')
+            ctx.event.severity = 1;
+        else if (ctx.panos.severity == 'high')
+            ctx.event.severity = 2;
+        else if (ctx.panos.severity == 'medium')
+            ctx.event.severity = 3;
+        else if (ctx.panos.severity == 'low')
+            ctx.event.severity = 4;
+        else if (ctx.panos.severity == 'informational')
+            ctx.event.severity = 5;
+
+        if (ctx.panos.pcap_id == '0')
+            ctx.panos.remove('pcap_id');
+
+        if (ctx.panos.flags != null && ctx.panos.flags != '') {
+            def flags;
+            try { flags = Long.decode(ctx.panos.flags) } catch (Exception e) {}
+            if (flags != null && flags > 0) {
+                ctx.panos.flags_decoded = new ArrayList();
+                for (b in params.text2flag.entrySet()) {
+                    if ((flags & b.getValue()) > 0)
+                        ctx.panos.flags_decoded.add(b.getKey());
+                }
+            }
+        }
+
+        // event.type
+        if (ctx.panos.action != null) {
+            // normalize between traffic and threat
+            ctx.panos.action = ctx.panos.action.toLowerCase().replace(' ', '-');
+            def action2evtype = params.action2evtype[ctx.panos.action];
+            if (action2evtype != null)
+                ctx.event.type.addAll(action2evtype);
+        }
+        if (ctx.panos.subtype != null) {
+            def subtype2evtype = params.subtype2evtype[ctx.panos.subtype];
+            if (subtype2evtype != null) {
+                for (def t : subtype2evtype) {
+                    if (!ctx.event.type.contains(t))
+                        ctx.event.type.add(t);
+                }
+            }
+        }
+
+        // event.duration
+        def duration = ctx.panos.elapsed;
+        if (duration != null && duration != '') {
+            if (duration instanceof String)
+                duration = Long.parseLong(ctx.panos.elapsed);
+            ctx.event.duration = duration * 1000000000;
+        }
+      params:
+        action2evtype:
+          alert: [ 'allowed' ]
+          allow: [ 'allowed' ]
+          deny: [ 'denied' ]
+          drop: [ 'denied' ]
+          reset-client: [ 'denied' ]
+          reset-server: [ 'denied' ]
+          reset-both: [ 'denied' ]
+          block-url: [ 'denied' ]
+          block-ip: [ 'denied' ]
+          random-drop: [ 'denied' ]
+          sinkhole: [ 'denied' ]
+          syncookie-sent: [ 'info' ]
+          continue: [ 'allowed' ]
+          override-lockout: [ 'denied', 'admin' ]
+          override: [ 'allowed', 'admin' ]
+          block: [ 'denied' ]
+        subtype2evtype:
+          start: [ 'connection', 'start' ]
+          end: [ 'connection', 'end' ]
+          drop: [ 'connection', 'denied' ]
+          deny: [ 'connection', 'denied' ]
+        text2flag:
+          has-pcap: 0x80000000
+          allow-multiple-paths: 0x40000000
+          wildfire-sample: 0x20000000
+          corporate-credential: 0x10000000
+          source-allow-list: 0x08000000
+          ipv6-session: 0x02000000
+          ssl-decrypt: 0x01000000
+          url-filter-deny: 0x00800000
+          has-nat: 0x00400000
+          auth-portal: 0x00200000
+          non-std-dstport: 0x00100000
+          xff: 0x00080000
+          http-proxy: 0x00040000
+          cs-policy-forward: 0x00020000
+          sc-policy-forward: 0x00010000
+          container-page: 0x00008000
+          app-dependency: 0x00002000
+          symmetric-return: 0x00000800
+          decrypt-mirror: 0x00000400
+          outer-payload-inspect: 0x00000100
+ 
+  # Normalize date fields.
+  - date:
+      if: ctx.panos.receive_time != null && ctx.panos.receive_time != ''
+      field: panos.receive_time
+      target_field: panos.receive_time
+      formats: [ 'yyyy/MM/dd HH:mm:ss' ]
+      output_format: "yyyy-MM-dd'T'HH:mm:ssXXX"
+      timezone: '{{{ _.tz }}}'
+  - date:
+      if: ctx.panos.time_generated != null && ctx.panos.time_generated != ''
+      field: panos.time_generated
+      target_field: panos.time_generated
+      formats: [ 'yyyy/MM/dd HH:mm:ss' ]
+      output_format: "yyyy-MM-dd'T'HH:mm:ssXXX"
+      timezone: '{{{ _.tz }}}'
+  - date:
+      if: ctx.panos.start != null && ctx.panos.start != ''
+      field: panos.start
+      target_field: panos.start
+      formats: [ 'yyyy/MM/dd HH:mm:ss' ]
+      output_format: "yyyy-MM-dd'T'HH:mm:ssXXX"
+      timezone: '{{{ _.tz }}}'
+  - date:
+      if: ctx.panos.parent_start_time != null && ctx.panos.parent_start_time != ''
+      field: panos.parent_start_time
+      target_field: panos.parent_start_time
+      formats: [ 'yyyy/MM/dd HH:mm:ss' ]
+      output_format: "yyyy-MM-dd'T'HH:mm:ssXXX"
+      timezone: '{{{ _.tz }}}'
+
+  - split:
+      if: ctx.panos.characteristic_of_app != null && ctx.panos.characteristic_of_app != ''
+      field: panos.characteristic_of_app
+      separator: ','
+
+  - dissect:
+      field: panos.srcuser
+      if: ctx.panos.srcuser != null && ctx.panos.srcuser != ''
+      pattern: '%{user.domain}\%{user.name}'
+      on_failure: [ { set: { field: user.name, copy_from: panos.srcuser } } ]
+  - dissect:
+      field: panos.dstuser
+      if: ctx.panos.dstuser != null && ctx.panos.dstuser != ''
+      pattern: '%{destination.user.domain}\%{destination.user.name}'
+      on_failure: [ { set: { field: destination.user.name, copy_from: panos.dstuser } } ]
+
+  - lowercase: { field: panos.type, target_field: _.type }
+  - pipeline: { name: 'zlc-pipeline-panos-type-{{{ _.type }}}', ignore_missing_pipeline: true }
+
+  # It is not clear if xff_ip is guaranteed to be an IP address.
+  # Note: empty fields are removed by the main pipeline.
+  - convert:
+      if: ctx.panos.xff_ip != null && ctx.panos.xff_ip != ''
+      field: panos.xff_ip
+      target_field: network.forwarded_ip
+      type: ip
+      ignore_failure: true
+
+  # NAT ip/port fields are zeros when there is no translation, remove them.
+  - remove:
+      if: ctx.panos.natsrc == '0.0.0.0' && ctx.panos.natsport == '0'
+      field: [ panos.natsrc, panos.natsport ]
+  - remove:
+      if: ctx.panos.natdst == '0.0.0.0' && ctx.panos.natdport == '0'
+      field: [ panos.natdst, panos.natdport ]
+
+  # alias: event.code                      panos.eventid        keyword
+  # alias: log.level                       panos.severity       keyword
+  # alias: event.action                    panos.action         keyword
+  # alias: observer.hostname               panos.device_name    keyword
+  # alias: observer.serial_number          panos.serial         keyword
+  # alias: observer.ingress.zone           panos.from           keyword
+  # alias: observer.ingress.interface.name panos.inbound_if     keyword text
+  # alias: observer.egress.zone            panos.to             keyword
+  # alias: observer.egress.interface.name  panos.outbound_if    keyword text
+  # alias: source.ip                       panos.src            ip
+  # alias: source.port                     panos.sport          long
+  # alias: source.nat.ip                   panos.natsrc         ip
+  # alias: source.nat.port                 panos.natsport       long
+  # alias: source.mac                      panos.src_mac        keyword
+  # alias: source.bytes                    panos.bytes_sent     long
+  # alias: source.packets                  panos.pkts_sent      long
+  # alias: destination.ip                  panos.dst            ip
+  # alias: destination.port                panos.dport          long
+  # alias: destination.nat.ip              panos.natdst         ip
+  # alias: destination.nat.port            panos.natdport       long
+  # alias: destination.mac                 panos.dst_mac        keyword
+  # alias: destination.bytes               panos.bytes_received long
+  # alias: destination.packets             panos.pkts_received  long
+  # alias: network.application             panos.app            keyword
+  # alias: network.bytes                   panos.bytes          long
+  # alias: network.packets                 panos.packets        long
+  # alias: network.transport               panos.proto          keyword
+  # alias: source.user.domain              user.domain          keyword
+  # alias: source.user.name                user.name            keyword text
+  # alias: rule.uuid                       panos.rule_uuid      keyword
+  # alias: rule.name                       panos.rule           keyword text
+  # alias: transaction.id                  panos.sessionid      keyword
+
+  # Add geoip fields based on fortigate.srcip and fortigate.dstip.
+  # Target fields are ECS standards, we assume standard ECS source.ip and
+  # destination.ip will be aliases in mapping.
+  - geoip:
+      field: panos.src
+      target_field: source.geo
+      properties: [ location, country_iso_code, country_name, continent_name ]
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      field: panos.dst
+      target_field: destination.geo
+      properties: [ location, country_iso_code, country_name, continent_name ]
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      database_file: GeoLite2-ASN.mmdb
+      field: panos.src
+      target_field: source.as
+      properties: [ organization_name ]
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      database_file: GeoLite2-ASN.mmdb
+      field: panos.dst
+      target_field: destination.as
+      properties: [ organization_name ]
+      ignore_missing: true
+      ignore_failure: true
+  - rename:
+      field: source.as.organization_name
+      target_field: source.as.organization.name
+      ignore_missing: true
+  - rename:
+      field: destination.as.organization_name
+      target_field: destination.as.organization.name
+      ignore_missing: true
+
+  # Set related.ip array.
+  - append:
+        field: related.ip
+        value: '{{{ panos.src }}}'
+        allow_duplicates: false
+        if: ctx.panos.src != null && ctx.panos.src != ''
+  - append:
+        field: related.ip
+        value: '{{{ panos.natsrc }}}'
+        allow_duplicates: false
+        if: ctx.panos.natsrc != null && ctx.panos.natsrc != ''
+  - append:
+        field: related.ip
+        value: '{{{ panos.dst }}}'
+        allow_duplicates: false
+        if: ctx.panos.dst != null && ctx.panos.dst != ''
+  - append:
+        field: related.ip
+        value: '{{{ panos.natdst }}}'
+        allow_duplicates: false
+        if: ctx.panos.natdst != null && ctx.panos.natdst != ''
+  - append:
+        field: related.ip
+        value: '{{{ network.forwarded_ip }}}'
+        allow_duplicates: false
+        if: ctx.network?.forwarded_ip != null

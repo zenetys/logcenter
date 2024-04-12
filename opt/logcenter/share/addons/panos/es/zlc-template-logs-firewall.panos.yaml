@@ -1,0 +1,87 @@
+version: 2
+index_patterns:
+  - logs-firewall.panos-zlc
+  - logs-firewall.panos-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-firewall.panos-dynamic
+  - zlc-component-logs-firewall.panos-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.panos@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-firewall.panos-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.panos@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      panos.eventid: { type: keyword }
+      panos.severity: { type: keyword }
+      panos.action: { type: keyword }
+      panos.device_name: { type: keyword }
+      panos.serial: { type: keyword }
+      panos.from: { type: keyword }
+      panos.inbound_if: { type: keyword, fields: { text: { type: match_only_text } } }
+      panos.to: { type: keyword }
+      panos.outbound_if: { type: keyword, fields: { text: { type: match_only_text } } }
+      panos.src: { type: ip }
+      panos.sport: { type: long }
+      panos.natsrc: { type: ip }
+      panos.natsport: { type: long }
+      panos.src_mac: { type: keyword }
+      panos.bytes_sent: { type: long }
+      panos.pkts_sent: { type: long }
+      panos.dst: { type: ip }
+      panos.dport: { type: long }
+      panos.natdst: { type: ip }
+      panos.natdport: { type: long }
+      panos.dst_mac: { type: keyword }
+      panos.bytes_received: { type: long }
+      panos.pkts_received: { type: long }
+      panos.app: { type: keyword }
+      panos.bytes: { type: long }
+      panos.packets: { type: long }
+      panos.proto: { type: keyword }
+      user.domain: { type: keyword }
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
+      panos.rule_uuid: { type: keyword }
+      panos.rule: { type: keyword, fields: { text: { type: match_only_text } } }
+      panos.sessionid: { type: keyword }
+      event.code: { type: alias, path: panos.eventid }
+      log.level: { type: alias, path: panos.severity }
+      event.action: { type: alias, path: panos.action }
+      observer.hostname: { type: alias, path: panos.device_name }
+      observer.serial_number: { type: alias, path: panos.serial }
+      observer.ingress.zone: { type: alias, path: panos.from }
+      observer.ingress.interface.name: { type: alias, path: panos.inbound_if }
+      observer.egress.zone: { type: alias, path: panos.to }
+      observer.egress.interface.name: { type: alias, path: panos.outbound_if }
+      source.ip: { type: alias, path: panos.src }
+      source.port: { type: alias, path: panos.sport }
+      source.nat.ip: { type: alias, path: panos.natsrc }
+      source.nat.port: { type: alias, path: panos.natsport }
+      source.mac: { type: alias, path: panos.src_mac }
+      source.bytes: { type: alias, path: panos.bytes_sent }
+      source.packets: { type: alias, path: panos.pkts_sent }
+      destination.ip: { type: alias, path: panos.dst }
+      destination.port: { type: alias, path: panos.dport }
+      destination.nat.ip: { type: alias, path: panos.natdst }
+      destination.nat.port: { type: alias, path: panos.natdport }
+      destination.mac: { type: alias, path: panos.dst_mac }
+      destination.bytes: { type: alias, path: panos.bytes_received }
+      destination.packets: { type: alias, path: panos.pkts_received }
+      network.application: { type: alias, path: panos.app }
+      network.bytes: { type: alias, path: panos.bytes }
+      network.packets: { type: alias, path: panos.packets }
+      network.transport: { type: alias, path: panos.proto }
+      source.user.domain: { type: alias, path: user.domain }
+      source.user.name: { type: alias, path: user.name }
+      rule.uuid: { type: alias, path: panos.rule_uuid }
+      rule.name: { type: alias, path: panos.rule }
+      transaction.id: { type: alias, path: panos.sessionid }
