@@ -66,9 +66,6 @@ processors:
   - lowercase:
       field: url.domain
       ignore_missing: true
-  - lowercase:
-      field: user.name
-      ignore_missing: true
 
   - pipeline:
       name: zlc-pipeline-geoip
