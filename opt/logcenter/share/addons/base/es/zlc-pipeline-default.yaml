@@ -14,7 +14,8 @@ processors:
       field: event.ingested
       copy_from: _ingest.timestamp
 
-  # Use @timestamp as default event.created.
+  # Use received @timestamp as default event.created. It is most probably the
+  # time of reception on the syslog collector before reaching elasticsearch.
   - set:
       field: event.created
       copy_from: '@timestamp'
