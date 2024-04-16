@@ -5,6 +5,7 @@ PROGNAME=${0##*/}
 
 declare -A TYPES=(
     ['writer']='zlc-role-writer'
+    ['superuser']='superuser'
 )
 
 declare -A ROLES=(
