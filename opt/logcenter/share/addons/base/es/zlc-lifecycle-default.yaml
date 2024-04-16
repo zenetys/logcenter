@@ -21,7 +21,7 @@ policy:
         set_priority:
           priority: 0
     delete:
-      min_age: 365d
+      min_age: 90d
       actions:
         delete:
           delete_searchable_snapshot: true
