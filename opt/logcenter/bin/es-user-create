@@ -69,7 +69,7 @@ done
 [[ -n $TYPE && -z ${TYPES[$TYPE]} ]] && exit_usage 1
 ROLE+=( ${TYPES[$TYPE]//,/ } )
 [[ -z $ROLE ]] && exit_usage 1
-[[ -n $PASS && ${#PASS} -lt 10 ]] && fatal 'Given password too short (min 10)'
+[[ -n $PASS && ${#PASS} -lt 6 ]] && fatal 'Given password too short (min 6)'
 [[ -n $PASS ]] && SHOWPASS=
 
 out=$(ES_LOCAL_CURL_FAIL= es-curl "/_security/user/$NAME" -o /dev/null -w '%{http_code}')
