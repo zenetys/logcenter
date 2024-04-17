@@ -40,7 +40,10 @@ function _log() {
     local LOGGER_SEVERITY=${LOGGER_SEVERITY:-info}
     local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
     local message="${DRY_RUN:+DRY-RUN ** }${CURRENT_PEER:+P:${CURRENT_PEER%%.*} -- }$*"
-    [[ -n $HAS_TTY ]] || { logger -t "$tag" --id="$MYPID" -p "$LOGGER_SEVERITY" -- "$message"; return 0; }
+    if [[ -z $HAS_TTY ]]; then
+        logger -t "$tag" --id="$MYPID" -p "$LOGGER_SEVERITY" -- "$message"
+        [[ -n $FORCE_STDOUT ]] || return 0
+    fi
     [[ -n $QUIET && $STDOUT_LABEL == INFO ]] && return 0
     echo "$now $STDOUT_LABEL $tag: $message"
 }
@@ -203,7 +206,7 @@ function do_primary() {
                 "${SSH_CMD[@]}" "$CURRENT_PEER" "$qcmd" 2>&1)); retval=$?; IFS=$OIFS
             local line op rest=
             for line in "${output[@]}"; do
-                [[ ${line:0:7} == '#PROTO#' ]] || { rest+="${reset:+, }$line"; continue; }
+                [[ ${line:0:7} == '#PROTO#' ]] || { rest+="${rest:+, }$line"; continue; }
                 line=${line:7}; op=${line%% *}; line=${line#* }
                 case "$op" in
                     info) info "(peer) $line" ;;
@@ -247,9 +250,9 @@ function do_secondary_clean() {
     local file
     while read -r file; do
         if dry_run_cmd_wrap rm "$ZLC_ARCHIVES_DIR/$file"; then
-            echo "#PROTO#info "$(info "Deleted (secondary) $file")
+            echo "#PROTO#info "$(FORCE_STDOUT=1 info "Deleted (secondary) $file")
         else
-            echo "#PROTO#warning "$(info "Could not delete (secondary) $file")
+            echo "#PROTO#warning "$(FORCE_STDOUT=1 warning "Could not delete (secondary) $file")
         fi
     done
 }
