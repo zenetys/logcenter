@@ -1,0 +1,44 @@
+#!/bin/bash
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "Usage: ${0#*/} [-w [WATCH-SECONDS]]"
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -w|--watch) watch=${2:-5}; shift ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n $watch ]]; then
+    [[ -z ${watch//[0-9]} ]] || exit_usage 1
+    exec watch -n "$watch" "$0"
+fi
+
+echo "# es-curl _cat/health"
+es-curl _cat/health
+echo
+
+echo "# es-curl _cat/nodes"
+es-curl _cat/nodes?s=n
+echo
+
+echo "# es-curl _cluster/settings"
+es-curl _cluster/settings |jq -cM .
+echo
+
+echo "# es-curl _cat/shards (not STARTED)"
+es-curl '_cat/shards?s=i&h=i,sh,pr,st' |fgrep -v STARTED
+echo
+
+echo "# es-curl _cat/recovery (not done)"
+es-curl '_cat/recovery?s=i,s&h=i,s,source_node,target_node,tn,st,fp,bp,top' |
+        awk '$5=="done"{next}{for(i=3;i<=4;i++)$(i)=gensub(/\..*/,"",1,$(i));print;}' |
+        column -t -o ' '
+echo
