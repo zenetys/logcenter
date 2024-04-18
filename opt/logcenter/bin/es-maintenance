@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "Usage: ${0##*/} status|start|start-full|stop"
+    exit "$status"
+}
+
+op=
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        status|start|start-full|stop) op=$1 ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+[[ -z $op ]] && exit_usage 1
+
+if [[ $op == status ]]; then
+    es-curl _cluster/settings
+
+elif [[ $op == start ]]; then
+    es-curl _cluster/settings -X PUT -d '{ "persistent": {
+            "cluster.routing.allocation.enable": "primaries"
+        }}'
+
+elif [[ $op == start-full ]]; then
+    es-curl _cluster/settings -X PUT -d '{ "persistent": {
+            "cluster.routing.allocation.enable": "none",
+            "cluster.routing.rebalance.enable": "none"
+        }}'
+
+elif [[ $op == stop ]]; then
+    es-curl _cluster/settings -X PUT -d '{ "persistent": {
+            "cluster.routing.allocation.enable": null,
+            "cluster.routing.rebalance.enable": null
+        }}'
+fi |jq -c
