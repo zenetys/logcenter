@@ -1,0 +1,58 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+set -f
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME DIR REGEX-FILE-PATTERN KEEPNUM
+Keep the last n ordered filenames, remove others
+
+Available options:
+    --dry-run       Dry-run mode, do not remove any file
+    -v, --verbose   Call rm with -v
+    -h, --help      Display this help
+
+Usage examples:
+    $PROGNAME /var/log/logcenter '(.+)\.debug.*\.gz' 1
+    $PROGNAME /var/log/logcenter 'es-errors\.log.*\.gz' 3
+"
+    exit "$status"
+}
+
+dry_run=
+verbose=
+args=()
+while (( $# > 0 )); do
+    case "$1" in
+        --dry-run) dry_run=1 ;;
+        -v|--verbose) verbose=1 ;;
+        -h|--help) exit_usage 0 ;;
+        *) args+=( "$1" )
+    esac
+    shift
+done
+
+dir=${args[0]}
+pattern=${args[1]}
+nkeep=${args[2]}
+
+[[ -d $dir/. ]] || exit 0
+[[ -n $pattern ]] || exit_usage 1
+[[ -n $nkeep && -z ${nkeep//[0-9]} ]] || exit_usage 1
+
+xargs_opts=( -- rm ${verbose:+-v} )
+[[ -n $dry_run ]] && xargs_opts=( -n 1 -- echo "**DRY-RUN**" rm ${verbose:+-v} )
+
+find "$dir/" -mindepth 1 -maxdepth 1 -regextype awk -not -type d -regex ".*/$pattern$" -printf '%P\n' |
+    sort -V |
+    awk -v "dir=$dir" -v "nkeep=$nkeep" -v "pattern=${pattern//\\/\\\\}$" '
+match($0, pattern, cap) {
+    count_by_prefix[cap[1]]++;
+    if (count_by_prefix[cap[1]] > nkeep)
+        print dir "/" $0
+}
+    ' |
+    xargs --no-run-if-empty "${xargs_opts[@]}" 
