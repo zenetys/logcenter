@@ -1,0 +1,20 @@
+# Minimize rsyslog HUP calls, so group all rsyslog log files related to
+# logcenter configuration in a single section. Deletion of files to keep
+# less than the rotate value is handled in the lastaction script.
+/var/log/logcenter/*.debug
+/var/log/logcenter/*.log
+{
+    daily
+    nodateext
+    compress
+    missingok
+    rotate 7
+    sharedscripts
+    postrotate
+        /usr/bin/systemctl kill -s HUP rsyslog.service >/dev/null 2>&1 || true
+    endscript
+    lastaction
+        /opt/logcenter/bin/keep-last-files /var/log/logcenter '(.+)\.debug.*\.gz' 1
+        /opt/logcenter/bin/keep-last-files /var/log/logcenter 'es-errors\.log.*\.gz' 3
+    endscript
+}
