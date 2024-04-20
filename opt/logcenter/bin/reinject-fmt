@@ -2,24 +2,22 @@
 --
 -- Copyright(C) 2024 @ ZENETYS
 -- This script is licensed under MIT License (http://opensource.org/licenses/MIT)
--- 
+--
 
 require 'json'
 
 PROGNAME = arg[0]:match('([^/]*)$')
-DEBUG = 0
+VERBOSE = 1
 
 DEFAULT = {
     facility = 1,
     severity = 6,
-    hostname = '127.0.0.1',
-    src_ip = '127.0.0.1',
+    hostname = 'localhost',
     app_name = '-',
     procid = '-',
     msgid = '-',
     sd = '-',
-    msg = '',
-    rj_id = os.date("%Y%m%d%H%M%S"),
+    msg = ''
 }
 
 PAT_DATE_RFC3339 = '%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[^+]*%+%d%d:%d%d'
@@ -188,8 +186,13 @@ function perr(message)
     io.stderr:flush()
 end
 
+function verbose(message)
+    if VERBOSE < 1 then return end
+    perr(message)
+end
+
 function debug(message)
-    if (not DEBUG) then return end
+    if VERBOSE < 2 then return end
     perr(message)
 end
 
@@ -197,25 +200,24 @@ function num2pri(facility, severity)
     return (facility << 3) + severity;
 end
 
-function text2pri(facility, severity)
-    local ifac = SYSLOG_FACILITY_TEXT2NUM[facility]
-    local isev = SYSLOG_SEVERITY_TEXT2NUM[severity]
-    return num2pri(ifac, isev);
+function date_rfc3339(ts)
+    local d = os.date('%Y-%m-%dT%H:%M:%S%z', ts)
+    return d:sub(1, -3)..':'..d:sub(-2)
 end
 
 function parse(input, defs, vars)
     function try_def_match(def)
         local cap
-        perr('def='..def.name..', input='..input);
+        debug('def='..def.name..', input='..input);
         if (def.match.pattern) then
-            perr('def='..def.name..', test pattern');
+            debug('def='..def.name..', test pattern');
             cap = { input:match(def.match.pattern) }
             if (#cap == 0) then
                 return false
             end
         end
         if (def.match.fn) then
-            perr('def='..def.name..', test fn');
+            debug('def='..def.name..', test fn');
             if (not def.match.fn(input, def, vars, cap, table.unpack(def.match.args or {}))) then
                 return false
             end
@@ -231,7 +233,7 @@ function parse(input, defs, vars)
     for i,v in ipairs(defs) do
         if (not v.match or try_def_match(v)) then
             if (v.finalize) then
-                perr('def='..v.name..', finalize fn');
+                debug('def='..v.name..', finalize fn');
                 if (not v.finalize.fn(input, vars, table.unpack(v.finalize.args or {}))) then
                     return false, 'finalize failed'
                 end
@@ -256,94 +258,49 @@ function process(line)
     local vars = {}
     local ret, err = parse(line, PARSER_MAIN, vars)
 
-    perr('Parse '..(ret and 'OK' or 'ERR')..', vars='..json.encode(vars));
+    debug('Parse '..(ret and 'OK' or 'ERR')..', vars='..json.encode(vars));
+    if not ret then return ret, err end
 
-    if (not ret) then
-        perr('Unsupported format ('..err..'): '..
-            (LOG_FILE or '-')..':'..LOG_ILINE..': '..
-            (#line <= 100 and line or line:sub(1, 100)..'...'))
-        return
+    local pri = vars.pri
+    if not pri then
+        local facility = (vars.facility and SYSLOG_FACILITY_TEXT2NUM[vars.facility] or DEFAULT.facility)
+        local severity = (vars.severity and SYSLOG_SEVERITY_TEXT2NUM[vars.severity] or DEFAULT.severity)
+        pri = num2pri(facility, severity)
     end
 
+    local reported = vars.reported or date_rfc3339()
+    local hostname = vars.hostname or DEFAULT.hostname
+    local app_name = vars.app_name or DEFAULT.app_name
+    local procid = vars.procid or DEFAULT.procid
+    local msgid = vars.msgid or DEFAULT.msgid
+    local msg = vars.msg or DEFAULT.msg
 
---    local cap, out
---
---    for i,v in ipairs(FMT_LOG) do
---        cap = { line:match(v.pattern) }
---        if (#cap > 0) then
---            out = ''
---            curdate = nil
---
---            -- pri / facility / severity
---            if v.facility and v.severity then
---                out = out..'<'..text2pri(cap[v.facility], cap[v.severity])..'>'
---            else
---                out = out..'<'..num2pri(DEFAULT_FACILITY_NUM, DEFAULT_SEVERITY_NUM)..'>'
---            end
---            -- reported time
---            if v.reported then
---                out = out..cap[v.reported]
---            else
---                if not curdate then curdate = date_rfc3339() end
---                out = out..curdate
---            end
---            -- hostname
---            if v.hostname then
---                out = out..' '..cap[v.hostname]
---            else
---                out = out..' '..DEFAULT_HOSTNAME
---            end
---            -- tag
---            if v.tag then
---                out = out..' '..cap[v.tag]..':'
---            else
---                out = out..' '..DEFAULT_TAG..':'
---            end
---            -- reinject id
---            out = out..' rjid='..LOG_RJID
---            -- source
---            if v.source then
---                out = out..' src='..cap[v.source]
---            else
---                out = out..' src='..LOG_SOURCE
---            end
---            -- type
---            if v.type then
---                out = out..' type='..cap[v.type]
---            else
---                out = out..' type='..LOG_TYPE
---            end
---            -- received
---            if v.received then
---                out = out..' received='..cap[v.received]
---            else
---                if not curdate then curdate = date_rfc3339() end
---                out = out..' received='..curdate
---            end
---            -- message
---            if v.message then
---                out = out..' msg='..cap[v.message]
---            else
---                out = out..' msg='
---            end
---            -- done
---            io.write(out..'\n');
---            io.flush()
---            return
---        end
---    end
+    local sd_zlc = ''
+    local src_ip = vars.src_ip or DEFAULT.src_ip
+    local src_host = vars.src_host or DEFAULT.src_host
+    local received = vars.received or DEFAULT.received
+    local rj_id = vars.rj_id or DEFAULT.rj_id
+    if src_ip then sd_zlc = sd_zlc..' srcIp="'..src_ip..'"' end
+    if src_host then sd_zlc = sd_zlc..' srcHost="'..src_host..'"' end
+    if received then sd_zlc = sd_zlc..' srcReceived="'..received..'"' end
+    if rj_id then sd_zlc = sd_zlc..' rjId="'..rj_id..'"' end
 
+    local sd = (vars.sd or '')
+    if sd_zlc ~= '' then sd = sd..'[zlc@0'..sd_zlc..']' end
+    if sd == '' then sd = DEFAULT.sd end
+
+    io.write('<'..pri..'>1 '..reported..' '..hostname..' '..app_name..' '..procid..' '..msgid..' '..sd..' '..msg..'\n')
+    io.flush()
+    return true
 end
 
 function exit_usage(status)
     print('Usage: '..PROGNAME..' [option]\
 Read log archives from stdin, format for reinject on stdout\n\
 Available options:\
-  -i, --id          Set reinject identifier (default yyyymmddHHMMSS)\
-  -t, --type        Set log type (default syslog)\
-  -s, --source      Set source IP (defaut from hostname field or 127.0.0.1)\
-  -H, --hostname    Set default syslog hostname\
-  -T, --tag         Set default syslog tag\
+  -d, --default     Set default, eg: -d src_ip 10.109.21.13\
+  -q, --quiet       Set verbose = 0\
+  -v, --verbose     Increase verbose\
   -h, --help        Display this help\n\
 Expected input is a stream of lines in the following format:\
   @reported/@received facility.severity hostname/ip program[pid]: message\
@@ -354,16 +311,12 @@ end
 function main(arg)
     local i = 1
     while i <= #arg do
-        if arg[i] == '-i' or arg[i] == '--id' then
-            i = i + 1; DEFAULT_RJID = arg[i]
-        elseif arg[i] == '-t' or arg[i] == '--type' then
-            i = i + 1; DEFAULT_TYPE = arg[i]
-        elseif arg[i] == '-s' or arg[i] == '--source' then
-            i = i + 1; DEFAULT_SOURCE = arg[i]
-        elseif arg[i] == '-H' or arg[i] == '--hostname' then
-            i = i + 1; DEFAULT_HOSTNAME = arg[i]
-        elseif arg[i] == '-T' or arg[i] == '--tag' then
-            i = i + 1; DEFAULT_TAG = arg[i]
+        if arg[i] == '-d' or arg[i] == '--default' then
+            DEFAULT[arg[i+1]] = arg[i+2]; i = i + 2;
+        elseif arg[i] == '-q' or arg[i] == '--quiet' then
+            VERBOSE = 0
+        elseif arg[i] == '-v' or arg[i] == '--verbose' then
+            VERBOSE = VERBOSE + 1
         elseif arg[i] == '-h' or arg[i] == '--help' then
             exit_usage(0)
         else
@@ -375,19 +328,27 @@ function main(arg)
     LOG_RJID = DEFAULT_RJID
     LOG_TYPE = DEFAULT_TYPE
     LOG_SOURCE = DEFAULT_SOURCE
-    LOG_ILINE = 0
-    LOG_FILE = nil
 
-    local line = nil
+    local file, iline, line = nil, 0, nil
+    local perr_line = function (head)
+        verbose(head..': F='..(file or '-')..' L='..iline..': '..
+            (#line <= 100 and line or line:sub(1, 100)..'...'))
+    end
 
     while true do
         line = io.read('*line')
         if line == nil then break end
-
-        LOG_ILINE = LOG_ILINE + 1
-        status, err = pcall(process, line)
-        if not status then
-            perr(err)
+        iline = iline + 1
+        local status, call_err, process_err = pcall(process, line)
+        if status then
+            -- if status is true (no exception), call_err is the return
+            -- value #1 of process(line), which is true on successful parsing,
+            -- false otherwise.
+            if not call_err then
+                perr_line('Unsupported format! '..tostring(process_err))
+            end
+        else
+            perr_line('BUG! '..tostring(call_err))
         end
     end
 end
