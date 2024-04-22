@@ -152,6 +152,7 @@ processors:
       id: zlc-script-ingest-network-transport
       params:
         field_path: [ fortigate, proto ]
+        target_field_path: [ network, transport ]
 
 
   # Set dns.resolved_ip from fortigate.ipaddr, for utm logs when field

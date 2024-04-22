@@ -1,17 +1,31 @@
-/* version: 1 */
+/* version: 2 */
 
-Object getFieldValue(Map ctx, ArrayList path) {
-    def root = ctx;
+Object oget(Object o, ArrayList path) {
     int i;
-    for (i = 0; i < path.length - 1; i++) {
-        if (root instanceof Map && root.containsKey(path[i]))
-            root = root.get(path[i]);
-        else
+    for (i = 0; i < path.length; i++) {
+        if (!(o instanceof Map))
             return null;
+        o = ((Map)o).get(path[i]);
     }
-    return root.get(path[i]);
+    return o;
 }
 
+boolean oset(Object o, ArrayList path, Object value) {
+    int i;
+    Object next;
+    if (!(o instanceof Map))
+        return false;
+    for (i = 0; i < path.length -1; i++) {
+        next = ((Map)o).get(path[i]);
+        if (!(next instanceof Map)) {
+            next = new HashMap();
+            ((Map)o).put(path[i], next); /* may override */
+        }
+        o = next;
+    }
+    ((Map)o).put(path[i], value); /* may override */
+    return true;
+}
 
 def iana_proto_num2name = [
     '1': 'icmp',
@@ -155,14 +169,12 @@ def iana_proto_num2name = [
 ];
 
 def field_path = params?.field_path;
-if (field_path instanceof ArrayList) {
-    def num = getFieldValue(ctx, field_path);
+def target_field_path = params?.target_field_path;
+if (field_path instanceof ArrayList && target_field_path instanceof ArrayList) {
+    def num = oget(ctx, field_path);
     if (num != null) {
         def name = iana_proto_num2name[num.toString()];
-        if (name != null) {
-            if (ctx.network == null)
-                ctx.network = [:];
-            ctx.network.transport = name;
-        }
+        if (name != null)
+            oset(ctx, target_field_path, name);
     }
 }
