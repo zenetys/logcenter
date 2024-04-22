@@ -1,54 +1,31 @@
-version: 2
-
-# This was extracted from filebeat pipelines, it needs review:
-# https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/fortinet/firewall/ingest/traffic.yml
+version: 3
 
 on_failure:
   - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
   - set: { field: event.kind, value: pipeline_error }
 
 processors:
-  - set:
-      field: event.kind
-      value: event
-  - set:
-      field: event.action
-      value: '{{{ fortinet.firewall.action }}}'
-      ignore_empty_value: true
-  - set:
-      field: event.outcome
-      value: success
-      if: ctx.fortigate?.action != null
-  - append:
-      field: event.type
-      value: denied
-      allow_duplicates: false
-      if: (['block', 'blocked', 'deny', 'close', 'server-rst'].contains(ctx.fortigate?.action) || ['block'].contains(ctx.fortigate?.utmaction))
-  - append:
-      field: event.type
-      value: allowed
-      allow_duplicates: false
-      if: (ctx.fortigate?.utmaction == null || ['allow'].contains(ctx.fortigate?.action)) && !['block', 'blocked', 'deny', 'close', 'server-rst'].contains(ctx.fortigate?.action)
-  - append:
-      field: event.category
-      value: network
-      allow_duplicates: false
-  - append:
-      field: event.type
-      value: connection
-      allow_duplicates: false
-  - append:
-      field: event.type
-      value: start
-      allow_duplicates: false
-      if: ctx.fortigate?.action == 'start' 
-  - append:
-      field: event.type
-      value: end
-      allow_duplicates: false
-      if: ctx.fortigate?.action != null && ctx.fortigate?.action != 'start'
-  - append:
-      field: event.type
-      value: protocol
-      allow_duplicates: false
-      if: ctx.fortigate?.app != null && ctx.fortigate?.action != 'deny'
+  - script:
+      lang: painless
+      source: |
+        ctx.event.kind = 'event';
+        ctx.event.category.add('network');
+
+        ctx.event.type.add('connection');
+
+        if (ctx.fortigate.action == 'start')
+            ctx.event.type.add('start');
+        else if (ctx.fortigate.action != null)
+            ctx.event.type.add('end');
+
+        if (ctx.fortigate.app != null && ctx.fortigate.action != 'deny')
+            ctx.event.type.add('protocol');
+
+        if (ctx.fortigate.utmaction == 'block' || ctx.fortigate.action == 'deny') {
+            ctx.event.outcome = 'falure';
+            ctx.event.type.add('denied');
+        }
+        else {
+            ctx.event.outcome = 'success';
+            ctx.event.type.add('allowed');
+        }

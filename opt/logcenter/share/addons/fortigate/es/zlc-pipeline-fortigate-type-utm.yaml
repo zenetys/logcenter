@@ -1,49 +1,27 @@
-version: 2
-
-# This was extracted from filebeat pipelines, it needs review:
-# https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/fortinet/firewall/ingest/event.yml
+version: 3
 
 on_failure:
   - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
   - set: { field: event.kind, value: pipeline_error }
 
 processors:
-  - set:
-      field: event.kind
-      value: event
-  - set:
-      field: event.kind
-      value: alert
-      if: ctx.fortigate?.attack != null || ['virus', 'ips'].contains(ctx.fortigate?.subtype)
-  - set:
-      field: event.action
-      value: '{{{ fortinet.firewall.action }}}'
-      ignore_empty_value: true
-  - set:
-      field: event.outcome
-      value: success
-      if: ctx.fortigate?.action != null
-  - append:
-      field: event.type
-      value: allowed
-      allow_duplicates: false
-      if: (['pass', 'passthrough', 'exempt'].contains(ctx.fortigate?.action))
-  - append:
-      field: event.type
-      value: denied
-      allow_duplicates: false
-      if: (['block', 'blocked', 'deny', 'close', 'server-rst', 'dropped'].contains(ctx.fortigate?.action))
-  - append:
-      field: event.type
-      value: info
-      allow_duplicates: false
-      if: ctx.fortigate?.subtype == 'dns'
-  - append:
-      field: event.category
-      value: network
-      allow_duplicates: false
-  - append:
-      field: event.category
-      value: intrusion_detection
-      allow_duplicates: false
-      if: ctx.fortigate?.subtype == 'ips'
+  - script:
+      lang: painless
+      source: |
+        ctx.event.kind = 'event';
+        ctx.event.category.add('network');
+
+        def action = ctx.fortigate.action;
+        if (action instanceof String) {
+            if (action.startsWith('block') || action.startsWith('drop') ||
+                action.startsWith('reset') || action == 'reject') {
+                ctx.event.outcome = 'failure';
+                ctx.event.type.add('denied');
+            }
+            else {
+                ctx.event.outcome = 'success';
+                if (action == 'pass' || action == 'passthrough' ||
+                    action == 'detected' || action == 'redirect')
+                    ctx.event.type.add('allowed');
+            }
+        }
