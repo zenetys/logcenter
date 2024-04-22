@@ -1,4 +1,4 @@
-version: 2
+version: 3
 
 on_failure:
   - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
@@ -20,6 +20,7 @@ processors:
         # It is done here using fortigate.* fields as input.
         enable_pipeline_geoip: false
         enable_pipeline_related_ip: false
+        enable_remove_empty_string: false
 
   - set: { field: observer.vendor, value: Fortinet, override: false }
   - set: { field: observer.product, value: Fortigate, override: false }
@@ -34,29 +35,40 @@ processors:
         if (eventtime != null) {
             if (eventtime instanceof String)
                 eventtime = Long.parseLong(eventtime);
-            ctx._eventtime_ms = eventtime / 1000000;
+            ctx._.eventtime_ms = eventtime / 1000000;
         }
   - date:
-      field: _eventtime_ms
+      field: _.eventtime_ms
       target_field: '@timestamp'
       formats:
         - UNIX_MS
       timezone: '{{{ fortigate.tz }}}'
-      if: ctx._eventtime_ms != null
-  - remove:
-      field:
-        - _eventtime_ms
+      if: ctx._.eventtime_ms != null
 
-  # Cleanup fields with N/A values.
+  - script:
+      id: zlc-script-ingest-remove-empty-fields
+      params:
+        empty_string: [ '', 'N/A', 'undefined' ]
+
   - script:
       lang: painless
       source: |
-        def fortigate = ctx?.fortigate;
-        if (fortigate != null) {
-            fortigate.entrySet().removeIf(
-                entry -> entry.getValue() == 'N/A' ||
-                         entry.getValue() == 'undefined'
-            );
+        // prepare for adding standard fields
+        if (ctx.event == null)
+            ctx.event = [:];
+        if (ctx.event.category == null)
+            ctx.event.category = new ArrayList();
+        if (ctx.event.type == null)
+            ctx.event.type = new ArrayList();
+        if (ctx.network == null)
+            ctx.network = [:];
+
+        // event.duration
+        def duration = ctx.fortigate.duration;
+        if (duration != null && duration != '') {
+            if (duration instanceof String)
+                duration = Long.parseLong(ctx.fortigate.duration);
+            ctx.event.duration = duration * 1000000000;
         }
 
   - pipeline:
@@ -92,19 +104,7 @@ processors:
   # alias: dns.question.name               fortigate.qname      keyword
   # alias: dns.question.type               fortigate.qtype      keyword
   # alias: dns.question.class              fortigate.qclass     keyword
-
-  # ECS event.duration is nanoseconds...
-  - script:
-      lang: painless
-      source: |
-        def duration = ctx.fortigate?.duration;
-        if (duration != null) {
-            if (duration instanceof String)
-                duration = Long.parseLong(ctx.fortigate.duration);
-            if (ctx.event == null)
-                ctx.event = [:];
-            ctx.event.duration = duration * 1000000000;
-        }
+  # alias: source.user.name                user.name            keyword text
 
   # Field fortigate.mac is uppercase on event logs, normalize it.
   - lowercase:
@@ -112,28 +112,15 @@ processors:
       ignore_missing: true
       if: ctx.fortigate.type == 'event'
 
-  # Copy fortigate.service to network.protocol and normalize it lowercase.
-  - script:
-      lang: painless
-      source: |
-        if (ctx.fortigate.type != 'event') {
-            def service = ctx.fortigate?.service;
-            if (service != null) {
-                if (ctx.network == null)
-                    ctx.network = [:];
-                ctx.network.protocol = service.toLowerCase();
-            }
-        }
-
   # Both fortigate.user and fortigate.unauthuser should not happen.
   # Similarly, both fortigate.dstuser and fortigate.dstunauthuser should
   # not happen.
   - set:
-      field: source.user.name
+      field: user.name
       copy_from: fortigate.user
       ignore_empty_value: true
   - set:
-      field: source.user.name
+      field: user.name
       copy_from: fortigate.unauthuser
       ignore_empty_value: true
       override: false
@@ -154,6 +141,31 @@ processors:
         field_path: [ fortigate, proto ]
         target_field_path: [ network, transport ]
 
+  - script:
+      lang: painless
+      source: |
+        if (ctx.fortigate.type != 'event' && ctx.fortigate.service != null)
+            ctx.network.protocol = ctx.fortigate.service.toLowerCase();
+
+        if (ctx.fortigate.rcvdbyte != null && ctx.fortigate.sentbyte != null) {
+            try {
+                def rx = Long.parseLong(ctx.fortigate.rcvdbyte);
+                def tx = Long.parseLong(ctx.fortigate.sentbyte);
+                ctx.network.bytes = rx + tx;
+            }
+            catch (Exception e) {}
+        }
+        if (ctx.fortigate.rcvdpkt != null && ctx.fortigate.sentpkt != null) {
+            try {
+                def rx = Long.parseLong(ctx.fortigate.rcvdpkt);
+                def tx = Long.parseLong(ctx.fortigate.sentpkt);
+                ctx.network.packets = rx + tx;
+            }
+            catch (Exception e) {}
+        }
+
+        if (ctx.network instanceof Map && ctx.network.isEmpty())
+            ctx.remove('network');
 
   # Set dns.resolved_ip from fortigate.ipaddr, for utm logs when field
   # fortigate.eventtype is dns-response.
@@ -162,7 +174,7 @@ processors:
       target_field: dns.resolved_ip
       separator: ', '
       ignore_missing: true
-      if: ctx.fortigate?.type == 'utm' && ctx.fortigate?.eventtype == 'dns-response'
+      if: ctx.fortigate.type == 'utm' && ctx.fortigate.eventtype == 'dns-response'
 
   # Add geoip fields based on fortigate.srcip and fortigate.dstip.
   # Target fields are ECS standards, we assume standard ECS source.ip and
@@ -217,22 +229,22 @@ processors:
         field: related.ip
         value: '{{{ fortigate.srcip }}}'
         allow_duplicates: false
-        if: ctx.fortigate?.srcip != null
+        if: ctx.fortigate.srcip != null
   - append:
         field: related.ip
         value: '{{{ fortigate.transip }}}'
         allow_duplicates: false
-        if: ctx.fortigate?.transip != null
+        if: ctx.fortigate.transip != null
   - append:
         field: related.ip
         value: '{{{ fortigate.dstip }}}'
         allow_duplicates: false
-        if: ctx.fortigate?.dstip != null
+        if: ctx.fortigate.dstip != null
   - append:
         field: related.ip
         value: '{{{ fortigate.tranip }}}'
         allow_duplicates: false
-        if: ctx.fortigate?.tranip != null
+        if: ctx.fortigate.tranip != null
   - foreach:
       field: dns.resolved_ip
       if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List

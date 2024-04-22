@@ -59,6 +59,7 @@ template:
       fortigate.qname: { type: keyword }
       fortigate.qtype: { type: keyword }
       fortigate.qclass: { type: keyword }
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
       event.code: { type: alias, path: fortigate.logid }
       log.level: { type: alias, path: fortigate.level }
       observer.serial_number: { type: alias, path: fortigate.devid }
@@ -88,3 +89,4 @@ template:
       dns.question.name: { type: alias, path: fortigate.qname }
       dns.question.type: { type: alias, path: fortigate.qtype }
       dns.question.class: { type: alias, path: fortigate.qclass }
+      source.user.name: { type: alias, path: user.name }

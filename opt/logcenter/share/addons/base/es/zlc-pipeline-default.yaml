@@ -62,6 +62,7 @@ processors:
   # Remove null or empty fields.
   - script:
       id: zlc-script-ingest-remove-empty-fields
+      if: ctx._?.enable_remove_empty_fields != false
       params:
         empty_string_path: [ '_', 'remove_empty_string' ]
         # fallback if _.remove_empty_string is null
