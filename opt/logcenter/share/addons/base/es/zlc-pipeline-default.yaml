@@ -50,7 +50,7 @@ processors:
 
   - pipeline:
       name: zlc-pipeline-geoip
-      if: ctx._?.pipeline_geoip != false
+      if: ctx._?.enable_pipeline_geoip != false
       ignore_missing_pipeline: true
 
   # Hook for a per-datastream custom pipeline.
@@ -69,12 +69,12 @@ processors:
 
   - pipeline:
       name: zlc-pipeline-related-ip
-      if: ctx._?.pipeline_related_ip != false
+      if: ctx._?.enable_pipeline_related_ip != false
       ignore_missing_pipeline: true
 
   - pipeline:
       name: zlc-pipeline-related-user
-      if: ctx._?.pipeline_related_user != false
+      if: ctx._?.enable_pipeline_related_user != false
       ignore_missing_pipeline: true
 
   - remove:

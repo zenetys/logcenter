@@ -18,8 +18,8 @@ processors:
       value:
         # Do not set geoip and related.ip from the default pipeline.
         # It is done here using fortigate.* fields as input.
-        pipeline_geoip: false
-        pipeline_related_ip: false
+        enable_pipeline_geoip: false
+        enable_pipeline_related_ip: false
 
   - set: { field: observer.vendor, value: Fortinet, override: false }
   - set: { field: observer.product, value: Fortigate, override: false }
