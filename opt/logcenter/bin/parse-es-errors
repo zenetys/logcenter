@@ -1,0 +1,126 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+export LC_ALL=C
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME es-errors.log...
+Parse rsyslog omelasticsearch error file
+
+Available options:
+    -v, --verbose   Increase detail
+    -r, --raw       Raw output, do not pretty-print with jq
+    -h, --help      Display this help
+"
+    exit "$status"
+}
+
+verbose=0
+args=()
+raw=
+shopt -s extglob
+while (( $# > 0 )); do
+    case "$1" in
+        -v|--verbose) (( verbose++ )) ;;
+        -r|--raw) raw=1 ;;
+        -h|--help) exit_usage 0 ;;
+        -+([vrh]))
+            for (( i = 1; i < ${#1}; i++ )); do
+                case "${1:i:1}" in
+                    v) (( verbose++ )) ;;
+                    r) raw=1 ;;
+                    h) exit_usage 0 ;;
+                esac
+            done
+            ;;
+        -) args+=( "$1" ) ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+shopt -u extglob
+args+=( "$@" )
+
+function cat_file() {
+    case "${1##*.}" in
+        gz) zcat "$1" ;;
+        xz) xzcat "$1" ;;
+        bz2) bzcat "$1" ;;
+        *) cat "$1" ;;
+    esac
+}
+
+function one_stream() {
+    while read -r; do
+        awk -b -v "verbose=$verbose" '
+ARGIND == 1 {
+    if (match($0, /^{"key":([0-9]+),"value":/, cap))
+        error[cap[1]] = substr($0, RLENGTH + 1, length($0) - RLENGTH - 1);
+    else
+        bulk_error = $0;
+    next;
+}
+ARGIND == 2 && (FNR % 3) == 1 {
+    if (match($0, /"_index":[ ]*"([^"]+)/, cap))
+        idx = cap[1];
+    else
+        idx = "<parse_index_failed>";
+    next;
+}
+ARGIND == 2 && (FNR % 3) == 2 {
+    if (bulk_error) {
+        bulk_items++;
+        if (verbose > 1)
+            request = request (request?",":"") "{\"_index\":\""idx"\",\"_source\":" $0 "}";
+    }
+    else {
+        i = int((FNR + 1) / 3) - 1;
+        if (verbose > 0 && (i in error))
+            request[i] = "{\"_index\":\""idx"\",\"_source\":" $0 "}";
+    }
+}
+END {
+    if (bulk_error) {
+        if (verbose > 1) {
+            printf("{\"type\":\"bulk\",\"items\":%d,\"request\":[%s],\"result\":%s}\n",
+                bulk_items, request, bulk_error);
+        }
+        else {
+            printf("{\"type\":\"bulk\",\"items\":%d,\"result\":%s}\n",
+                bulk_items, bulk_error);
+        }
+    }
+    else {
+        for (i in error) {
+            if (verbose > 0) {
+                printf("{\"type\":\"item\",\"request\":%s,\"result\":%s}\n",
+                    request[i], error[i]);
+            }
+            else {
+                printf("{\"type\":\"item\",\"result\":%s}\n", error[i]);
+            }
+        }
+    }
+}
+        ' \
+        <(echo "$REPLY" |jq -c '
+if .reply.items then
+    .reply.items |to_entries[] |select(.value.index.error or .value.create.error)
+else
+    .reply
+end
+        ') \
+          <(echo "$REPLY" |jq -r '.request.postdata')
+    done
+}
+
+for file in "${args[@]:--}"; do
+    cat_file "$file" |
+        one_stream |
+        if [[ -n $raw ]]; then cat; else jq .; fi
+done
