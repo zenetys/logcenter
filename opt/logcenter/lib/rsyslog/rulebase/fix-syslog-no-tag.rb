@@ -41,3 +41,9 @@ rule=:%[
     { "type": "number" },
     { "type": "literal", "text": "," },
     { "type": "rest" } ]%
+
+# <30>Apr 22 17:53:24 localhost last message repeated 2 times
+rule=:%[
+    { "type": "literal", "text": "last message repeated " },
+    { "type": "number" },
+    { "type": "literal", "text": " times" } ]%

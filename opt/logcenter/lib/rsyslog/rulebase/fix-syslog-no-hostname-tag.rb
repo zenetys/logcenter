@@ -7,8 +7,23 @@ version=2
 
 # Input: $rawmsg
 
-# Fortigate logs:
-# <189>logver=604081234 timestamp=1694092511 devname="FW-FORTINET" devid="ABC12ABC1234A12A" ...
-# <189>date=2023-09-01 time=22:51:48 devname="FW-FORTINET" devid="AB123ABC12345678" ...
-rule=:<%-:number%>logver=%-:number%%-:rest%
-rule=:<%-:number%>date=2%-:rest%
+type=@date:%{
+    "type": "alternative",
+    "parser": [
+        { "type": "date-rfc3164", "name": ".." },
+        { "type": "date-rfc5424", "name": ".." }
+    ] }%
+
+# skip after date field
+prefix=%[
+    { "type": "literal", "text": "<" },
+    { "type": "number" },
+    { "type": "literal", "text": ">" },
+    { "type": "@date", "name": "date" },
+    { "type": "literal", "text": " " } ]%
+
+# <30>Apr 22 17:53:24 last message repeated 2 times
+rule=:%[
+    { "type": "literal", "text": "last message repeated " },
+    { "type": "number" },
+    { "type": "literal", "text": " times" } ]%
