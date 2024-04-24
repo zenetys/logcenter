@@ -11,6 +11,22 @@ for ES_CONFIG in ~/.es "${ES_CONFIG:-/etc/logcenter/es.conf}"; do
     fi
 done
 
+# Wrapper to simulate curl --fail-with-body for old versions of curl.
+# Note: stderr error message get printed after curl output otherwise we
+# would have to use a buffer or a temporary file to store output.
+function curl_fail_body() {
+    local retval status_code
+    exec 99>&1 || { echo "$FUNCNAME: cannot open fd" >&2; return 1; }
+    status_code=$(curl "$@" -w '%{http_code}\n' -o /proc/self/fd/99)
+    retval=$?
+    exec 99>&-
+    if (( status_code >= 400 )); then
+        echo "$FUNCNAME: (22) The requested URL returned error: $status_code" >&2
+        return 22
+    fi
+    return "$retval"
+}
+
 # Usage: es-curl [URI] [CURLOPTS]...
 #
 # URI logic:
@@ -32,7 +48,7 @@ done
 #   - otherwise if $ES_INSECURE is not set or set to 1, pass -k to curl
 #
 function es-curl() {
-    local i curl_opts url cmd
+    local i curl_bin= curl_opts url cmd
 
     # allow overriding of ES_* config variables by their ES_LOCAL_* counterparts
     for i in ${!ES_LOCAL_*}; do declare -a "${i/_LOCAL}=( \"\${$i[@]}\" )"; done
@@ -46,6 +62,8 @@ function es-curl() {
         curl_opts+=( --fail-with-body )
     elif [[ -z "${ES_CURL_FAIL+defined}" || "$ES_CURL_FAIL" == '1' ]]; then
         curl_opts+=( -f )
+    elif [[ "$ES_CURL_FAIL" == '2' ]]; then
+        curl_bin=curl_fail_body
     fi
 
     if [[ -n "${ES_CACERT+defined}" ]]; then
@@ -81,7 +99,7 @@ function es-curl() {
         [[ ${1:0:1} != '-' ]] && { url+=$1; shift; }
     fi
 
-    cmd=( curl "${curl_opts[@]}" "${ES_CURL_OPTS[@]}" "$@" "$url" )
+    cmd=( "${curl_bin:-curl}" "${curl_opts[@]}" "${ES_CURL_OPTS[@]}" "$@" "$url" )
     [[ -n $ES_DEBUG ]] && echo "DEBUG: es-curl: ${cmd[*]@Q}" >&2
     "${cmd[@]}"
 }
