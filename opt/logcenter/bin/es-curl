@@ -86,9 +86,6 @@ function es-curl() {
     "${cmd[@]}"
 }
 
-es-delete() { es-curl "$@" -XDELETE; }
-es-post() { es-curl "$@" -XPOST --data-binary @-; }
-es-put() { es-curl "$@" -XPUT --data-binary @-; }
 
 # done when sourced
 (return 0 2>/dev/null) && return 0
