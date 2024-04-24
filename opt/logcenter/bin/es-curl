@@ -4,9 +4,9 @@
 # This script is licensed under MIT License (http://opensource.org/licenses/MIT)
 #
 
-for es_conf in ~/.es "${ES_CONFIG:-/etc/logcenter/es.conf}"; do
-    if [[ -r $es_conf ]]; then
-        source "$es_conf"
+for ES_CONFIG in ~/.es "${ES_CONFIG:-/etc/logcenter/es.conf}"; do
+    if [[ -r $ES_CONFIG ]]; then
+        source "$ES_CONFIG"
         break
     fi
 done
