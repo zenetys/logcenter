@@ -86,12 +86,19 @@ function es-curl() {
     "${cmd[@]}"
 }
 
+function kbn-curl() {
+    [[ -z $KBN_PORT ]] && local KBN_PORT=5601
+    local KBN_CURL_OPTS+=( "${KBN_CURL_OPTS[@]}" -H 'kbn-xsrf: true' )
+    # Kibana mode: KBN_* variables override ES_* ones
+    for i in ${!KBN_*}; do declare -a "${i/KBN_/ES_}=( \"\${$i[@]}\" )"; done
+    es-curl "$@"
+}
 
 # done when sourced
 (return 0 2>/dev/null) && return 0
 # also skip when piped to bash
 PROGNAME=${0##*/}
-if [[ ${PROGNAME:0:3} == 'es-' ]] && declare -F -f "$PROGNAME" >/dev/null; then
+if declare -F -f "$PROGNAME" >/dev/null; then
     if [[ -z $ES_BASH_CMD ]]; then
         "$PROGNAME" "$@"
     else
@@ -100,7 +107,7 @@ if [[ ${PROGNAME:0:3} == 'es-' ]] && declare -F -f "$PROGNAME" >/dev/null; then
         {   cat "$0"
             if [[ -n $ES_SEND_ENV ]]; then
                 ES_ENV_FORWARDED=1
-                declare -p ${!ES_*} |grep -v ES_BASH_CMD
+                declare -p ${!ES_*} ${!KBN_*} |grep -v ES_BASH_CMD
             fi
             cmd=( "$PROGNAME" "$@" )
             declare -p cmd
