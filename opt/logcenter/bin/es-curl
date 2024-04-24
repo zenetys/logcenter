@@ -4,7 +4,7 @@
 # This script is licensed under MIT License (http://opensource.org/licenses/MIT)
 #
 
-for es_conf in ~/.es "${ES_CONFIG:-/etc/ztools/es.cfg}"; do
+for es_conf in ~/.es "${ES_CONFIG:-/etc/logcenter/es.conf}"; do
     if [[ -r $es_conf ]]; then
         source "$es_conf"
         break
