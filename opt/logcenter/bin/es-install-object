@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -f
 PROGNAME=${0##*/}
 ECS_GITHUB_OWNER=elastic
 ECS_GITHUB_REPO=ecs
@@ -21,7 +22,7 @@ Available options:
     -t, --type   VALUE      Force object type
     -n, --name   VALUE      Force object name
     -k, --keep              Keep downloaded files
-    -P, --proxy  VALUE      HTTP proxy for external requests (github ecs)
+    -P, --proxy  VALUE      HTTP proxy for external requests, eg: downloads
     --override-custom       (Re)install @custom object event if exists
     -d, --debug             Enable debug
     -h, --help              Display this help
@@ -83,7 +84,7 @@ function convert_to_json() {
     if [[ $file == *.json ]]; then
         cat "$file"
         return $?
-    elif [[ $file == *.yaml ]]; then
+    elif [[ $file == *.yaml || $file == *.yml ]]; then
         yq -Moj "$file"
         return $?
     elif [[ $file == *.painless ]]; then
@@ -182,6 +183,58 @@ function do_file_type_script() {
     push_to_es PUT "/_scripts/$1" "$2"
 }
 
+# $1: object name
+# $2: file
+function do_file_type_integration() {
+    local spec package
+
+    if [[ -d $2/. ]]; then
+        spec=($(convert_to_json "$2/manifest.yml" |jq -r '"\(.name//"") \(.version//"")"'))
+        if [[ -z ${spec[0]} || -z ${spec[1]} ]]; then
+            REPLY='Failed to get name/version from manifest.yml'
+            return 1
+        fi
+
+        package="$TMPDIR/${spec[0]}-${spec[1]}.tar.gz"
+        info "Create tarball ${package##*/}"
+        if ! tar czf "$package" -C "$2/" --transform "s,^\.,${spec[0]}-${spec[1]}," ./; then
+            REPLY='Failed to create tarball'
+            return 1
+        fi
+    else
+        local IFS='!' download_url download_path
+        spec=($(convert_to_json "$2" |jq -r '"\(.download_url//"")!\(.epr_url//"")!\(.epr_package//"")"'))
+        unset IFS
+
+        if [[ -n ${spec[0]} ]]; then
+            download_url=${spec[0]}
+        elif [[ -n ${spec[1]} && -n ${spec[2]} ]]; then
+            # get download url
+            info "Query ${spec[1]} for latest version of package ${spec[2]}"
+            download_path=$(mycurl -L "${spec[1]}/search?package=${spec[2]}&release=ga&type=integration" |
+                jq -r 'try (.[0].download // "")')
+            if [[ -z $download_path ]]; then
+                REPLY='Failed to get url for latest version'
+                return 1
+            fi
+            download_url="${spec[1]}${download_path}"
+        else
+            REPLY='Invalid integration specs'
+            return 1
+        fi
+
+        package="$TMPDIR/${download_url##*/}"
+        info "Downloading $download_url..."
+        if ! mycurl -L "$download_url" -o "$package"; then
+            REPLY='Download failed'
+            return 1
+        fi
+        DOWNLOADED_FILES+=( "$package" )
+    fi
+
+    do_tarball_type_integration "$package"
+}
+
 # $1: ecs[:version]
 function download_ecs_tarball() {
     local version=${1#*:}
@@ -216,6 +269,10 @@ function guess_tarball() {
     list_tarball "$1" 2>/dev/null |grep -qE \
         '^ecs-[^/]+/generated/elasticsearch/composable/component/ecs\.json$'
     (( $? == 0 )) && { REPLY=ecs; return 0; }
+
+    # elastic integration package
+    local x=$(cat_tarball "$1" '*/manifest.yml' 2>/dev/null |yq -py '.type')
+    [[ $x == integration ]] && { REPLY=integration; return 0; }
 
     return 1
 }
@@ -291,6 +348,36 @@ function do_tarball_type_ecs() {
 
     REPLY=
     return "$retval"
+}
+
+# $1: file
+function do_tarball_type_integration() {
+    local mime curlout curlret
+
+    if [[ $1 == *.zip ]]; then
+        mime=application/zip
+    elif [[ $1 == *.tar.gz ]]; then
+        mime=application/gzip
+    else
+        REPLY='Require .zip or .tar.gz extension'
+        return 1
+    fi
+
+    curlout=$(kbn-curl /api/fleet/epm/packages --data-binary "@$1" \
+                -H "content-type: $mime" -X POST)
+    curlret=$?
+    if [[ -n $DEBUG ]]; then
+        debug '>> begin curl output'
+        [[ -n $curlout ]] && echo "$curlout"
+        debug '<< end curl output'
+    fi
+    if (( curlret != 0 )); then
+        REPLY='Kibana query failed'
+        return 1
+    fi
+
+    REPLY=
+    return 0
 }
 
 function do_tarball() {
