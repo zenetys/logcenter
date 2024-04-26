@@ -251,22 +251,22 @@ function do_tarball_type_ecs() {
 
 function do_tarball() {
     if ! guess_tarball "$file"; then
-        error "Unsupported tarball file: $file"
+        error "Unsupported tarball file, $file"
         return 1
     fi
     local tarball_type=$REPLY
 
     if ! declare -f -F "do_tarball_type_${tarball_type}" >/dev/null; then
-        error "Unsupported tarball type: $file ($tarball_type)"
+        error "Unsupported tarball type, $file ($tarball_type)"
         return 1
     fi
 
     if ! "do_tarball_type_${tarball_type}" "$file"; then
-        error "${REPLY:-Failed}: $file ($tarball_type)"
+        error "${REPLY:-Failed}, $file ($tarball_type)"
         return 1
     fi
 
-    info "OK: $file ($tarball_type)"
+    info "${REPLY:-OK}, $file ($tarball_type)"
     return 0
 }
 
@@ -276,7 +276,7 @@ function do_file() {
 
     if [[ $file == ecs || $file == ecs:* ]]; then
         if ! download_ecs_tarball "$file"; then
-            error "${REPLY:-Failed}: $file (download)"
+            error "${REPLY:-Failed}, $file (download)"
             return 1
         fi
         file=$REPLY
@@ -293,23 +293,23 @@ function do_file() {
 
     if [[ -z $object_type ]]; then
         if ! guess_object_type_from_object_name "$filename"; then
-            error "Cannot guess object type from filename: $file"
+            error "Cannot guess object type, $file"
             return 1
         fi
         object_type=$REPLY
     fi
 
     if ! declare -f -F "do_file_type_${object_type}" >/dev/null; then
-        error "Unsupported object type: $file ($object_type)"
+        error "Unsupported object type, $file ($object_type)"
         return 1
     fi
 
     if ! "do_file_type_${object_type}" "$object_name" "$file"; then
-        error "${REPLY:-Failed}: $file ($object_type, $object_name)"
+        error "${REPLY:-Failed}, $file ($object_type, $object_name)"
         return 1
     fi
 
-    info "OK: $file ($object_type, $object_name)"
+    info "${REPLY:-OK}, $file ($object_type, $object_name)"
     return 0
 }
 
