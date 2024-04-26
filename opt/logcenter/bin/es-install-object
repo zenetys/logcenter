@@ -62,6 +62,21 @@ function guess_object_type_from_object_name() {
 }
 
 # $1: file
+function guess_object_type_from_content() {
+    REPLY=$(convert_to_json "$1" |jq -r '
+        if .script != null then "script"
+        elif .policy?.phases != null then "lifecycle"
+        elif .processors != null then "pipeline"
+        elif .index_patterns != null then "template"
+        elif .template != null then "component"
+        else "" end
+    ')
+    [[ -z $REPLY ]] && return 1
+    declare -F -f "do_file_type_$REPLY" >/dev/null || return 1
+    return 0
+}
+
+# $1: file
 function convert_to_json() {
     local file=$1; shift
 
@@ -321,7 +336,8 @@ function do_file() {
     fi
 
     if [[ -z $object_type ]]; then
-        if ! guess_object_type_from_object_name "$filename"; then
+        if ! guess_object_type_from_object_name "$filename" &&
+           ! guess_object_type_from_content "$file"; then
             error "Cannot guess object type, $file"
             return 1
         fi
