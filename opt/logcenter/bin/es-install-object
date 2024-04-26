@@ -7,6 +7,11 @@ OBJECT_PREFIX=zlc
 OVERRIDE_CUSTOM=
 declare -r TMPDIR="${TMPDIR:-/tmp}/$PROGNAME.$RANDOM"
 
+# Force simulating curl --fail-with-body if disabled in es-curl, usually
+# because it is unsupported by the version of curl (easier for troubleshooting
+# errors, server output gets printed when enabling --debug).
+export ES_LOCAL_CURL_FAIL=2
+
 function exit_usage() {
     echo "\
 Usage: $PROGNAME normed-file-name.extension
@@ -25,6 +30,7 @@ Available options:
 }
 
 function info() { echo "${LABEL:-INFO}: $PROGNAME: $*"; }
+function debug() { LABEL=DEBUG info "$@"; }
 function error() { LABEL=ERROR info "$@"; }
 function fatal() { LABEL=FATAL info "$@"; exit 2; }
 
@@ -76,13 +82,13 @@ function convert_to_json() {
 # $2: URI
 # $3: input file
 function push_to_es() {
-    local data curlout
+    local data curlout curlret
     # convert_to_json "$3" |es-curl "$2" -X "$1" -d @-
 
     if [[ -n $DEBUG ]]; then
-        echo "DEBUG: >> raw input"
+        debug '>> begin raw input'
         cat "$3"
-        echo "DEBUG: << raw input"
+        debug '<< end raw input'
     fi
 
     if ! data=$(convert_to_json "$3"); then
@@ -90,20 +96,21 @@ function push_to_es() {
         return 1
     fi
     if [[ -n $DEBUG ]]; then
-        echo "DEBUG: >> begin data piped to curl"
-        echo "$data"
-        echo "DEBUG: << end data piped to curl"
+        debug '>> begin data piped to curl'
+        [[ -n $data ]] && echo "$data"
+        debug '<< end data piped to curl'
     fi
 
-    if ! curlout=$(echo "$data" |es-curl "$2" -X "$1" -d @- 2>&1); then
-        echo "$curlout" >&2
+    curlout=$(echo "$data" |es-curl "$2" -X "$1" -d @-)
+    curlret=$?
+    if [[ -n $DEBUG ]]; then
+        debug '>> begin curl output'
+        [[ -n $curlout ]] && echo "$curlout"
+        debug '<< end curl output'
+    fi
+    if (( curlret != 0 )); then
         REPLY='Elasticsearch query failed'
         return 1
-    fi
-    if [[ -n $DEBUG ]]; then
-        echo "DEBUG: >> begin curl output"
-        echo "$curlout"
-        echo "DEBUG: << end curl output"
     fi
 
     REPLY=
