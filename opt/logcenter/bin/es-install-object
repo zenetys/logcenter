@@ -153,11 +153,6 @@ function download_ecs_tarball() {
         fi
     fi
 
-    if ! mkdir -p "$TMPDIR/ecs"; then
-        REPLY='Failed to create tmpdir'
-        return 1
-    fi
-
     local url="https://github.com/$ECS_GITHUB_OWNER/$ECS_GITHUB_REPO/archive/refs/tags/v$version.tar.gz"
     local tarball="$TMPDIR/ecs-$version.tar.gz"
     info "Downloading $url..."
@@ -174,32 +169,74 @@ function download_ecs_tarball() {
 # $1: file
 function guess_tarball() {
     # ecs tarball
-    tar tzf "$1" 2>/dev/null |grep -qE '^[^/]+/generated/elasticsearch/composable/component/ecs\.json$'
-    if (( $? == 0 )); then
-        REPLY=ecs
-        return 0
-    fi
+    list_tarball "$1" 2>/dev/null |grep -qE \
+        '^ecs-[^/]+/generated/elasticsearch/composable/component/ecs\.json$'
+    (( $? == 0 )) && { REPLY=ecs; return 0; }
 
-    REPLY=
     return 1
+}
+
+# $1: file
+function list_tarball() {
+    if [[ $1 == *.tar.* ]]; then
+        tar taf "$1"
+    elif [[ $1 == *.zip ]]; then
+        unzip -l "$1" |awk '$1 ~ /^[0-9]+$/ && NF > 3 { print $NF }'
+    else
+        REPLY='Unsupported extension'
+        return 1
+    fi
+    if (( PIPESTATUS[0] != 0 )); then
+        REPLY='Failed to list archive content'
+        return 1
+    fi
+}
+
+# $1: file
+# $2: destination directory
+function extract_tarball() {
+    if ! mkdir -p "$2"; then
+        REPLY='Failed to create destination directory'
+        return 1
+    fi
+    if [[ $1 == *.tar.* ]]; then
+        tar xaf "$1" -C "$2"
+    elif [[ $1 == *.zip ]]; then
+        unzip -q -d "$2" "$1"
+    else
+        REPLY='Unsupported extension'
+        return 1
+    fi
+    if (( $? != 0 )); then
+        REPLY='Failed to extract archive'
+        return 1
+    fi
+}
+
+# $1: file
+# $@: optional file or pattern to extract
+function cat_tarball() {
+    if [[ $1 == *.tar.* ]]; then
+        tar xaOf "$@"
+    elif [[ $1 == *.zip ]]; then
+        unzip -qp "$@"
+    else
+        REPLY='Unsupported extension'
+        return 1
+    fi
+    if (( $? != 0 )); then
+        REPLY='Failed to cat archive content'
+        return 1
+    fi
 }
 
 # $1: file
 function do_tarball_type_ecs() {
     local file=$1
-
-    if ! mkdir -p "$TMPDIR/ecs"; then
-        REPLY='Failed to create tmpdir'
-        return 1
-    fi
-
-    if ! tar xzf "$file" --strip-components 1 -C "$TMPDIR/ecs"; then
-        REPLY='Failed to extract tarball'
-        return 1
-    fi
+    extract_tarball "$file" "$TMPDIR/ecs" || return 1
 
     local retval=0
-    find "$TMPDIR/ecs/generated/elasticsearch/composable/component" \
+    find "$TMPDIR/ecs"/ecs-*/generated/elasticsearch/composable/component \
         -mindepth 1 -maxdepth 1 -type f -name '*.json' |while read -r file; do
 
         local fname=${file##*/}
@@ -207,6 +244,7 @@ function do_tarball_type_ecs() {
         FORCED_OBJECT_NAME="${OBJECT_PREFIX}-component-ecs-${fname%.json}" \
            do_file "$file" || retval=1
     done
+
     REPLY=
     return "$retval"
 }
@@ -248,7 +286,7 @@ function do_file() {
     local object_type=$FORCED_OBJECT_TYPE
     local object_name=${FORCED_OBJECT_NAME:-${filename%.*}}
 
-    if [[ $file == *.tar.gz ]]; then
+    if [[ $file == *.tar.* || $file == *.zip ]]; then
         do_tarball "$file"
         return $?
     fi
