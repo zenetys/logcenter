@@ -352,6 +352,8 @@ fi
 
 trap on_exit EXIT
 
+mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
+
 # Sort files to minimize the chance of failure due to reference of an object
 # that does not exist yet, eg: pipeline referencing a script.
 OIFS=$IFS; IFS=$'\n'
