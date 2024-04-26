@@ -39,6 +39,7 @@ dir=${args[0]}
 pattern=${args[1]}
 nkeep=${args[2]}
 
+[[ -n $dir ]] || exit_usage 1
 [[ -d $dir/. ]] || exit 0
 [[ -n $pattern ]] || exit_usage 1
 [[ -n $nkeep && -z ${nkeep//[0-9]} ]] || exit_usage 1
