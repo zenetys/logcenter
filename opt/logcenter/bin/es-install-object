@@ -225,6 +225,7 @@ function do_tarball() {
 
     if ! "do_tarball_type_${tarball_type}" "$file"; then
         error "${REPLY:-Failed}: $file ($tarball_type)"
+        return 1
     fi
 
     info "OK: $file ($tarball_type)"
