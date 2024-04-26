@@ -326,6 +326,11 @@ function do_file() {
         file=$REPLY
     fi
 
+    if [[ ! -r $file ]]; then
+        error "Cannot read file, $file"
+        return 1
+    fi
+
     local filename=${file##*/}
     local object_type=$FORCED_OBJECT_TYPE
     local object_name=${FORCED_OBJECT_NAME:-${filename%.*}}
