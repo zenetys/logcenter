@@ -198,7 +198,7 @@ function do_file_type_script() {
 # $1: object name
 # $2: file
 function do_file_type_integration() {
-    local spec package
+    local spec package pick_spec meta_meta
 
     if [[ -d $2/. ]]; then
         spec=($(convert_to_json "$2/manifest.yml" |jq -r '"\(.name//"") \(.version//"")"'))
@@ -213,10 +213,16 @@ function do_file_type_integration() {
             REPLY='Failed to create tarball'
             return 1
         fi
+        pick_spec=
+        meta=
     else
-        local IFS='!' download_url download_path
-        spec=($(convert_to_json "$2" |jq -r '"\(.download_url//"")!\(.epr_url//"")!\(.epr_package//"")"'))
-        unset IFS
+        local download_url download_path
+        eval spec=($(convert_to_json "$2" |jq -r '[
+            .ep_download_url//"",
+            .epr_url//"",
+            .epr_package//"",
+            (.pick |@json)
+        ] |@sh'))
 
         if [[ -n ${spec[0]} ]]; then
             download_url=${spec[0]}
@@ -241,10 +247,65 @@ function do_file_type_integration() {
             REPLY='Download failed'
             return 1
         fi
+        pick_spec=${spec[3]}
+        pick_meta=$(jq -n --arg u "$download_url" '{zlc:{origin:{type:"integration",url:$u}}}')
         DOWNLOADED_FILES+=( "$package" )
     fi
 
-    do_tarball_type_integration "$package"
+    if [[ -n $pick_spec ]]; then
+        pick_from_integration_tarball "$package" "$pick_spec" "$pick_meta"
+    else
+        do_tarball_type_integration "$package"
+    fi
+}
+
+# $1: integration tarball
+# $2: pick spec
+# $3: pick meta
+function pick_from_integration_tarball() {
+    local tarball=$1 pick=$2 meta=$3
+    local nfiles=$(echo "$pick" |jq -r 'length')
+    local i spec j m position file object_name modifier
+
+    local xdir="$TMPDIR/i.$RANDOM"
+    extract_tarball "$tarball" "$xdir" || return 1
+
+    for (( i = 0; i < nfiles; i++ )); do
+        position="$.pick[$i]"
+        eval spec=($(echo "$pick" |jq -r --argjson i "$i" '
+            .[$i] |
+            [ .file, .target_name ] +
+                if .modifiers
+                then [(.modifiers |map([length, .[]]) [][])]
+                else [] end |
+            @sh
+        '))
+        file=$(find -L "$xdir/" -type f -path "*/${spec[0]}")
+        [[ -e $file ]] || { REPLY="$position: not found, ${spec[0]}"; return 1; }
+        object_name=${spec[1]}
+        for (( j = 2, m = 0; j < ${#spec[@]}; j += (${spec[j]}+1), m++ )); do
+            position="${position%.modifiers*}.modifiers[$m]"
+            modifier=( "${spec[@]:j+1:${spec[j]}}" )
+            declare -f -F "pick_modifier_${modifier[0]}" >/dev/null ||
+                { REPLY="$position: not supported, ${modifier[0]}"; return 1; }
+            meta="$meta" "pick_modifier_${modifier[0]}" "$file" "${modifier[@]:1}" ||
+                { REPLY="$position: modifier failed, ${modifier[0]}"; return 1; }
+        done
+        FORCED_OBJECT_NAME="$object_name" do_file "$file" || return $?
+    done
+}
+
+function pick_modifier_gsub() {
+    local sep=$'\x21'
+    sed -i -re "s${sep}${2}${sep}${3}${sep}g" "$1"
+}
+
+function pick_modifier_meta() {
+    local noarg='{}'
+    convert_to_json "$1" |
+        jq --argjson m1 "$meta" --argjson m2 "${2:-$noarg}" '. * {_meta:($m1 * $m2)}' |
+        if [[ $1 == *.yml || $1 == *.yaml ]]; then yq -pj -oy; else cat; fi \
+            > "$1.tmp" && mv "$1"{.tmp,}
 }
 
 # $1: ecs[:version]
