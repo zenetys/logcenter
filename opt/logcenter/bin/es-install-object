@@ -6,7 +6,10 @@ ECS_GITHUB_OWNER=elastic
 ECS_GITHUB_REPO=ecs
 OBJECT_PREFIX=zlc
 OVERRIDE_CUSTOM=
-declare -r TMPDIR="${TMPDIR:-/tmp}/$PROGNAME.$RANDOM"
+
+declare TMPDIR="${TMPDIR:-/tmp}/$PROGNAME.$RANDOM"
+[[ ${TMPDIR:0:1} == / ]] || TMPDIR="$PWD/$TMPDIR"
+declare -r TMPDIR
 
 # Force simulating curl --fail-with-body if disabled in es-curl, usually
 # because it is unsupported by the version of curl (easier for troubleshooting
