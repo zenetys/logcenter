@@ -1,0 +1,27 @@
+# Tested on windows integration version 1.44.5
+
+epr_url: https://epr.elastic.co
+epr_package: windows
+
+pick:
+  #- file: data_stream/forwarded/elasticsearch/ingest_pipeline/default.yml
+  #  target_name: zlc-pipeline-ep-windows-forwarded-default
+  #  modifiers:
+  #    - [ gsub, '\{+\s*IngestPipeline\W+(\w+)[^}]*\}+', 'zlc-pipeline-ep-windows-forwarded-\1' ]
+  #    - [ meta ]
+  #- file: data_stream/forwarded/elasticsearch/ingest_pipeline/powershell_operational.yml
+  #  target_name: zlc-pipeline-ep-windows-forwarded-powershell_operational
+  #  modifiers:
+  #    - [ meta ]
+  #- file: data_stream/forwarded/elasticsearch/ingest_pipeline/powershell.yml
+  #  target_name: zlc-pipeline-ep-windows-forwarded-powershell
+  #  modifiers:
+  #    - [ meta ]
+  - file: data_stream/forwarded/elasticsearch/ingest_pipeline/security.yml
+    target_name: zlc-pipeline-ep-windows-forwarded-security
+    modifiers:
+      - [ meta ]
+  #- file: data_stream/forwarded/elasticsearch/ingest_pipeline/sysmon_operational.yml
+  #  target_name: zlc-pipeline-ep-windows-forwarded-sysmon_operational
+  #  modifiers:
+  #    - [ meta ]

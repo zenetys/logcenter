@@ -1,0 +1,56 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_pipeline_geoip: false
+        enable_pipeline_related_ip: false
+        remove_mapped_fields: false
+
+  - pipeline:
+      name: zlc-pipeline-nxlog-winev-norm
+      if: ctx?.nxlog?.winev != null
+
+  - script:
+      lang: painless
+      source: |
+        if (!(ctx.event instanceof Map))
+            ctx.event = [:];
+        if (!(ctx.host instanceof Map))
+            ctx.host = [:];
+        if (!(ctx.host.os instanceof Map))
+            ctx.host.os = [:];
+
+        // Some fields are used in Elastic Security Solution detection rules (to date...),
+        // let's fill host.os.type and event.module.
+
+        ctx.host.os.type = 'windows';
+
+        if (ctx.winlog?.channel instanceof String) {
+            def channel = ctx.winlog.channel.toLowerCase();
+            if (channel == 'security') {
+                if (ctx.winlog.provider_name instanceof String &&
+                    (ctx.winlog.provider_name == 'Microsoft-Windows-Security-Auditing' ||
+                     ctx.winlog.provider_name == 'Microsoft-Windows-Eventlog')) {
+                    ctx.event.module = 'security';
+                }
+            }
+            else if (channel == 'microsoft-windows-sysmon/operational')
+                ctx.event.module = 'sysmon';
+            else if (channel == 'microsoft-windows-powershell/operational' || channel == 'windows powershell')
+                ctx.event.module = 'powershell';
+        }
+
+
+  # Call pipelines from windows elastic package. Note, there are difficulties
+  # with events comming from nxlog-ce because not all event data fields get
+  # poulated, and apparently no user data fields at all. It seems to work okay
+  # for security events.
+  - pipeline:
+      name: zlc-pipeline-ep-windows-forwarded-security
+      if: ctx.event?.module == 'security'

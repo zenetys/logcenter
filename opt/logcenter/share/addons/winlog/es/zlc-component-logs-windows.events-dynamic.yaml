@@ -1,0 +1,35 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+      - nxlog_text:
+          path_match:
+            - 'nxlog.winev.ContextInfo'
+            # nxlog.winev.EventData probably available with nxlog-ee
+            - 'nxlog.winev.EventData'
+            # nxlog.winev.UserData probably available with nxlog-ee
+            - 'nxlog.winev.UserData'
+            # nxlog.winev.HumanMessage should have been renamed to message
+            - 'nxlog.winev.HumanMessage'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - nxlog_keyword_and_text:
+          path_match:
+            - 'nxlog.winev.Application'
+            - 'nxlog.winev.KeyFilePath'
+            - 'nxlog.winev.*Name'
+            - 'nxlog.winev.param*'
+            - 'nxlog.winev.Param*'
+            - 'nxlog.winev.Payload'
+            - 'nxlog.winev.PrivilegeList'
+            - 'nxlog.winev.ProcessPath'
+            - 'nxlog.winev.updateTitle'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text

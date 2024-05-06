@@ -1,0 +1,25 @@
+version: 1
+index_patterns:
+  - logs-windows.events-zlc
+  - logs-windows.events-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-windows.events-dynamic
+  - zlc-component-logs-windows.events-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-windows.events@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-windows.events-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-windows.events@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      '@timestamp': { type: date }
+      winlog.time_created: { type: alias, path: '@timestamp' }

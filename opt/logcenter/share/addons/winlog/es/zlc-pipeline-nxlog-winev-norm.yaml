@@ -1,0 +1,198 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'nxlog.winev.* fields expected'
+      if: (ctx.nxlog instanceof Map) == false ||
+          (ctx.nxlog.winev instanceof Map) == false
+
+  # Require NXLog custom field for accuracy: $EventTimeEpoch, $EventReceivedTimeEpoch
+  # $EventTimeEpoch = string(integer($EventTime)/1000000) + "." + \
+  #         string(microsecond($EventTime));
+  - convert: { field: nxlog.winev.EventTimeEpoch, type: double }
+  - convert: { field: nxlog.winev.EventReceivedTimeEpoch, type: double, ignore_missing: true }
+  - date: { field: nxlog.winev.EventTimeEpoch, target_field: '@timestamp', formats: [ UNIX ] }
+
+  - script:
+      lang: painless
+      source: |
+        if (!(ctx.host instanceof Map))
+            ctx.host = [:];
+        if (!(ctx.event instanceof Map))
+            ctx.event = [:];
+        ctx.event.kind = 'event';
+        if (!(ctx.log instanceof Map))
+            ctx.log = [:];
+        ctx.winlog = [:];
+        ctx.winlog.api = 'wineventlog';
+        ctx.winlog.process = [:];
+        ctx.winlog.process.thread = [:];
+        ctx.winlog.user = [:];
+
+        if (ctx.nxlog.winev.HumanMessage instanceof String)
+            ctx.message = ctx.nxlog.winev.HumanMessage.replace(params.cr, '').trim();
+        ctx.nxlog.winev.remove('HumanMessage'); // also if null
+
+        // Keywords field. Workaround int64 overflow in json from nxlog, that
+        // field is an uint64 bit field, nxlog value -9214364837600034816
+        // should be 0x8020000000000000, we get it back by adding 2^64.
+        def keywords_l = ctx.nxlog.winev.Keywords;
+        if (keywords_l != null) {
+            def keywords_bi;
+            try {
+                keywords_bi = new BigInteger(keywords_l.toString(), 10);
+                if (keywords_l < 0) {
+                    def pow_2_64 = BigInteger.ZERO.setBit(64);
+                    keywords_bi = keywords_bi.add(pow_2_64);
+                }
+            }
+            catch (Exception e) {}
+            if (keywords_bi == null) {
+                ctx.nxlog.winev.Keywords = keywords_l.toString();
+            }
+            else {
+                ctx.nxlog.winev.Keywords = '0x' + keywords_bi.toString(16);
+                def kwSet = [:];
+                ctx.winlog.keywords = new ArrayList();
+                for (b in params.kw2bit.entrySet()) {
+                    def kwBit = b.getValue();
+                    def kwLabel = b.getKey();
+                    if (keywords_bi.testBit(kwBit)) {
+                        ctx.winlog.keywords.add(kwLabel);
+                        kwSet.put(kwLabel, true);
+                    }
+                }
+                if (kwSet['Classic'] == null &&
+                    ctx.nxlog.winev.Opcode == null &&
+                    ctx.nxlog.winev.OpcodeValue != null) {
+                    try { ctx.winlog.opcode = params.opcode2text[ctx.nxlog.winev.OpcodeValue]; }
+                    catch (Exception e) {}
+                }
+                if (kwSet['Audit Failure'] == true)
+                    ctx.event.outcome = 'failure';
+                else if (kwSet['Audit Success'] == true)
+                    ctx.event.outcome = 'success';
+            }
+        }
+
+        if (ctx.winlog.opcode == null && ctx.nxlog.winev.Opcode != null)
+            ctx.winlog.opcode = ctx.nxlog.winev.Opcode;
+
+        try { ctx.log.level = params.nxlogSeverity2text[ctx.nxlog.winev.SeverityValue]; }
+        catch (Exception e) {}
+
+        if (ctx.event.outcome == null && ctx.nxlog.winev.EventType instanceof String) {
+            if (ctx.nxlog.winev.EventType == 'AUDIT_FAILURE')
+                ctx.event.outcome = 'failure';
+            else if (ctx.nxlog.winev.EventType == 'AUDIT_SUCCESS')
+                ctx.event.outcome = 'success';
+        }
+
+        // Copy core fields to ECS/winlog
+        ctx.event.action = ctx.nxlog.winev.Category;
+        ctx.event.code = ctx.nxlog.winev.EventID.toString();
+        ctx.event.provider = ctx.nxlog.winev.SourceName;
+        ctx.host.name = ctx.nxlog.winev.Hostname;
+        ctx.winlog.activity_id = ctx.nxlog.winev.ActivityID;
+        ctx.winlog.channel = ctx.nxlog.winev.Channel;
+        ctx.winlog.computer_name = ctx.nxlog.winev.Hostname;
+        ctx.winlog.event_id = ctx.nxlog.winev.EventID.toString();
+        ctx.winlog.process.pid = ctx.nxlog.winev.ProcessID;
+        ctx.winlog.process.thread.id = ctx.nxlog.winev.ThreadID;
+        ctx.winlog.provider_guid = ctx.nxlog.winev.ProviderGuid;
+        ctx.winlog.provider_name = ctx.nxlog.winev.SourceName;
+        ctx.winlog.record_id = ctx.nxlog.winev.RecordNumber.toString();
+        ctx.winlog.related_activity_id = ctx.nxlog.winev.RelatedActivityID;
+        ctx.winlog.task = ctx.nxlog.winev.Category;
+        ctx.winlog.user.domain = ctx.nxlog.winev.Domain;
+        ctx.winlog.user.identifier = ctx.nxlog.winev.UserID;
+        ctx.winlog.user.name = ctx.nxlog.winev.AccountName;
+        ctx.winlog.user.type = ctx.nxlog.winev.AccountType;
+        ctx.winlog.version = ctx.nxlog.winev.Version;
+
+        def remove_mapped_fields = (ctx._ instanceof Map) && ctx._.remove_mapped_fields == true;
+        def event_data = [:];
+        def it = ctx.nxlog.winev.entrySet().iterator();
+        while (it.hasNext()) {
+            def kv = it.next();
+            def k = kv.getKey();
+            if (params.nxlogCore.containsKey(k)) {
+                if (remove_mapped_fields && params.nxlogCore[k] == true)
+                    it.remove();
+                continue;
+            }
+            event_data.put(k, kv.getValue());
+            if (remove_mapped_fields)
+                it.remove();
+        }
+        ctx.winlog.put('event_data', event_data);
+
+      params:
+        cr: "\r"
+        kw2bit:
+          # winmeta.h
+          'Response Time':    48 # 0x1000000000000
+          'WDI Context':      49 # 0x2000000000000
+          'WDI Diag':         50 # 0x4000000000000
+          'SQM':              51 # 0x8000000000000
+          'Audit Failure':    52 # 0x10000000000000
+          'Audit Success':    53 # 0x20000000000000
+          'Correlation Hint': 54 # 0x40000000000000
+          'Classic':          55 # 0x80000000000000
+        opcode2text:
+          # winmeta.h
+          - Info        # Ox0
+          - Start       # Ox1
+          - Stop        # Ox2
+          - DCStart     # Ox3
+          - DCStop      # Ox4
+          - Extension   # Ox5
+          - Reply       # Ox6
+          - Resume      # Ox7
+          - Suspend     # Ox8
+          - Send        # Ox9
+          - Receive     # Oxf0
+        nxlogSeverity2text:
+          # https://docs.nxlog.co/ce/current/index.html#im_msvistalog_field_SeverityValue
+          [ null, 'verbose', 'information', 'warning', 'error', 'critical' ]
+        nxlogCore:
+          # https://docs.nxlog.co/ce/current/index.html#im_msvistalog_fields
+          # assume other fields are EventData pairs, true value means field is mapped
+          AccountName: true
+          AccountType: true
+          ActivityID: true
+          Category: true
+          Channel: true
+          Domain: true
+          EventID: true
+          EventTime: true
+          EventType: null
+          Hostname: true
+          Keywords: null
+          Opcode: true
+          OpcodeValue: null
+          ProcessID: true
+          ProviderGuid: true
+          RecordNumber: true
+          RelatedActivityID: true
+          Severity: true
+          SeverityValue: null
+          SourceName: true
+          Task: null
+          ThreadID: true
+          UserID: true
+          Version: true
+          # custom or modified in nxlog configuration
+          EventReceivedTimeEpoch: null
+          EventTimeEpoch: null
+          HumanMessage: true
+          # nxlog internal or special
+          ERROR_EVT_UNRESOLVED: null
+          EventReceivedTime: null
+          SourceModuleName: null
+          SourceModuleType: null
+          raw_event: null
