@@ -1,2 +1,4 @@
+# Tested on cisco_ise integration version 1.22.1
+
 epr_url: https://epr.elastic.co
 epr_package: cisco_ise
