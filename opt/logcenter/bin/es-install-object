@@ -509,6 +509,7 @@ mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
 OIFS=$IFS; IFS=$'\n'
 args=($(
     echo "${args[*]}" |awk '
+$0 ~ /-integration-/ { print "8", $0; next; }
 $0 ~ /-script-/ { print "10", $0; next; }
 $0 ~ /-lifecycle-/ { print "20", $0; next; }
 $0 ~ /-pipeline-/ { print "30", $0; next; }
