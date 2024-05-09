@@ -553,14 +553,6 @@ if (( ${#args[@]} > 1 )) && [[ -n $FORCED_OBJECT_NAME ]]; then
     fatal "Forced name unsupported with multiple files arguments"
 fi
 
-if ! type -P es-curl >/dev/null; then
-    if [[ -x ${0%/*}/es-curl ]]; then
-        hash -p "${0%/*}/es-curl" es-curl
-    else
-        fatal 'Command es-curl is required'
-    fi
-fi
-
 trap on_exit EXIT
 
 mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
