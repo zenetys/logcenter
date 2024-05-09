@@ -560,14 +560,6 @@ for (( i=0,len=${#args[@]}; i<len; i++ )); do
 done
 IFS=$OIFS
 
-if (( ${#args[@]} > 1 )) && [[ -n $FORCED_OBJECT_NAME ]]; then
-    fatal "Forced name unsupported with multiple files arguments"
-fi
-
-trap on_exit EXIT
-
-mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
-
 # Sort files to minimize the chance of failure due to reference of an object
 # that does not exist yet, eg: pipeline referencing a script.
 IFS=$'\n'
@@ -582,6 +574,14 @@ $0 ~ /-component-/ { print "40", $0; next; }
     ' |sort -n |sed -re 's,^[0-9]+ ,,'
 ))
 IFS=$OIFS
+
+if (( ${#args[@]} > 1 )) && [[ -n $FORCED_OBJECT_NAME ]]; then
+    fatal "Forced name unsupported with multiple files arguments"
+fi
+
+trap on_exit EXIT
+
+mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
 
 retval=0
 for i in "${args[@]}"; do
