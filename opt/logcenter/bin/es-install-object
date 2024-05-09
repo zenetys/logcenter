@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -f
+OIFS=$IFS
 PROGNAME=${0##*/}
 ECS_GITHUB_OWNER=elastic
 ECS_GITHUB_REPO=ecs
@@ -549,6 +550,16 @@ args+=( "$@" )
 
 [[ -z $args ]] && exit_usage 1
 
+# Handle directories, expand to files
+IFS=$'\n'
+for (( i=0,len=${#args[@]}; i<len; i++ )); do
+    [[ -d ${args[i]}/. ]] || continue
+    args+=( $(find -L "${args[i]}/" -type f \( -name '*.json' -o \
+        -name '*.yaml' -o -name '*.yml' -o -name '*.painless' \)) )
+    unset args[i]
+done
+IFS=$OIFS
+
 if (( ${#args[@]} > 1 )) && [[ -n $FORCED_OBJECT_NAME ]]; then
     fatal "Forced name unsupported with multiple files arguments"
 fi
@@ -559,7 +570,7 @@ mkdir -p "$TMPDIR" || fatal 'Faied to create temporary directory'
 
 # Sort files to minimize the chance of failure due to reference of an object
 # that does not exist yet, eg: pipeline referencing a script.
-OIFS=$IFS; IFS=$'\n'
+IFS=$'\n'
 args=($(
     echo "${args[*]}" |awk '
 $0 ~ /-integration-/ { print "8", $0; next; }
