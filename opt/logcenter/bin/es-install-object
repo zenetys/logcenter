@@ -578,7 +578,7 @@ $0 ~ /-component-/ { print "40", $0; next; }
 { print "100", $0; }
     ' |sort -n |sed -re 's,^[0-9]+ ,,'
 ))
-IFS=$OIFS;
+IFS=$OIFS
 
 retval=0
 for i in "${args[@]}"; do
