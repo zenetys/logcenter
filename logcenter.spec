@@ -25,9 +25,14 @@ Source0: %zenetys_git_source logcenter
 BuildArch: noarch
 
 #Requires: bind-utils
+#Requires: gawk
+#Requires: jq
 #Requires: lua
 #Requires: rsyslog8z
 #Requires: rsync
+#Requires: sed
+#Requires: unzip
+#Requires: yq
 
 %description
 Logcenter integration
