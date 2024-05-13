@@ -21,5 +21,9 @@ data_stream: {}
 template:
   mappings:
     properties:
+      # alias winlog.time_created to @timestamp
       '@timestamp': { type: date }
       winlog.time_created: { type: alias, path: '@timestamp' }
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
