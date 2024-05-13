@@ -4,11 +4,11 @@ template:
     dynamic_templates:
       - nxlog_text:
           path_match:
-            - 'nxlog.winev.ContextInfo'
+            - '*.ContextInfo'
             # nxlog.winev.EventData probably available with nxlog-ee
-            - 'nxlog.winev.EventData'
+            - '*.EventData'
             # nxlog.winev.UserData probably available with nxlog-ee
-            - 'nxlog.winev.UserData'
+            - '*.UserData'
             # nxlog.winev.HumanMessage should have been renamed to message
             - 'nxlog.winev.HumanMessage'
           match_mapping_type: string
@@ -17,15 +17,15 @@ template:
 
       - nxlog_keyword_and_text:
           path_match:
-            - 'nxlog.winev.Application'
-            - 'nxlog.winev.KeyFilePath'
-            - 'nxlog.winev.*Name'
-            - 'nxlog.winev.param*'
-            - 'nxlog.winev.Param*'
-            - 'nxlog.winev.Payload'
-            - 'nxlog.winev.PrivilegeList'
-            - 'nxlog.winev.ProcessPath'
-            - 'nxlog.winev.updateTitle'
+            - '*.Application'
+            - '*.KeyFilePath'
+            - '*.*Name'
+            - '*.param*'
+            - '*.Param*'
+            - '*.Payload'
+            - '*.PrivilegeList'
+            - '*.ProcessPath'
+            - '*.updateTitle'
           match_mapping_type: string
           mapping:
             type: keyword
