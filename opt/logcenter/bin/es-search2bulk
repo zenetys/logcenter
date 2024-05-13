@@ -1,0 +1,47 @@
+#!/bin/bash
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] [OVERRIDE_INDEX]
+Giving a _search stream on stdin, convert it to bulk inserts on stdout
+
+Available options:
+    -a, --action        Action instead of default index
+    -i, --index         Same as OVERRIDE_INDEX
+    -h, --help          Display this help
+
+Argument OVERRIDE_INDEX allows to override the name of the index written
+in bulk output. It may be used for instance to force an alias name in
+the output."
+    exit "$status"
+}
+
+ACTION=
+INDEX=
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -a|--action) ACTION=$2; shift ;;
+        -i|--index) INDEX=$2; shift ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+(( ${#ARGS[@]} > 1 )) && exit_usage 1
+
+[[ -n ${ARGS[0]} ]] && INDEX=${ARGS[0]}
+[[ -z $ACTION ]] && ACTION=index
+
+exec jq -c --arg index "$INDEX" --arg action "$ACTION" '
+    .hits.hits |
+    map({ ($action): (
+            { _index: (if ($index |length > 0) then $index else ._index end),
+              _id: ._id } + (if ._type == null then {} else {_type:._type} end))
+        }, ._source) |
+    .[]'
