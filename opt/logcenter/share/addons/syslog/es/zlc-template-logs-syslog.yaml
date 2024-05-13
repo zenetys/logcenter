@@ -18,6 +18,9 @@ data_stream: {}
 template:
   mappings:
     properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
 
       log.syslog.severity.code:
         type: long
