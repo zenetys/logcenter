@@ -1,0 +1,386 @@
+#!/bin/bash
+
+export LC_ALL=C
+shopt -s nullglob
+set -o pipefail
+set -f
+
+PROGNAME=${0##*/}
+DESTDIR=/var/backup/es
+KEEPCOUNT=30
+declare -A INCLUDE=()
+declare -A EXCLUDE=()
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ "$status" != "0" ]] && exec >&2
+
+    echo "\
+Usage: $PROGNAME -d DESTINATION
+Backup files and configuration related to logcenter
+
+Available options:
+    -d, --destdir       Destination base directory
+    -k, --keepcount     Number of backups to keep
+    -i, --include       Include only given backup item (may repeat)
+    -x, --exclude       Exclude backup item (may repeat)
+    -h, --help          Display this help
+
+Destination: $DESTDIR
+Keep count: $KEEPCOUNT
+Supported backup items:"
+    get_backup_items
+    echo "${REPLY[@]}" |fold -s -w 50 |sed -e 's! !, !g' -e 's,^,    ,'
+    exit "$status"
+}
+
+function get_backup_items() {
+    REPLY=($(declare -f -F |sed -nre 's,^declare -[^ ]+ bkp_(.+),\1,p' |sort -u))
+}
+
+function on_exit() {
+    if [[ -z $NOCLEAN && -n $DESTDIR && -n $ID && -d $DESTDIR/$ID/. ]]; then
+        find "$DESTDIR/$ID/" -mindepth 1 -maxdepth 1 -type f -delete
+        rmdir "$DESTDIR/$ID"
+    fi
+}
+
+function bkp_kibana_analytics() {
+    info "Dump index .kibana_analytics without stats"
+    es-scroll .kibana_analytics '{"query":{"query_string":{"query":"NOT type:(application_usage_* OR ui-metric OR *telemetry)"}}}' |
+        es-search2bulk .kibana_analytics > "$DESTDIR/$ID/index-kibana-analytics.bulk"
+    if (( $? != 0 )); then
+        error "Failed to dump index .kibana_analytics"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_kibana_spaces() {
+    local spaces
+    info 'Get the list of kibana spaces'
+    spaces=( $(kbn-curl /api/spaces/space |jq -r 'map(.id)[]') )
+    if [[ -z $spaces ]]; then
+        error "Failed to get kibana spaces"
+        return 1
+    fi
+    local s retval=0
+    for s in "${spaces[@]}"; do
+        info "Dump kibana space '$s'"
+        kbn-curl "/s/$s/api/saved_objects/_export" -d '{"type":"*"}' \
+            > "$DESTDIR/$ID/kibana_space_${s//[^[:alnum:]]/_}.ndjson"
+        if (( $? != 0 )); then
+            error "Failed to dump kibana space '$s'"
+            retval=1
+        fi
+    done
+    return "$retval"
+}
+
+function bkp_kibana_rules() {
+    info "Dump kibana detection rules"
+    kbn-curl /api/detection_engine/rules/_export -X POST > "$DESTDIR/$ID/rules.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump kibana detection rules"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_security_roles() {
+    info "Dump security roles"
+    es-curl _security/role > "$DESTDIR/$ID/roles.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump security roles"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_security_users() {
+    info "Dump security users"
+    es-curl _security/user > "$DESTDIR/$ID/users.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump security users"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_index_templates() {
+    info "Dump index templates"
+    es-curl _index_template > "$DESTDIR/$ID/index_templates.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump index templates"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_component_templates() {
+    info "Dump component templates"
+    es-curl _component_template > "$DESTDIR/$ID/component_templates.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump component templates"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_legacy_templates() {
+    info "Dump legacy templates"
+    es-curl _template > "$DESTDIR/$ID/legacy_templates.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump legacy templates"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_ingest_pipelines() {
+    info "Dump ingest pipelines"
+    es-curl _ingest/pipeline > "$DESTDIR/$ID/pipelines.dump"
+    if (( $? != 0 )); then
+        error "Failed to dump ingest pipelines"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_rsyslog() {
+    info "Dump rsyslog"
+    find /etc/ -not -type d -wholename '*/rsyslog*' -ls |
+        tee "$DESTDIR/$ID/rsyslog.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/rsyslog.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump rsyslog"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_beats() {
+    info "Dump beats"
+    find /etc/ -regextype posix-egrep \( -not -type d -regex '^.*/[a-z]+beat\>.*' \
+            -not -name '*.disabled' \) -ls |
+        tee "$DESTDIR/$ID/beats.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/beats.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump beats"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_elasticsearch() {
+    [[ -d /etc/elasticsearch/. ]] || return 0
+    info "Dump elasticsearch"
+    { find /etc/elasticsearch/ -not -type d -not -name ingest-geoip -ls
+      find /etc/systemd/ -not -type d -wholename '*/elasticsearch*' -ls
+    } |
+        tee "$DESTDIR/$ID/elasticsearch.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/elasticsearch.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump elasticsearch"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_kibana() {
+    [[ -d /etc/kibana/. ]] || return 0
+    info "Dump kibana"
+    { find /etc/kibana/ -not -type d -ls
+      find /etc/systemd/ -not -type d -wholename '*/kibana*' -ls
+    } |
+        tee "$DESTDIR/$ID/kibana.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/kibana.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump kibana"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_haproxy() {
+    [[ -d /etc/keepalived/. ]] || return 0
+    info "Dump keepalived"
+    { find /etc/keepalived/ -not -type d -ls
+      find /etc/systemd/ -not -type d -wholename '*/keepalived*' -ls
+    } |
+        tee "$DESTDIR/$ID/keepalived.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/keepalived.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump keepalived"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_haproxy() {
+    [[ -d /etc/haproxy/. ]] || return 0
+    info "Dump haproxy"
+    { find /etc/haproxy/ -not -type d -ls
+      find /etc/systemd/ -not -type d -wholename '*/haproxy*' -ls
+    } |
+        tee "$DESTDIR/$ID/haproxy.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/haproxy.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump haproxy"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_cron() {
+    info "Dump cron tasks"
+    {   find /etc/ -not -type d -wholename '/etc/cron*' -ls
+        find /var/spool/cron/ -not -readable -prune -o -not -type d -ls
+    } |
+        tee "$DESTDIR/$ID/cron.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/cron.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump cron tasks"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_curator() {
+    [[ -d /etc/curator/. ]] || return 0
+    info "Dump curator"
+    find /etc/curator/ -not -type d -ls |
+        tee "$DESTDIR/$ID/curator.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/curator.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump curator configuration"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_ztools() {
+    info "Dump ztools"
+    local i
+    {   for i in /{etc,opt}/{logcenter,zenetys,ztools}; do
+            [[ -d $i/. ]] || continue
+            find "$i/" -not -type d -ls
+        done
+    } |
+        tee "$DESTDIR/$ID/ztools.list" |
+        awk '{print substr($11,2)}' |
+        tar hcf "$DESTDIR/$ID/ztools.tar" -C / -T -
+    if (( $? != 0 )); then
+        error "Failed to dump ztools"
+        return 1
+    fi
+    return 0
+}
+
+function bkp_packages() {
+    info "Dump packages"
+    if [[ -e /etc/debian_version ]]; then
+        dpkg -l |awk '/^[+=-]+$/ { p=1; next; }
+                      p == 1 { print $1, $2, $3, $4}' \
+            > "$DESTDIR/$ID/packages"
+    elif [[ -e /etc/redhat-release ]]; then
+        rpm -qa |sort > "$DESTDIR/$ID/packages"
+    fi
+    if (( $? != 0 )); then
+        error "Failed to dump packages"
+        return 1
+    fi
+    return 0
+}
+
+if tty -s >/dev/null 2>&1; then
+    function fatal() { echo "FATAL: ${ID:+$ID - }$*"; exit 1; }
+    function error() { echo "ERROR: ${ID:+$ID - }$*"; }
+    function info() { echo "INFO: ${ID:+$ID - }$*"; }
+else
+    function fatal() { logger -t "$PROGNAME" -p crit -- "FATAL: ${ID:+$ID - }$*"; exit 1; }
+    function error() { logger -t "$PROGNAME" -p err -- "ERROR: ${ID:+$ID - }$*"; }
+    function info() { logger -t "$PROGNAME" -p notice -- "INFO: ${ID:+$ID - }$*"; }
+fi
+
+while (( $# > 0 )); do
+    case "$1" in
+        -d|destdir) DESTDIR=$2; shift ;;
+        -k|--keepcount) KEEPCOUNT=$2; shift ;;
+        -i|--include) INCLUDE["$2"]=1; shift ;;
+        -x|--exclude) EXCLUDE["$2"]=1; shift ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if (( ${#INCLUDE[@]} == 0 )); then
+    get_backup_items
+    for i in "${REPLY[@]}"; do INCLUDE["$i"]=1; done
+fi
+
+umask 0077
+if [[ -z $DESTDIR ]] || ! mkdir -p "$DESTDIR" || [[ ! -w $DESTDIR ]]; then
+    fatal "Cannot write in directory '$DESTDIR'"
+fi
+
+# Avoid find issues like "restore initial working directory"
+# when running from a non writable directory
+cd "$DESTDIR" || fatal "Failed to cd into '$DESTDIR'"
+
+ID="$HOSTNAME-$(date +%Y%m%d-%H%M%S-%3N)"
+[[ -z $ID ]] && fatal "Failed to get current time"
+
+declare -r DESTDIR
+declare -r ID="$PROGNAME-$ID"
+
+trap on_exit EXIT
+mkdir "$DESTDIR/$ID" || fatal "Failed to create directory '$DESTDIR/$ID'"
+
+retval=0
+for i in "${!INCLUDE[@]}"; do
+    [[ -n ${EXCLUDE[$i]} ]] && continue
+    "bkp_$i" || retval=1
+done
+
+info "Compute backup hash"
+hash=$(find "$DESTDIR/$ID/" -mindepth 1 -maxdepth 1 -type f |
+    sort |xargs --no-run-if-empty cat |md5sum)
+hash="${hash%%[[:space:]]*}"
+hash="${hash:0:4}${hash: -4}"
+
+info "Check last backup hash"
+last_hash=$(find "$DESTDIR/" -mindepth 1 -maxdepth 1 -type f -name 'es-backup-*.tar.xz' |
+    sort |tail -n 1 |sed -nre 's,^.*-H([0-9a-f]+).*,\1,p')
+if [[ $hash == $last_hash ]]; then
+    info "Backup hash is same as last ($hash), ignore"
+else
+    info "Build tarball"
+    tar cJf "$DESTDIR/$ID-H$hash.tar.xz" -C "$DESTDIR/" "$ID/"
+    if (( $? != 0 )); then
+        error "Failed to build tarball"
+        retval=1
+    fi
+    ln -nf "$ID-H$hash.tar.xz" "$DESTDIR/$PROGNAME-$HOSTNAME-latest.tar.xz"
+fi
+
+info "Purge old"
+find "$DESTDIR/" -mindepth 1 -maxdepth 1 -type f -name 'es-backup-*.tar.xz' |
+    sort |
+    head -n "-$KEEPCOUNT" |
+    xargs --no-run-if-empty rm -f
+if (( $? != 0 )); then
+    error "Failed to purge old"
+    retval=1
+fi
+
+exit "$retval"
