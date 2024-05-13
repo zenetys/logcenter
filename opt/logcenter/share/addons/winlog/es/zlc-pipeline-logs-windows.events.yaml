@@ -10,7 +10,7 @@ processors:
       value:
         enable_pipeline_geoip: false
         enable_pipeline_related_ip: false
-        remove_mapped_fields: false
+        remove_mapped_fields: true
 
   - pipeline:
       name: zlc-pipeline-nxlog-winev-norm
