@@ -21,6 +21,10 @@ data_stream: {}
 template:
   mappings:
     properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
       # Alias definition, generated with:
       # sed -nre 's,^\s*# alias: ,,p' zlc-pipeline-logs-firewall.fortigate.yaml |{
       #   srcmap=''; aliasmap=''
