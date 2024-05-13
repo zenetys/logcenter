@@ -1,0 +1,94 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+ES_SCROLL_PARAMS='size=1000&scroll=1m'
+
+# Keep track of scroll ids to close them on exit
+declare -A SCROLL_IDS=()
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] INDEX [QUERY] [PARAMS]
+Search elasticsearch with a scroll until there is no more hit
+
+Available options:
+    -v, --verbose       Be verbose, prints on stderr
+    -h, --help          Display this help
+
+This script performs a scroll _search query on the given index.
+QUERY is the data to POST for the query in the initial request.
+If PARAM is given, it gets appended to the default parameters
+of the initial search query, which are $ES_SCROLL_PARAMS"
+    exit "$status"
+}
+
+function perr() {
+    echo "$PROGNAME: $*" >&2
+}
+
+function _curl() {
+    if [[ -n $VERBOSE ]]; then
+        perr "Call es-curl $*" >&2
+    fi
+    es-curl "$@"
+}
+
+function close_scrolls() {
+    local i
+    for i in "${!SCROLL_IDS[@]}"; do
+        _curl "/_search/scroll" -d "{\"scroll_id\":\"$i\"}" -s -o /dev/null -X DELETE
+    done
+}
+
+# $1: index
+# $2: query to POST
+# $3: extra _search parameters
+# $4: internal, scroll id
+function es-scroll() {
+    local index=$1 query=$2 params=$3 scroll_id=$4
+    local out err hits
+
+    if [[ -n $scroll_id ]]; then
+        # continue scroll
+        [[ $VERBOSE ]] && perr "Continue scroll $scroll_id"
+        out=$(_curl "/_search/scroll" -d "{\"scroll\":\"1m\",\"scroll_id\":\"$scroll_id\"}" -s)
+    else
+        # initial query
+        [[ $VERBOSE ]] && perr 'Send initial query'
+        out=$(_curl "$index/_search?$ES_SCROLL_PARAMS${params:+&$params}" -d "$query" -s)
+    fi
+    [[ $? != 0 ]] && { perr "Error, cURL failed"; return 1; }
+    [[ -z $out ]] && { perr "Error, empty response"; return 1; }
+    err=$(echo "$out" |jq -r .error)
+    [[ $? != 0 ]] && { perr "Error, jq failed to extract error data"; return 1; }
+    [[ -n $err && $err != null ]] && { perr "Error, elasticsearch failed"$'\n'"$err"; return 1; }
+    scroll_id=$(echo "$out" |jq -r ._scroll_id)
+    [[ $? != 0 ]] && { perr "Error, jq failed to extract scroll id"; return 1; }
+    [[ -z $scroll_id ]] && { perr "Error, empty scroll id"; return 1; }
+    SCROLL_IDS["$scroll_id"]=1
+    echo "$out"
+    hits=$(echo "$out" |jq -r '.hits.hits |length')
+    [[ $? != 0 ]] && { perr "Error, jq failed to get hits count"; return 1; }
+    [[ $hits == 0 ]] && return 0
+    "$FUNCNAME" "$index" "$query" "$params" "$scroll_id"
+}
+
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -v|--verbose) VERBOSE=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+
+[[ -z ${ARGS[0]} ]] && exit_usage 1
+
+trap close_scrolls EXIT
+es-scroll "${ARGS[@]:0:3}"
