@@ -35,5 +35,4 @@ xpack.security.transport.ssl:
   certificate: /etc/elasticsearch/certs/node.crt
   certificate_authorities: /etc/elasticsearch/certs/ca.crt
 
-ingest.geoip.downloader.eager.download: true
-#ingest.geoip.downloader.endpoint: http://127.0.0.1:8001/overview.json
+#ingest.geoip.downloader.enabled: false
