@@ -29,7 +29,8 @@ declare -A TYPES=(
                         "create_index",
                         "view_index_metadata",
                         "indices:admin/aliases",
-                        "indices:admin/rollover"
+                        "indices:admin/rollover",
+                        "indices:admin/settings/update"
                     ]
                 }
             ]
