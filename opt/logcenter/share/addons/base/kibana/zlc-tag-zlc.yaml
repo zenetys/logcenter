@@ -1,0 +1,19 @@
+attributes:
+  color: '#0077CC'
+  description: ""
+  name: zlc
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-15T23:25:58.345Z"
+id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-16T07:36:53.374Z"
+version: Wzg3NDIsNV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
