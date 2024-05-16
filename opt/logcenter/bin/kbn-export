@@ -1,0 +1,72 @@
+#!/bin/bash
+
+set -f
+set -o pipefail
+shopt -s nullglob
+
+PROGNAME=${0##*/}
+OIFS=$IFS
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] [SPACE:]TYPE:ID...
+Export Kibana objects
+
+Available options:
+    -r, --with-references       Include deep references
+    --without-export-details    Without export details summary object
+    -h, --help                  Display this help"
+    exit "$status"
+}
+
+function info() { echo "INFO: $*" >&2; }
+function warning() { echo "WARNING: $*" >&2; }
+function error() { echo "ERROR: $*" >&2; }
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+WITH_REFERENCES=
+WITH_EXPORT_DETAILS=1
+ARGS=()
+
+while (( $# > 0 )); do
+    case "$1" in
+        -r|--with-references) WITH_REFERENCES=1 ;;
+        --without-export-details) WITH_EXPORT_DETAILS= ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+
+ARGS+=( "$@" )
+retval=0
+
+for i in "${ARGS[@]}"; do
+    IFS=:; set -- $i; IFS=$OIFS
+    if (( $# == 2 )); then
+        set -- default "$@"
+    elif (( $# != 3 )); then
+        retval=1
+        error "Invalid object spec, $i"
+        continue
+    fi
+
+    uri=/api/saved_objects/_export
+    [[ $1 == default ]] || uri="/s/${1}${uri}"
+    query="{\"objects\":[{\"type\":\"$2\",\"id\":\"$3\"}]"
+    [[ -z $WITH_EXPORT_DETAILS ]] && query+=',"excludeExportDetails":true'
+    [[ -n $WITH_REFERENCES ]] && query+=',"includeReferencesDeep":true'
+    query+='}'
+
+    kbn-curl "$uri" -d "$query"
+    if (( $? != 0 )); then
+        retval=1
+        error "Failed to export, $i"
+    fi
+done
+
+exit "$retval"
