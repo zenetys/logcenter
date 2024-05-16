@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{}'
+  fieldFormatMap: '{}'
+  fields: '[]'
+  name: logs-windows.events-*
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-windows.events-*
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-15T23:25:58.345Z"
+id: 3d602ace-4857-4c17-bf9a-938617bc949f
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-15T23:25:58.345Z"
+version: WzE0ODMsNV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
