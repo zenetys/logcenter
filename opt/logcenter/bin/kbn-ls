@@ -1,0 +1,134 @@
+#!/bin/bash
+
+set -f
+set -o pipefail
+shopt -s nullglob
+
+PROGNAME=${0##*/}
+OIFS=$IFS
+
+DEFAULT_TYPES=(
+    canvas-workpad
+    canvas-element
+    dashboard
+    index-pattern
+    lens
+    map
+    query
+    search
+    visualization
+)
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] [SPACE-ID...]
+List objects in spaces
+
+Available options:
+    -s, --space             Filter by space
+    -t, --type              Filter by type
+    --tsv                   Enable TSV output
+    -h, --help              Display this help
+
+Default filtered types:"
+    echo "${DEFAULT_TYPES[*]}" |sort -u |fold -s -w 50 |
+        sed -e 's! !, !g' -e 's,^,    ,'
+    exit "$status"
+}
+
+function error() { echo "ERROR: $*" >&2; }
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+function quote() {
+    REPLY=${1//\\/\\\\}
+    REPLY=${REPLY//\"/\\\"}
+}
+
+# $1: filter space id as comma separated list
+function list_spaces() {
+    local spaces
+    spaces=$(kbn-curl /api/spaces/space)
+    (( $? == 0 )) || return 1
+    local IFS=$'\n'
+    REPLY=($(echo "$spaces" |jq --arg filter "$1" -r '
+        ($filter|split(",")) as $filter |
+        [map(.id)[] |if ($filter|length) > 0 then select(. == ($filter[])) else . end] |
+        sort[]'
+    ))
+}
+
+# $1: space _id (document _id)
+# $2: extra filter query in lucene format
+function list_space_objects() {
+    local query prefix
+    [[ $1 == space:* ]] && set -- "${1#space:}"
+    if [[ $1 == default ]]; then
+        query="(NOT _exists_:namespaces) OR namespaces:default"
+        prefix=default:
+    else
+        quote "$1"
+        printf -v query 'namespaces:"%s"' "$REPLY"
+        prefix="$1:"
+    fi
+    quote "($query) AND ($2)"
+    printf -v query '{"query":{"query_string":{"query":"%s"}}}' "$REPLY"
+    local IFS=$'\n'
+    REPLY=($(es-scroll .kibana_analytics "$query" |jq -r --arg prefix "$prefix" '
+        .hits.hits |
+        map("\($prefix)\(._id)\t\(._source[._source.type]?.title // "")") |
+        sort[]
+    '))
+}
+
+TYPES=()
+TSV=
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -s|--space) ARGS+=( "$2" ); shift ;;
+        -t|--type) TYPES+=( "$2" ); shift ;;
+        --tsv) TSV=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+
+qtype='type:('
+[[ -z $TYPES ]] && TYPES=( "${DEFAULT_TYPES[@]}" )
+for (( i=0; i < ${#TYPES[@]}; i++ )); do
+    (( i > 0 )) && qtype+=' OR '
+    quote "${TYPES[i]}"; qtype+="\"$REPLY\""
+done
+qtype+=')'
+
+printf -v qspaces_filter ',%s' "${ARGS[@]}"
+qspaces_filter=${qspaces_filter:1}
+list_spaces "$qspaces_filter" || fatal 'Failed to list spaces'
+spaces=( "${REPLY[@]}" )
+
+retval=0
+
+for s in "${spaces[@]}"; do
+    if ! list_space_objects "$s" "$qtype"; then
+        retval=1
+        error "Failed to list space objects: $s"
+        continue
+    fi
+
+    for o in "${REPLY[@]}"; do
+        echo "$o"
+    done
+done |
+if [[ -z $TSV ]]; then
+    column -t -s $'\t'
+else
+    cat
+fi
+
+exit "$retval"
