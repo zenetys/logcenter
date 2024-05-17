@@ -553,16 +553,21 @@ IFS=$OIFS
 
 # Sort files to minimize the chance of failure due to reference of an object
 # that does not exist yet, eg: pipeline referencing a script.
+declare -A type2prio=(
+    [integration]=30
+    [script]=40
+    [lifecycle]=50
+    [pipeline]=60
+    [component]=70
+    [_]=79
+)
 IFS=$'\n'
 args=($(
-    echo "${args[*]}" |awk '
-$0 ~ /-integration-/ { print "8", $0; next; }
-$0 ~ /-script-/ { print "10", $0; next; }
-$0 ~ /-lifecycle-/ { print "20", $0; next; }
-$0 ~ /-pipeline-/ { print "30", $0; next; }
-$0 ~ /-component-/ { print "40", $0; next; }
-{ print "100", $0; }
-    ' |sort -n |sed -re 's,^[0-9]+ ,,'
+    for i in "${args[@]}"; do
+        guess_object_type_from_content "$i" && prio=${type2prio[$REPLY]}
+        [[ -z $prio ]] && prio=${type2prio[_]}
+        echo "$prio $i"
+    done |sort -n |sed -re 's,^[0-9]+ ,,'
 ))
 IFS=$OIFS
 
