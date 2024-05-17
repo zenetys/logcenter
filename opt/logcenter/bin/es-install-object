@@ -34,10 +34,13 @@ Available options:
     exit 1
 }
 
-function info() { echo "${LABEL:-INFO}: $PROGNAME: $*"; }
+function info() { echo "${LABEL:-INFO}: ${PROGNAME}${DRY_RUN:+ ** DRY-RUN}: $*"; }
 function debug() { LABEL=DEBUG info "$@"; }
 function error() { LABEL=ERROR info "$@"; }
 function fatal() { LABEL=FATAL info "$@"; exit 2; }
+
+function es-curl-dry-run() { [[ -n $DRY_RUN ]] && return 0; es-curl "$@"; }
+function kbn-curl-dry-run() { [[ -n $DRY_RUN ]] && return 0; kbn-curl "$@"; }
 
 function on_exit() {
     if [[ -n $KEEP_DOWNLOADED_FILES && -n $DOWNLOADED_FILES ]]; then
@@ -112,7 +115,7 @@ function convert_to_json() {
 # $3: input file
 function push_to_es() {
     local data curlout curlret
-    # convert_to_json "$3" |es-curl "$2" -X "$1" -d @-
+    # convert_to_json "$3" |es-curl-dry-run "$2" -X "$1" -d @-
 
     if [[ -n $DEBUG ]]; then
         debug '>> begin raw input'
@@ -130,7 +133,7 @@ function push_to_es() {
         debug '<< end data piped to curl'
     fi
 
-    curlout=$(echo "$data" |es-curl "$2" -X "$1" -d @-)
+    curlout=$(echo "$data" |es-curl-dry-run "$2" -X "$1" -d @-)
     curlret=$?
     if [[ -n $DEBUG ]]; then
         debug '>> begin curl output'
@@ -437,7 +440,7 @@ function do_tarball_type_integration() {
         return 1
     fi
 
-    curlout=$(kbn-curl /api/fleet/epm/packages --data-binary "@$1" \
+    curlout=$(kbn-curl-dry-run /api/fleet/epm/packages --data-binary "@$1" \
                 -H "content-type: $mime" -X POST)
     curlret=$?
     if [[ -n $DEBUG ]]; then
@@ -530,6 +533,7 @@ FORCED_OBJECT_NAME=
 KEEP_DOWNLOADED_FILES=
 DOWNLOADED_FILES=()
 EXTERNAL_PROXY=
+DRY_RUN=
 args=()
 while (( $# > 0 )); do
     case "$1" in
@@ -538,6 +542,7 @@ while (( $# > 0 )); do
         -k|--keep) KEEP_DOWNLOADED_FILES=1 ;;
         -P|--proxy) EXTERNAL_PROXY=$2; shift ;;
         --override-custom) OVERRIDE_CUSTOM=1 ;;
+        --dry-run) DRY_RUN=1 ;;
         -d|--debug) DEBUG=1; export ES_DEBUG=1 ;;
         -h|--help) exit_usage 0 ;;
         --) shift; break ;;
