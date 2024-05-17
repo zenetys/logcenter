@@ -56,19 +56,6 @@ function mycurl() {
         --connect-timeout "${CURL_CONNECT_TIMEOUT:-10}" "$@"
 }
 
-# $1: object name
-function guess_object_type_from_object_name() {
-    local supported_object_type
-    for supported_object_type in $(declare -F -f |sed -nre 's,^.* do_file_type_(.+),\1,p'); do
-        if [[ "$1" == "$supported_object_type"-* || "$1" == *-"$supported_object_type"-* ]]; then
-            REPLY=$supported_object_type
-            return 0
-        fi
-    done
-    REPLY=
-    return 1
-}
-
 # $1: file
 function guess_object_type_from_content() {
     if [[ -d $1/. && -f $1/manifest.yml ]]; then
@@ -505,8 +492,7 @@ function do_file() {
     fi
 
     if [[ -z $object_type ]]; then
-        if ! guess_object_type_from_object_name "$filename" &&
-           ! guess_object_type_from_content "$file"; then
+        if ! guess_object_type_from_content "$file"; then
             error "Cannot guess object type, $file"
             return 1
         fi
