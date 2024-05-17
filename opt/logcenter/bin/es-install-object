@@ -27,9 +27,13 @@ Available options:
     -n, --name   VALUE      Force object name
     -k, --keep              Keep downloaded files
     -P, --proxy  VALUE      HTTP proxy for external requests, eg: downloads
-    --overwrite             (Re)install @custom object event if exists
+    --overwrite             (Re)install protected objects even if exist
     -d, --debug             Enable debug
     -h, --help              Display this help
+
+Regarding --overwrite option:
+    - for elasticsearch, inject @custom objects even if exist
+    - for kibana saved objects, import with overwrite=true instead of false
 "
     exit 1
 }
@@ -64,7 +68,9 @@ function guess_object_type_from_content() {
             else "" end
         ')
     else
-        REPLY=$(convert_to_json "$1" |jq -r 'try
+        REPLY=$(convert_to_json "$1" |jq -sr 'try
+            first as $first |
+            last |
             if .script != null then "script"
             elif .policy?.phases != null then "lifecycle"
             elif .processors != null then "pipeline"
@@ -72,6 +78,13 @@ function guess_object_type_from_content() {
             elif .template != null then "component"
             elif .ep_download_url != null then "integration"
             elif .epr_package != null then "integration"
+            elif (.exportedCount |type) == "number" then
+                if .exportedCount == 1 then
+                    if ($first.type == "tag") then "kibana_tag"
+                    elif ($first.type == "index-pattern") then "kibana_dataview"
+                    elif ($first.type == "dashboard") then "kibana_dashboard"
+                    else "kibana_saved_object" end
+                else "kibana_saved_object" end
             else "" end
         ')
     fi
@@ -84,7 +97,7 @@ function guess_object_type_from_content() {
 function convert_to_json() {
     local file=$1; shift
 
-    if [[ $file == *.json ]]; then
+    if [[ $file == *.json || $file == *.ndjson ]]; then
         cat "$file"
         return $?
     elif [[ $file == *.yaml || $file == *.yml ]]; then
@@ -185,6 +198,53 @@ function do_file_type_script() {
     [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_scripts/$1" "$2"
 }
+
+# $1: object name
+# $2: file
+function do_file_type_kibana_saved_object() {
+    local overwrite=false
+    [[ -n $OVERWRITE ]] && overwrite=true
+    local kbn_output kbn_retval kbn_stats
+    kbn_output=$(convert_to_json "$2" |jq -c |
+        kbn-curl-dry-run "/api/saved_objects/_import?overwrite=$overwrite" \
+            -H 'content-type: multipart/form-data' \
+            --form 'file=@-;filename=data.ndjson' \
+            -X POST)
+    kbn_retval=$?
+    if [[ -n $DEBUG ]]; then
+        debug '>> begin curl output'
+        [[ -n $kbn_output ]] && echo "$kbn_output"
+        debug '<< end curl output'
+    fi
+    if (( kbn_retval != 0 )); then
+        REPLY='Kibana query failed'
+        return 1
+    fi
+    # skip response analysis on dry-run
+    [[ -n $DRY_RUN ]] && { REPLY=OK; return 0; }
+    kbn_stats=($(echo "$kbn_output" |
+        jq -r --argjson overwrite "$overwrite" 'try
+([(.errors//[])[] |select(.error?.type == "conflict")]|length) as $conflicts |
+(if $overwrite then 0 else $conflicts end) as $skip |
+((.errors|length)-$conflicts) as $error |
+"\($error) \($skip) \(.successCount)"'))
+    case "${kbn_stats[0]},${kbn_stats[1]},${kbn_stats[2]}" in
+        ,,) REPLY='Unknown, could not parse response'; return 1 ;;
+        *,0,0) REPLY=Failed; return 1 ;;
+        0,*,0) REPLY=Skip; return 0 ;;
+        0,0,*) REPLY=OK; return 0 ;;
+        *)  local reply=()
+            [[ ${kbn_stats[0]} != 0 ]] && reply+=( "Failed:${kbn_stats[0]}" )
+            [[ ${kbn_stats[1]} != 0 ]] && reply+=( "Skip:${kbn_stats[1]}" )
+            [[ ${kbn_stats[2]} != 0 ]] && reply+=( "OK:${kbn_stats[2]}" )
+            REPLY=${reply[*]}
+            [[ ${kbn_stats[0]} != 0 ]] && return 1
+    esac
+    return 0
+}
+function do_file_type_kibana_tag() { do_file_type_kibana_saved_object "$@"; }
+function do_file_type_kibana_dataview() { do_file_type_kibana_saved_object "$@"; }
+function do_file_type_kibana_dashboard() { do_file_type_kibana_saved_object "$@"; }
 
 # $1: object name
 # $2: file
@@ -545,8 +605,9 @@ args+=( "$@" )
 IFS=$'\n'
 for (( i=0,len=${#args[@]}; i<len; i++ )); do
     [[ -d ${args[i]}/. ]] || continue
-    args+=( $(find -L "${args[i]}/" -type f \( -name '*.json' -o \
-        -name '*.yaml' -o -name '*.yml' -o -name '*.painless' \)) )
+    args+=( $(find -L "${args[i]}" -type f \( -name '*.json' -o \
+        -name '*.ndjson' -o -name '*.yaml' -o -name '*.yml' -o \
+        -name '*.painless' \)) )
     unset args[i]
 done
 IFS=$OIFS
@@ -559,6 +620,10 @@ declare -A type2prio=(
     [lifecycle]=50
     [pipeline]=60
     [component]=70
+    [kibana_tag]=82
+    [kibana_dataview]=84
+    [kibana_saved_object]=86
+    [kibana_dashboard]=88
     [_]=79
 )
 IFS=$'\n'
