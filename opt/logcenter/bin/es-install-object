@@ -69,7 +69,7 @@ function guess_object_type_from_object_name() {
 # $1: file
 function guess_object_type_from_content() {
     if [[ -d $1/. && -f $1/manifest.yml ]]; then
-        REPLY=$(convert_to_json "$1" |jq -r 'try
+        REPLY=$(convert_to_json "$1/manifest.yml" |jq -r 'try
             if .type == "integration" then "integration"
             else "" end
         ')
