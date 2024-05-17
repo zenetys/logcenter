@@ -6,7 +6,7 @@ PROGNAME=${0##*/}
 ECS_GITHUB_OWNER=elastic
 ECS_GITHUB_REPO=ecs
 OBJECT_PREFIX=zlc
-OVERRIDE_CUSTOM=
+OVERWRITE=
 
 declare TMPDIR="${TMPDIR:-/tmp}/$PROGNAME.$RANDOM"
 [[ ${TMPDIR:0:1} == / ]] || TMPDIR="$PWD/$TMPDIR"
@@ -27,7 +27,7 @@ Available options:
     -n, --name   VALUE      Force object name
     -k, --keep              Keep downloaded files
     -P, --proxy  VALUE      HTTP proxy for external requests, eg: downloads
-    --override-custom       (Re)install @custom object event if exists
+    --overwrite             (Re)install @custom object event if exists
     -d, --debug             Enable debug
     -h, --help              Display this help
 "
@@ -163,7 +163,7 @@ function check_custom_override() {
 # $2: file
 function do_file_type_component() {
     check_custom_override "/_component_template/$1" || return 1
-    [[ $REPLY == 200 && -z $OVERRIDE_CUSTOM ]] && { REPLY=Skip; return 0; }
+    [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_component_template/$1" "$2"
 }
 
@@ -171,7 +171,7 @@ function do_file_type_component() {
 # $2: file
 function do_file_type_lifecycle() {
     check_custom_override "/_ilm/policy/$1" || return 1
-    [[ $REPLY == 200 && -z $OVERRIDE_CUSTOM ]] && { REPLY=Skip; return 0; }
+    [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_ilm/policy/$1" "$2"
 }
 
@@ -179,7 +179,7 @@ function do_file_type_lifecycle() {
 # $2: file
 function do_file_type_pipeline() {
     check_custom_override "/_ingest/pipeline/$1" || return 1
-    [[ $REPLY == 200 && -z $OVERRIDE_CUSTOM ]] && { REPLY=Skip; return 0; }
+    [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_ingest/pipeline/$1" "$2"
 }
 
@@ -187,7 +187,7 @@ function do_file_type_pipeline() {
 # $2: file
 function do_file_type_template() {
     check_custom_override "/_index_template/$1" || return 1
-    [[ $REPLY == 200 && -z $OVERRIDE_CUSTOM ]] && { REPLY=Skip; return 0; }
+    [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_index_template/$1" "$2"
 }
 
@@ -195,7 +195,7 @@ function do_file_type_template() {
 # $2: file
 function do_file_type_script() {
     check_custom_override "/_scripts/$1" || return 1
-    [[ $REPLY == 200 && -z $OVERRIDE_CUSTOM ]] && { REPLY=Skip; return 0; }
+    [[ $REPLY == 200 && -z $OVERWRITE ]] && { REPLY=Skip; return 0; }
     push_to_es PUT "/_scripts/$1" "$2"
 }
 
@@ -541,7 +541,7 @@ while (( $# > 0 )); do
         -n|--name) FORCED_OBJECT_NAME=$2; shift ;;
         -k|--keep) KEEP_DOWNLOADED_FILES=1 ;;
         -P|--proxy) EXTERNAL_PROXY=$2; shift ;;
-        --override-custom) OVERRIDE_CUSTOM=1 ;;
+        --overwrite) OVERWRITE=1 ;;
         --dry-run) DRY_RUN=1 ;;
         -d|--debug) DEBUG=1; export ES_DEBUG=1 ;;
         -h|--help) exit_usage 0 ;;
