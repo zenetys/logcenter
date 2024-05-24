@@ -32,6 +32,10 @@ processors:
       field: event.category
       separator: '[,\s]+'
       if: ctx?.event?.category instanceof String
+  - split:
+      field: event.type
+      separator: '[,\s]+'
+      if: ctx?.event?.type instanceof String
 
   # Set default @timestamp value.
   - set:
