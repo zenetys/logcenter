@@ -30,7 +30,7 @@ function perr() {
 
 function _curl() {
     if [[ -n $VERBOSE ]]; then
-        perr "Call es-curl $*" >&2
+        perr "Call es-curl $*"
     fi
     es-curl "$@"
 }
