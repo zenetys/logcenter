@@ -1,0 +1,17 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_pipeline_related_user: false
+
+  - registered_domain:
+      field: dns.question.name
+      target_field: dns.question
+      if: ctx.dns?.question?.name instanceof String &&
+          !ctx.dns.question.name.endsWith('.in-addr.arpa')

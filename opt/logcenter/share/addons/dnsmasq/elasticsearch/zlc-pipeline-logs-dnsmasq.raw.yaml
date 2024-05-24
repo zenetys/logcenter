@@ -1,0 +1,13 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_pipeline_geoip: false
+        enable_pipeline_related_ip: false
+        enable_pipeline_related_user: false

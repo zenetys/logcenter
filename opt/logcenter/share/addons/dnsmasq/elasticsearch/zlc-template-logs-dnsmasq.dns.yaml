@@ -1,0 +1,25 @@
+version: 1
+index_patterns:
+  - logs-dnsmasq.dns-zlc
+  - logs-dnsmasq.dns-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-dnsmasq.dns-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-dnsmasq.dns@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-dnsmasq.dns-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-dnsmasq.dns@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
