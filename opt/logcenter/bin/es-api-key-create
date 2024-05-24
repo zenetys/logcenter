@@ -27,10 +27,10 @@ declare -A TYPES=(
                     "privileges": [
                         "index",
                         "create_index",
+                        "manage",
                         "view_index_metadata",
                         "indices:admin/aliases",
-                        "indices:admin/rollover",
-                        "indices:admin/settings/update"
+                        "indices:admin/rollover"
                     ]
                 }
             ]
