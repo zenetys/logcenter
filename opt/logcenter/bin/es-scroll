@@ -2,6 +2,7 @@
 
 PROGNAME=${0##*/}
 ES_SCROLL_PARAMS='size=1000&scroll=1m'
+TMPFILE=
 
 # Keep track of scroll ids to close them on exit
 declare -A SCROLL_IDS=()
@@ -35,8 +36,11 @@ function _curl() {
     es-curl "$@"
 }
 
-function close_scrolls() {
+function on_exit() {
     local i
+    if [[ -n $TMPFILE && -e $TMPFILE ]]; then
+        rm ${VERBOSE:+-v} "$TMPFILE" >&2
+    fi
     for i in "${!SCROLL_IDS[@]}"; do
         _curl "/_search/scroll" -d "{\"scroll_id\":\"$i\"}" -s -o /dev/null -X DELETE
     done
@@ -48,31 +52,26 @@ function close_scrolls() {
 # $4: internal, scroll id
 function es-scroll() {
     local index=$1 query=$2 params=$3 scroll_id=$4
-    local out err hits
+    local meta
 
     if [[ -n $scroll_id ]]; then
         # continue scroll
         [[ $VERBOSE ]] && perr "Continue scroll $scroll_id"
-        out=$(_curl "/_search/scroll" -d "{\"scroll\":\"1m\",\"scroll_id\":\"$scroll_id\"}" -s)
+        _curl "/_search/scroll" -d "{\"scroll\":\"1m\",\"scroll_id\":\"$scroll_id\"}" -s -o "$TMPFILE"
     else
         # initial query
         [[ $VERBOSE ]] && perr 'Send initial query'
-        out=$(_curl "$index/_search?$ES_SCROLL_PARAMS${params:+&$params}" -d "$query" -s)
+        _curl "$index/_search?$ES_SCROLL_PARAMS${params:+&$params}" -d "$query" -s -o "$TMPFILE"
     fi
     [[ $? != 0 ]] && { perr "Error, cURL failed"; return 1; }
-    [[ -z $out ]] && { perr "Error, empty response"; return 1; }
-    err=$(echo "$out" |jq -r .error)
-    [[ $? != 0 ]] && { perr "Error, jq failed to extract error data"; return 1; }
-    [[ -n $err && $err != null ]] && { perr "Error, elasticsearch failed"$'\n'"$err"; return 1; }
-    scroll_id=$(echo "$out" |jq -r ._scroll_id)
-    [[ $? != 0 ]] && { perr "Error, jq failed to extract scroll id"; return 1; }
-    [[ -z $scroll_id ]] && { perr "Error, empty scroll id"; return 1; }
-    SCROLL_IDS["$scroll_id"]=1
-    echo "$out"
-    hits=$(echo "$out" |jq -r '.hits.hits |length')
-    [[ $? != 0 ]] && { perr "Error, jq failed to get hits count"; return 1; }
-    [[ $hits == 0 ]] && return 0
-    "$FUNCNAME" "$index" "$query" "$params" "$scroll_id"
+    [[ -s $TMPFILE ]] || { perr "Error, empty response"; return 1; }
+    meta=($(jq -r '"\(._scroll_id)\n\(.hits.hits |length)"' "$TMPFILE"))
+    [[ $? != 0 || ${#meta[@]} != 2 ]] && { perr "Error, jq failed to extract metadata"; return 1; }
+    [[ -z ${meta[0]} ]] && { perr "Error, empty scroll id"; return 1; }
+    SCROLL_IDS["${meta[0]}"]=1
+    cat "$TMPFILE"
+    [[ ${meta[1]} == 0 ]] && return 0
+    "$FUNCNAME" "$index" "$query" "$params" "${meta[0]}"
 }
 
 ARGS=()
@@ -90,5 +89,6 @@ ARGS+=( "$@" )
 
 [[ -z ${ARGS[0]} ]] && exit_usage 1
 
-trap close_scrolls EXIT
+trap on_exit EXIT
+TMPFILE=$(TMPDIR=${TMPDIR:-/dev/shm} mktemp --suffix ".$PROGNAME")
 es-scroll "${ARGS[@]:0:3}"
