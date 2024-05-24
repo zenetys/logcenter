@@ -1,0 +1,34 @@
+#!/bin/bash
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "Usage: ${0#*/} [-w [WATCH-SECONDS]]"
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -w|--watch) watch=${2:-5}; shift ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n $watch ]]; then
+    [[ -z ${watch//[0-9]} ]] || exit_usage 1
+    export WATCHING=1
+    exec watch -n "$watch" "$0"
+fi
+
+es-curl _cat/indices?s=i |
+    if [[ -z $WATCHING ]]; then
+        cat
+    else
+        grep -F -f <({
+            es-curl '_cat/aliases/*,-.*,-ilm-history*?s=a' |awk '$(NF)=="true"{print $2}';
+            es-curl '_data_stream/*,-.*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]';
+        }) |
+        column -t -o ' '
+    fi
