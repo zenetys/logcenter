@@ -1,0 +1,119 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_pipeline_related_ip: false
+
+  - script:
+      lang: painless
+      params:
+        dat_alert_marker: ' Varonis - DatAlert: '
+        rsyslog_decode: true
+        severity2text:
+          # https://help.varonis.com/s/article/Operationalizing-DatAlert-Enable-DatAlert-Rules
+          # https://help.varonis.com/s/document-item?bundleId=dcc1681234878147&topicId=eww1531883726858.html&_LANG=enus
+          # The severity of the alert, according to the numerical code (0-7) defined in the RFC 5424 syslog protocol.
+          [ 'emerg', 'alert', 'crit', 'err', 'warning', 'notice', 'info', 'debug' ]
+        ht: "\t"
+        nl: "\n"
+        cr: "\r"
+      source: |
+        if (!(ctx.host instanceof Map))
+            ctx.host = [:];
+        if (!(ctx.log instanceof Map))
+            ctx.log = [:];
+        if (!(ctx.event instanceof Map))
+            ctx.event = [:];
+        if (!(ctx.event.category instanceof List))
+            ctx.event.category = new ArrayList();
+        if (!(ctx.related instanceof Map))
+            ctx.related = [:];
+        if (!(ctx.related.ip instanceof List))
+            ctx.related.ip = new ArrayList();
+
+        ctx.event.kind = 'alert';
+        ctx.event.category.add('threat');
+
+        def input = ctx.message;
+        if (!(input instanceof String))
+            throw new Exception('message field expected');
+        ctx.event.original = input;
+        ctx.remove('message');
+
+        def pos_dat_alert = input.indexOf(params.dat_alert_marker);
+        if (pos_dat_alert == -1)
+            throw new Exception("cannot find 'Varonis - DatAlert: ' marker");
+        def pos_hostname = input.substring(0, pos_dat_alert).lastIndexOf(' ');
+        if (pos_hostname == -1)
+            throw new Exception('cannot find message start position from hostname');
+
+        ctx.host.name = input.substring(pos_hostname + 1, pos_dat_alert).toLowerCase();
+        def dat_alert = input.substring(pos_dat_alert + params.dat_alert_marker.length());
+
+        if (params.rsyslog_decode) {
+            Pattern pat_charcode = /#0[0-9][0-9]/;
+            dat_alert = dat_alert.replaceAll(pat_charcode, x -> {
+                int c = Integer.parseInt(x.group().substring(1), 10);
+                return ((char) c).toString();
+            });
+        }
+
+        dat_alert = dat_alert.replace(params.cr, '');
+        Pattern pat_kclean = /[^[a-zA-Z0-9_]]/;
+        def dat_alert_len = dat_alert.length();
+        def pos_walk = 0;
+        def pos_nl;
+        def line;
+        def last_key;
+        def varonis = [:];
+        while (pos_walk < dat_alert_len) {
+            pos_nl = dat_alert.indexOf(params.nl, pos_walk);
+            if (pos_nl == -1) {
+                line = dat_alert.substring(pos_walk);
+                pos_walk = dat_alert_len;
+            }
+            else {
+                line = dat_alert.substring(pos_walk, pos_nl);
+                pos_walk = pos_nl + 1;
+            }
+
+            if (ctx.message == null) {
+                ctx.message = line.trim();
+                continue;
+            }
+            if (line.length() == 0)
+                continue;
+            if (line.startsWith(params.ht)) {
+                if (last_key != null)
+                    varonis[last_key] += params.nl + params.ht + line.trim();
+                continue;
+            }
+            def pos_colon = line.indexOf(':');
+            if (pos_colon == -1)
+                continue;
+            def value = line.substring(pos_colon + 1).trim();
+            if (value.length() == 0)
+                continue;
+            def key = line.substring(0, pos_colon).toLowerCase();
+            key = pat_kclean.matcher(key).replaceAll('_');
+            varonis.put(key, value);
+            last_key = key;
+        }
+
+        if (varonis.device_ip_address instanceof String && varonis.device_ip_address.length() > 0)
+            ctx.related.ip.add(varonis.device_ip_address);
+
+        try {
+            varonis.put('severity', Integer.parseInt(varonis.severity));
+            ctx.log.level = params.severity2text[varonis.severity];
+        } catch (Exception e) {}
+
+        ctx.varonis = varonis;
+        ctx.event.remove('original');
+

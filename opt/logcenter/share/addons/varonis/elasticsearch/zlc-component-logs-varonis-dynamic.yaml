@@ -1,0 +1,31 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+      - varonis_text:
+          path_match:
+            - 'varonis.device_ip_address'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - varonis_text:
+          path_match:
+            - 'varonis.rule_storyline'
+            - 'varonis.rule_description'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - varonis_keyword_and_text:
+          path_match:
+            - 'varonis.acting_object'
+            - 'varonis.affected_object'
+            - 'varonis.*name'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text

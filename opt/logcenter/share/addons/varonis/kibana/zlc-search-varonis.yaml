@@ -1,0 +1,54 @@
+attributes:
+  columns:
+    - host.name
+    - varonis.alert_time
+    - varonis.device_hostname
+    - varonis.device_ip_address
+    - varonis.acting_object
+    - message
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 216
+      host.name:
+        width: 136
+      varonis.acting_object:
+        width: 199
+      varonis.alert_time:
+        width: 166
+      varonis.device_hostname:
+        width: 201
+      varonis.device_ip_address:
+        width: 201
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: '# Varonis DatAlert'
+  usesAdHocDataView: false
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-23T16:03:45.204Z"
+id: 25d37bb5-06c9-4a6c-a803-72ecfd01b4c4
+managed: false
+references:
+  - id: 8b22e8d9-fc59-4c1e-9c3a-cbf36ebe3689
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.2.0
+updated_at: "2024-05-23T16:04:06.873Z"
+version: Wzg0NDAsNl0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

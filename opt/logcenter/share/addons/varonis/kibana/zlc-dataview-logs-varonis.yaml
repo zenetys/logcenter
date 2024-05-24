@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{}'
+  fieldFormatMap: '{}'
+  fields: '[]'
+  name: logs-varonis-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-varonis-zlc,logs-varonis-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-23T16:01:02.710Z"
+id: 8b22e8d9-fc59-4c1e-9c3a-cbf36ebe3689
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-23T16:02:51.170Z"
+version: Wzg0MzQsNl0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

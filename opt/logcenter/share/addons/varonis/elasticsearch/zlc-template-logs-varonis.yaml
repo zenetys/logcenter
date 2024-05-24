@@ -1,0 +1,36 @@
+version: 1
+index_patterns:
+  - logs-varonis-zlc
+  - logs-varonis-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-varonis-dynamic
+  - zlc-component-logs-varonis-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-varonis@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-varonis-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-varonis@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias user.name to varonis.acting_object_sam_account_name
+      # alias source.user.name to varonis.acting_object_sam_account_name
+      varonis.acting_object_sam_account_name: { type: keyword, fields: { text: { type: match_only_text } } }
+      user.name: { type: alias, path: varonis.acting_object_sam_account_name }
+      source.user.name: { type: alias, path: varonis.acting_object_sam_account_name }
+
+      # alias event.severity to varonis.severity
+      varonis.severity: { type: long }
+      event.severity: { type: alias, path: varonis.severity }
