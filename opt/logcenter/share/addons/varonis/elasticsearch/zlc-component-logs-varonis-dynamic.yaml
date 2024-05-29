@@ -2,7 +2,7 @@ version: 1
 template:
   mappings:
     dynamic_templates:
-      - varonis_text:
+      - varonis_ip:
           path_match:
             - 'varonis.device_ip_address'
           match_mapping_type: string
