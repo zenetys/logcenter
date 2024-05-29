@@ -1,0 +1,38 @@
+version: 1
+index_patterns:
+  - logs-cisco.sw-zlc
+  - logs-cisco.sw-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-cisco.sw-dynamic
+  - zlc-component-logs-cisco.sw-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-cisco.sw@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-cisco.sw-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-cisco.sw@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias source.user.name to user.name
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
+      source.user.name: { type: alias, path: user.name }
+
+      # alias event.severity to cisco.severity
+      cisco.severity: { type: long }
+      event.severity: { type: alias, path: cisco.severity }
+
+      # alias event.code to cisco.mnemonic
+      cisco.mnemonic: { type: keyword }
+      event.code: { type: alias, path: cisco.mnemonic }

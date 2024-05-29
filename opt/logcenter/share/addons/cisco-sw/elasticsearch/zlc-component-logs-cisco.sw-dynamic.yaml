@@ -1,0 +1,29 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+      - cisco_ip:
+          path_match:
+            - 'cisco.*_ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - cisco_text:
+          path_match:
+            - 'cisco.message'
+            - 'cisco.unparsed_header'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - cisco_keyword_and_text:
+          path_match:
+            - 'cisco.tag'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
