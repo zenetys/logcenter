@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{}'
+  fieldFormatMap: '{}'
+  fields: '[]'
+  name: logs-cisco.sw-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-cisco.sw-zlc,logs-cisco.sw-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-30T13:37:40.645Z"
+id: 48181264-9efb-473b-bbc0-382c2234422d
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-31T20:43:01.304Z"
+version: WzE2NTUsOF0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

@@ -1,0 +1,59 @@
+attributes:
+  columns:
+    - host.name
+    - cisco.facility
+    - log.level
+    - cisco.mnemonic
+    - message
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 245
+      cisco.facility:
+        width: 136
+      cisco.mnemonic:
+        width: 203
+      host.name:
+        width: 161
+      log.level:
+        width: 83
+  headerRowHeight: 0
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"lucene"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing cisco switches
+  usesAdHocDataView: false
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-30T13:37:40.645Z"
+id: 3d9836bb-c45c-49bc-ac8d-04b2c3d6a903
+managed: false
+references:
+  - id: 48181264-9efb-473b-bbc0-382c2234422d
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+  - id: 40306b63-9002-4402-9901-48ea09fe242b
+    name: tag-ref-40306b63-9002-4402-9901-48ea09fe242b
+    type: tag
+  - id: c2673883-923a-44f7-91a7-cf3a0d6e6c95
+    name: tag-ref-c2673883-923a-44f7-91a7-cf3a0d6e6c95
+    type: tag
+type: search
+typeMigrationVersion: 10.2.0
+updated_at: "2024-05-30T13:37:40.645Z"
+version: WzE2MjYsN10=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

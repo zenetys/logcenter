@@ -1,0 +1,19 @@
+attributes:
+  color: '#5af823'
+  description: ""
+  name: cisco
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-30T13:37:40.645Z"
+id: 40306b63-9002-4402-9901-48ea09fe242b
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-30T13:37:40.645Z"
+version: WzEwNDQyLDld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

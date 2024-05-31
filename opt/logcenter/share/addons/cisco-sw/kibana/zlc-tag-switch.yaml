@@ -1,0 +1,19 @@
+attributes:
+  color: '#fa1eaa'
+  description: ""
+  name: switch
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-30T13:37:40.645Z"
+id: c2673883-923a-44f7-91a7-cf3a0d6e6c95
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-30T13:37:40.645Z"
+version: WzEwNDQzLDld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
