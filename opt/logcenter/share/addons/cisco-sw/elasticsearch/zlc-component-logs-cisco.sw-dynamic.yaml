@@ -2,6 +2,13 @@ version: 1
 template:
   mappings:
     dynamic_templates:
+      - cisco_date:
+          path_match:
+            - 'cisco.date'
+          match_mapping_type: string
+          mapping:
+            type: date
+
       - cisco_ip:
           path_match:
             - 'cisco.*_ip'

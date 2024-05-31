@@ -23,6 +23,43 @@ processors:
   - script:
       lang: painless
       #ignore_failure: true
+      on_failure: [ append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' } ]
+      params:
+        iface_prefix:
+          async: true
+          bu: true
+          bundle-ether: true
+          bv: true
+          bvi: true
+          dialer: true
+          do: true
+          dot11radio: true
+          eth: true
+          ethernet: true
+          fa: true
+          fastethernet: true
+          fo: true
+          fortygigabitethernet: true
+          gi: true
+          gigabitethernet: true
+          hu: true
+          hundredgigabitethernet: true
+          lo: true
+          loopback: true
+          mg: true
+          mgmteth: true
+          ml: true
+          multilink: true
+          nu: true
+          null: true
+          po: true
+          port-channel: true
+          se: true
+          serial: true
+          te: true
+          tengigabitethernet: true
+          vl: true
+          vlan: true
       source: |
         String normMac(String input) {
             def output = '';
@@ -30,7 +67,7 @@ processors:
             int ipair = 0;
             for (int i = 0; i < input_len; i++) {
                 char c = input.charAt(i);
-                if ((c >= (char)'0' && c <= (char)'9') || (c >= (char)'a' && c <= (char)'f') || (c >= (char)'A' && c <= (char)'F')) {
+                if (Character.digit(c, 16) > -1) {
                     if (ipair >= 2) {
                         output = output + ':';
                         ipair = 0;
@@ -42,6 +79,31 @@ processors:
             if (output.length() != 17)
                 return null;
             return output;
+        }
+
+        // Add all interfaces in cisco.interface
+        if (!(ctx.cisco instanceof Map))
+            ctx.cisco = [:];
+        if (!(ctx.cisco.interface instanceof List))
+            ctx.cisco.interface = new ArrayList();
+
+        if (ctx.observer?.ingress?.interface?.name != null &&
+            !ctx.cisco.interface.contains(ctx.observer.ingress.interface.name))
+            ctx.cisco.interface.add(ctx.observer.ingress.interface.name);
+        if (ctx.observer?.egress?.interface?.name != null &&
+            !ctx.cisco.interface.contains(ctx.observer.egress.interface.name))
+            ctx.cisco.interface.add(ctx.observer.egress.interface.name);
+        if (ctx.cisco.message instanceof String) {
+            Pattern pat_iface = /(?i)[( ](([a-z]+(?:-[a-z]+)?)\d+(?:\/\d+)*(?:\.\d+)?)\b/;
+            Matcher matcher_iface = pat_iface.matcher(ctx.cisco.message);
+            while (matcher_iface.find()) {
+                def prefix = matcher_iface.group(2).toLowerCase();
+                if (params.iface_prefix[prefix] == true) {
+                    def iface = matcher_iface.group(1);
+                    if (!ctx.cisco.interface.contains(iface))
+                        ctx.cisco.interface.add(iface);
+                }
+            }
         }
 
         // Add all IP addresses to related.ip
@@ -60,47 +122,123 @@ processors:
             ctx.cisco.remove('conflict_ip');
         }
         // is it overkill?
-        //if (ctx.message instanceof String) {
-        //    Pattern pat_ip = /(?i)\b((?:\d+\.\d+\.\d+\.\d+)|(?:[a-f0-9:]{2,}))\b/;
-        //    Matcher matcher_ip = pat_ip.matcher(ctx.message);
-        //    while (matcher_ip.find()) {
-        //        def ip = matcher_ip.group(1);
-        //        try {
-        //            CIDR c = new CIDR(ip); // validate it is an IP...
-        //            if (!ctx.related.ip.contains(ip))
-        //                ctx.related.ip.add(ip);
-        //        } catch (Exception e) {}
-        //    }
-        //}
-
-        // Add all interfaces in cisco.interface
-        if (!(ctx.cisco instanceof Map))
-            ctx.cisco = [:];
-        if (!(ctx.cisco.interface instanceof List))
-            ctx.cisco.interface = new ArrayList();
-
-        if (ctx.observer?.ingress?.interface?.name != null &&
-            !ctx.cisco.interface.contains(ctx.observer.ingress.interface.name))
-            ctx.cisco.interface.add(ctx.observer.ingress.interface.name);
-        if (ctx.observer?.egress?.interface?.name != null &&
-            !ctx.cisco.interface.contains(ctx.observer.egress.interface.name))
-            ctx.cisco.interface.add(ctx.observer.egress.interface.name);
-        if (ctx.message instanceof String) {
-            Pattern pat_iface = /(?i)(?:Interface|Port) ([a-z0-9\/]+(\.[0-9]+)?)/;
-            Matcher matcher_iface = pat_iface.matcher(ctx.message);
-            while (matcher_iface.find()) {
-                def iface = matcher_iface.group(1);
-                if (!ctx.cisco.interface.contains(iface))
-                    ctx.cisco.interface.add(iface);
+        if (ctx.cisco.message instanceof String) {
+            Pattern pat_ip = /(?i)\b((?:\d+\.\d+\.\d+\.\d+)|(?:[a-f0-9:]{2,}))\b/;
+            Matcher matcher_ip = pat_ip.matcher(ctx.cisco.message);
+            int len = ctx.cisco.message.length();
+            while (matcher_ip.find()) {
+                int end = matcher_ip.end(1);
+                if (end < len && ctx.cisco.message.charAt(end) == (char)'/')
+                    continue; // ignore CIDR
+                def ip = matcher_ip.group(1);
+                try {
+                    CIDR c = new CIDR(ip); // validate it is an IP...
+                    if (!ctx.related.ip.contains(ip))
+                        ctx.related.ip.add(ip);
+                } catch (Exception e) {}
             }
         }
 
-        // Normalize MAC. Note ECS wants AA-BB-..., we do aa:bb:... so maybe
-        // adjust globally in main pipeline.
-        if (ctx.source?.mac instanceof String)
+        // Add all MAC address to cisco.mac
+        if (!(ctx.cisco.mac instanceof List))
+            ctx.cisco.mac = new ArrayList();
+
+        if (ctx.source?.mac instanceof String) {
             ctx.source.mac = normMac(ctx.source.mac);
-        if (ctx.destination?.mac instanceof String)
+            if (ctx.source.mac != null && !ctx.cisco.mac.contains(ctx.source.mac))
+                ctx.cisco.mac.add(ctx.source.mac);
+        }
+        if (ctx.destination?.mac instanceof String) {
             ctx.destination.mac = normMac(ctx.destination.mac);
+            if (ctx.destination.mac != null && !ctx.cisco.mac.contains(ctx.destination.mac))
+                ctx.cisco.mac.add(ctx.destination.mac);
+        }
+        if (ctx.cisco.message instanceof String) {
+            Pattern pat_mac = /(?i)\W([0-9a-f]{4}(?:\.[0-9a-f]{4}){2})(?:\W|$)/;
+            Matcher matcher_mac = pat_mac.matcher(ctx.cisco.message);
+            while (matcher_mac.find()) {
+                def mac = normMac(matcher_mac.group(1));
+                if (mac != null && !ctx.cisco.mac.contains(mac))
+                    ctx.cisco.mac.add(mac);
+            }
+        }
+
+  # 37484366: hostname: 37484362: May 24 2024 18:44:13.130 GMT+1:
+  # 355869: 355886: May 31 17:55:00:
+  # 37484362: May 24 2024 18:44:13.130 GMT+1:
+  # 43598507: *Jul  8 09:10:40.793:
+  # hostname: 37484362: May 24 2024 18:44:13.130 GMT+1:
+  # hostname: 2024 Mar 21 13:53:20 PARIS:
+  - grok:
+      field: cisco.unparsed_header
+      ignore_failure: true
+      patterns:
+        - '^%{NONNEGINT:cisco.message_count:int}: %{Z_CISCO_ORIGIN}: %{NUMBER:cisco.sequence:int}: %{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+        - '^%{NONNEGINT:cisco.message_count:int}: %{NUMBER:cisco.sequence:int}: %{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+        - '^%{NONNEGINT:cisco.message_count:int}: %{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+        - '^%{Z_CISCO_ORIGIN}: %{NUMBER:cisco.sequence:int}: %{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+        - '^%{Z_CISCO_ORIGIN}: %{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+        - '^%{Z_CISCO_TIMESTAMP_MAYBE_TZ:cisco.date_raw}:'
+      pattern_definitions:
+        Z_CISCO_HOSTNAME: '[a-zA-Z][a-zA-Z0-9_-]{0,62}(?:\.[a-zA-Z0-9_-]+)*'
+        Z_CISCO_ORIGIN: '%{IP}|%{Z_CISCO_HOSTNAME:_.hostname}'
+        Z_CISCO_TIMESTAMP_YEAR_BEFORE: '2[0-9]{3} %{MONTH} +%{MONTHDAY} %{TIME}'
+        Z_CISCO_TIMESTAMP: '%{CISCOTIMESTAMP}|%{Z_CISCO_TIMESTAMP_YEAR_BEFORE}'
+        Z_CISCO_TZ_STD: '[a-zA-Z]{1,4}([+-]\d{2}:\d{2}|[+-]\d{1,2})?'
+        Z_CISCO_TZ: '%{Z_CISCO_TZ_STD}|%{WORD}'
+        Z_CISCO_TIMESTAMP_MAYBE_TZ: '[*.]?%{Z_CISCO_TIMESTAMP:_.date_no_tz}(?: %{Z_CISCO_TZ:_.tz})?'
+
+  # Set host.name from cisco.unparsed_header grok parsing.
+  - set:
+      field: host.name
+      copy_from: _.hostname
+      if: 'ctx._.hostname != null && (ctx.host?.name == null || ctx.host?.name == ctx.host?.ip)'
+
+  # Try to parse cisco.date_raw from cisco.unparsed_header grok parsing.
+  # First, try to replace timezone with its valid java counterpart, also
+  # remove potential left space padding on the day. Try parsing the date,
+  # with timezone if present, or else assume it is in UTC.
+  - script:
+      lang: painless
+      ignore_failure: true
+      params:
+        tz_norm:
+          FR: 'Europe/Paris'
+          FRANCE: 'Europe/Paris'
+          PARIS: 'Europe/Paris'
+      source: |
+        if (ctx._.tz != null && params.tz_norm[ctx._.tz] != null)
+            ctx._.tz = params.tz_norm[ctx._.tz];
+        if (ctx._.date_no_tz != null)
+            ctx._.date_no_tz = ctx._.date_no_tz.replace('  ', ' ');
+  - date:
+      ignore_failure: true
+      if: ctx._.date_no_tz != null && ctx._.tz != null
+      field: _.date_no_tz
+      target_field: cisco.date
+      timezone: '{{{ _.tz }}}'
+      formats:
+        - "MMM d yyyy HH:mm:ss.SSS"
+        - "MMM d yyyy HH:mm:ss"
+        - "yyyy MMM d HH:mm:ss.SSS"
+        - "yyyy MMM d HH:mm:ss"
+        - "MMM d HH:mm:ss.SSS"
+        - "MMM d HH:mm:ss"
+  - date:
+      ignore_failure: true
+      if: ctx._.date_no_tz != null && ctx._.tz == null
+      field: _.date_no_tz
+      target_field: cisco.date
+      timezone: UTC
+      formats:
+        - "MMM d yyyy HH:mm:ss.SSS"
+        - "MMM d yyyy HH:mm:ss"
+        - "yyyy MMM d HH:mm:ss.SSS"
+        - "yyyy MMM d HH:mm:ss"
+        - "MMM d HH:mm:ss.SSS"
+        - "MMM d HH:mm:ss"
 
   # Do not keep cisco.message, it is contained in base message field.
   - remove: { field: cisco.message, ignore_missing: true }
+  # Do not keep cisco.unparsed_header if grok parsing succeeded.
+  - remove: { field: cisco.unparsed_header, ignore_missing: true, if: 'ctx.cisco?.date_raw != null' }
