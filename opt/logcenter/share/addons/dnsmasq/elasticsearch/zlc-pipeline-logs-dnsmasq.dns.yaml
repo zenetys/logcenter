@@ -14,4 +14,5 @@ processors:
       field: dns.question.name
       target_field: dns.question
       if: ctx.dns?.question?.name instanceof String &&
-          !ctx.dns.question.name.endsWith('.in-addr.arpa')
+          !ctx.dns.question.name.endsWith('.in-addr.arpa') &&
+          !ctx.dns.question.name.endsWith('.ip6.arpa')
