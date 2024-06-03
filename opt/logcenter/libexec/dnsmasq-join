@@ -131,6 +131,7 @@ with_entries(
         ref: .value |map(.ref),
         doc: {
             "@timestamp": $query[0].doc["@timestamp"],
+            tags: $query[0].doc.tags,
             host: $query[0].doc.host,
             source: $query[0].doc.source,
             dnsmasq: {
