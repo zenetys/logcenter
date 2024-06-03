@@ -10,9 +10,6 @@ processors:
       value:
         enable_pipeline_related_ip: false
 
-  - split: { field: event.category, separator: '[,\s]+', if: 'ctx.event?.category instanceof String' }
-  - split: { field: event.type, separator: '[,\s]+', if: 'ctx.event?.type instanceof String' }
-
   # In case a source/destination.ip are not valid IP addresses,
   # move to source/destination.address.
   - convert: { field: source.ip, type: ip, ignore_missing: true, on_failure: [

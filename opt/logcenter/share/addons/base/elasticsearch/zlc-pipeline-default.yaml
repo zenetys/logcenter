@@ -22,20 +22,16 @@ processors:
       ignore_empty_value: true
       override: false
 
+  # Those fields should be arrays. As it is tough to build JSON arrays from
+  # rsyslog, we make comma-separated strings, so split them.
+  - split: { field: event.category, separator: '[,\s]+', if: 'ctx?.event?.category instanceof String' }
+  - split: { field: event.type, separator: '[,\s]+', if: 'ctx?.event?.type instanceof String' }
+
   # Hook for a per-datastream pipeline.
   - pipeline:
       name: zlc-pipeline-logs-{{{ data_stream.dataset }}}
       if: ctx.data_stream?.type == 'logs' && ctx.data_stream?.dataset != null
       ignore_missing_pipeline: true
-
-  - split:
-      field: event.category
-      separator: '[,\s]+'
-      if: ctx?.event?.category instanceof String
-  - split:
-      field: event.type
-      separator: '[,\s]+'
-      if: ctx?.event?.type instanceof String
 
   # Set default @timestamp value.
   - set:
