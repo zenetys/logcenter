@@ -45,6 +45,9 @@ references:
   - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
+  - id: d1984744-9fde-4fbb-a0c6-79e933a08504
+    name: tag-ref-d1984744-9fde-4fbb-a0c6-79e933a08504
+    type: tag
 type: dashboard
 typeMigrationVersion: 8.9.0
 updated_at: "2024-05-16T07:39:08.989Z"

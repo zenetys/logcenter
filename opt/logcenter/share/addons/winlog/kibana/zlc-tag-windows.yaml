@@ -1,0 +1,19 @@
+attributes:
+  color: '#d9af2f'
+  description: ""
+  name: windows
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-03T09:56:09.516Z"
+id: d1984744-9fde-4fbb-a0c6-79e933a08504
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-03T09:56:09.516Z"
+version: WzExNTIwLDEyXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
