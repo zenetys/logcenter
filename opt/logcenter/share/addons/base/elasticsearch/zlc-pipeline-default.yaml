@@ -26,6 +26,7 @@ processors:
   # rsyslog, we make comma-separated strings, so split them.
   - split: { field: event.category, separator: '[,\s]+', if: 'ctx?.event?.category instanceof String' }
   - split: { field: event.type, separator: '[,\s]+', if: 'ctx?.event?.type instanceof String' }
+  - split: { field: tags, separator: '[,\s]+', if: 'ctx?.tags instanceof String' }
 
   # Hook for a per-datastream pipeline.
   - pipeline:
