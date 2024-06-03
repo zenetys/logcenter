@@ -1,0 +1,13 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  # As it is tough to build JSON arrays from rsyslog, we make comma-separated
+  # strings, so split them.
+  - split: { field: tags, separator: '[,\s]+', if: 'ctx?.tags instanceof String' }
+
+  # Reroute for normal ingest using elastic integration pipeline.
+  - reroute: { namespace: ep }
