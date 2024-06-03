@@ -26,6 +26,8 @@ prefix=%[
     { "type": "literal", "text": ": " } ]%
 
 # <142>Jan 16 14:03:54 Message forwarded from srv-ora-01: Oracle Audit[1382197]: LENGTH:...
+# <142>May 23 15:48:22 Message forwarded from srv-ora-01: Oracle Unified Audit[63439104]: LENGTH:...
+# Note: this rule may NOT be strict enough
 rule=:%[
     { "type": "char-to", "extradata": "[", "name": "app-name" },
     { "type": "literal", "text": "[" },
