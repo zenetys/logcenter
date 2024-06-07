@@ -273,7 +273,7 @@ function do_file_type_integration() {
             .ep_download_url//"",
             .epr_url//"",
             .epr_package//"",
-            (.pick |@json)
+            (if .pick == null then "" else .pick |@json end)
         ] |@sh'))
 
         if [[ -n ${spec[0]} ]]; then
