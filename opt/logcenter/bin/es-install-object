@@ -28,6 +28,7 @@ Available options:
     -k, --keep              Keep downloaded files
     -P, --proxy  VALUE      HTTP proxy for external requests, eg: downloads
     --overwrite             (Re)install protected objects even if exist
+    --dry-run               Do install anything, print what would be done
     -d, --debug             Enable debug
     -h, --help              Display this help
 
