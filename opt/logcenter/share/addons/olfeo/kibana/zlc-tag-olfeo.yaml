@@ -1,0 +1,20 @@
+attributes:
+  color: '#fdd575'
+  description: ""
+  name: olfeo
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-12T21:31:09.200Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 57d5bc56-0ce6-4ca2-8a08-66a257693869
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-12T21:31:09.200Z"
+version: WzQ0MCwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

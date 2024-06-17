@@ -1,0 +1,23 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - olfeo_keyword_and_text:
+          path_match:
+            - 'olfeo.*_label'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
+
+      - olfeo_epoch_timestamp:
+          path_match:
+            - 'olfeo.timestamp'
+          match_mapping_type: long
+          mapping:
+            type: date
+            format: epoch_second

@@ -1,0 +1,26 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"http.response.body.bytes":{}}'
+  fieldFormatMap: '{"http.response.body.bytes":{"id":"bytes","params":{}}}'
+  fields: '[]'
+  name: logs-proxy.olfeo-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-proxy.olfeo-zlc,logs-proxy.olfeo-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-12T21:12:29.576Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: d27102a8-f579-40fe-b0f7-63fefac1452a
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-12T21:58:15.242Z"
+version: WzE1MywxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
