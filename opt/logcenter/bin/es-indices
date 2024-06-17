@@ -28,7 +28,7 @@ es-curl _cat/indices?s=i |
     else
         grep -F -f <({
             es-curl '_cat/aliases/*,-.*,-ilm-history*?s=a' |awk '$(NF)=="true"{print $2}';
-            es-curl '_data_stream/*,-.*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]';
+            es-curl '_data_stream/*,-.*,.monitoring-es-*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]'
         }) |
         column -t -o ' '
     fi
