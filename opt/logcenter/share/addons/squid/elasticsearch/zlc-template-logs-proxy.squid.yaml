@@ -1,0 +1,37 @@
+version: 1
+index_patterns:
+  - logs-proxy.squid-zlc
+  - logs-proxy.squid-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-proxy.squid-dynamic
+  - zlc-component-logs-proxy.squid-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-proxy.squid@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-proxy.squid-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-proxy.squid@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias event.code to squid.request_status
+      squid.request_status: { type: keyword }
+      event.code: { type: alias, path: squid.request_status }
+
+      # alias source.user.domain to user.domain
+      user.domain: { type: keyword }
+      source.user.domain: { type: alias, path: user.domain }
+      # alias source.user.name to user.name
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
+      source.user.name: { type: alias, path: user.name }

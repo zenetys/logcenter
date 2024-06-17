@@ -56,6 +56,5 @@ rule=squid,squid.access:%[
     { "type": "word",       "name": "http.response.mime_type" },
     { "type": "rest" } ]%
 
-annotate=squid:+service.type="squid"
-annotate=squid.access:+service.name="access"
-annotate=squid.access:+event.category="network"
+annotate=squid.access:+event.provider="access"
+annotate=squid.access:+event.category="network,web"

@@ -1,0 +1,26 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"http.response.bytes":{},"squid.response_time_ms":{}}'
+  fieldFormatMap: '{"http.response.bytes":{"id":"bytes","params":{}},"squid.response_time_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","outputPrecision":2,"includeSpaceWithSuffix":true,"useShortSuffix":true}}}'
+  fields: '[]'
+  name: logs-proxy.squid-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-proxy.squid-zlc,logs-proxy.squid-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-13T01:19:19.751Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: c3a55cf9-184a-4acf-a1ea-d43b876685db
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-13T01:53:04.466Z"
+version: WzM0OCwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

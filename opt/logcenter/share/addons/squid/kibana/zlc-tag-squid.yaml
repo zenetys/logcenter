@@ -1,0 +1,20 @@
+attributes:
+  color: '#dfa438'
+  description: ""
+  name: squid
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-13T01:35:36.495Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 75a48a1e-6863-4fbd-aed4-da4890a70ebb
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-13T01:35:36.495Z"
+version: WzE2NDYsMV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

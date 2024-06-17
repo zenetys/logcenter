@@ -1,0 +1,16 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - squid_keyword_and_text:
+          path_match:
+            - 'squid.request_status'
+            - 'squid.hierarchy_status'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text

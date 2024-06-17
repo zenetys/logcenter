@@ -1,0 +1,20 @@
+attributes:
+  color: '#545293'
+  description: ""
+  name: proxy
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-12T21:30:48.605Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: b92d80be-0576-4929-bead-dac9c62a958b
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-12T21:30:48.605Z"
+version: WzQzOSwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
