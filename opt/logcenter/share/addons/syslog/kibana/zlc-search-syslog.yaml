@@ -1,0 +1,59 @@
+attributes:
+  columns:
+    - host.ip
+    - host.name
+    - log.syslog.facility.name
+    - log.syslog.severity.name
+    - log.syslog.appname
+    - message
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 232
+      host.ip:
+        width: 113
+      host.name:
+        width: 182
+      log.syslog.appname:
+        width: 142
+      log.syslog.facility.name:
+        width: 70
+      log.syslog.severity.name:
+        width: 85
+  headerRowHeight: 0
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 0
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing syslog
+  usesAdHocDataView: false
+coreMigrationVersion: 8.8.0
+created_at: "2024-04-02T11:31:05.186Z"
+id: ff8387b7-ac2c-49ff-b277-51a7220033cd
+managed: false
+references:
+  - id: aa6a3b4c-a340-4ac0-9292-e65e08d10139
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: b9a3e9d0-d9f1-42c6-880a-4e15c26f14e6
+    name: tag-ref-b9a3e9d0-d9f1-42c6-880a-4e15c26f14e6
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.3.0
+updated_at: "2024-06-17T07:58:09.721Z"
+version: WzM4MzMsNV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

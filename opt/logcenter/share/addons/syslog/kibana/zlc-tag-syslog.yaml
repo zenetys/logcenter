@@ -1,0 +1,19 @@
+attributes:
+  color: '#bd7d4f'
+  description: ""
+  name: syslog
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-28T13:51:12.296Z"
+id: b9a3e9d0-d9f1-42c6-880a-4e15c26f14e6
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-28T13:51:12.296Z"
+version: WzUxNzAsNF0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

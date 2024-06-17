@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{}'
+  fieldFormatMap: '{}'
+  fields: '[]'
+  name: logs-syslog-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-syslog-zlc,logs-syslog-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-05-28T13:51:12.296Z"
+id: aa6a3b4c-a340-4ac0-9292-e65e08d10139
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-05-28T13:51:12.296Z"
+version: WzM4NiwzXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
