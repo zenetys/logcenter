@@ -1,0 +1,33 @@
+version: 1
+index_patterns:
+  - logs-w3c-zlc
+  - logs-w3c-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-w3c-dynamic
+  - zlc-component-logs-w3c-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-w3c@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-w3c-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-w3c@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias source.user.domain to user.domain
+      user.domain: { type: keyword }
+      source.user.domain: { type: alias, path: user.domain }
+      # alias source.user.name to user.name
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
+      source.user.name: { type: alias, path: user.name }

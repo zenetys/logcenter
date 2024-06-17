@@ -1,0 +1,10 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+      - w3c_date:
+          path_match:
+            - 'w3c.timestamp'
+          match_mapping_type: string
+          mapping:
+            type: date
