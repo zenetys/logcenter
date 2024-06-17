@@ -25,6 +25,16 @@ processors:
         value: '{{{ destination.nat.ip }}}'
         allow_duplicates: false
         if: ctx.destination?.nat?.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ client.ip }}}'
+        allow_duplicates: false
+        if: ctx.client?.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ server.ip }}}'
+        allow_duplicates: false
+        if: ctx.server?.ip != null
   - foreach:
       field: dns.resolved_ip
       if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List
