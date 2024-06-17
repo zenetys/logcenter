@@ -22,7 +22,7 @@ attributes:
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
-    searchSourceJSON: '{"query":{"query":"","language":"lucene"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
   rowHeight: -1
   sort:
     - - '@timestamp'
