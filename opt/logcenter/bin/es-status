@@ -29,6 +29,39 @@ echo "# es-curl _cat/nodes"
 es-curl _cat/nodes?s=n
 echo
 
+echo "# es-curl _nodes/stats/fs (used)"
+es-curl _nodes/stats/fs |
+    jq --arg human 1 -r '
+def numfmt2:
+    . * 100 |
+        round |
+        tostring |
+        sub("(?<x>..)$"; ".\(.x)")
+    ;
+def human_bytes:
+    def hb(v; u):
+        if (u |length) == 1 or v < 1000 then
+            "\(v |numfmt2)\(u[0])B"
+        else
+            hb(v/1024; u[1:])
+        end
+        ;
+    hb(.; ["","K","M","G","T","P"])
+    ;
+.nodes |to_entries |map(
+    .value |
+    . + { used_bytes: (.fs.total.total_in_bytes - .fs.total.available_in_bytes) } |
+    . + { used_pct: (.used_bytes*100/.fs.total.total_in_bytes) } |
+    if $human == "1" then
+        .fs.total.total_in_bytes |= human_bytes |
+        .fs.total.available_in_bytes |= human_bytes |
+        .used_bytes |= human_bytes
+    else . end |
+    "\(.name)\t\(.ip|sub(":.*"; ""))\t\(.fs.total.total_in_bytes)\t\(.used_bytes)\t\(.used_pct |numfmt2)%"
+) |sort[]' |
+    column -t -o ' '
+echo
+
 echo "# es-curl _cluster/settings"
 es-curl _cluster/settings |jq -cM .
 echo
