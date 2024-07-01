@@ -1,0 +1,208 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_remove_empty_fields: false
+
+  - fail:
+      message: 'cisco.wsa.* fields expected'
+      if: (ctx.cisco?.wsa instanceof Map) == false
+
+  - script:
+      id: zlc-script-ingest-remove-empty-fields
+      params:
+        empty_string: [ '', '-' ]
+
+  - uri_parts:
+      if: 'ctx.url?.original != null'
+      field: url.original
+      target_field: url
+      keep_original: true
+
+  - registered_domain:
+      if: 'ctx.url?.domain != null'
+      field: url.domain
+      target_field: url
+
+  - script:
+      lang: painless
+      params:
+        url_cat_fields:
+          - webcat
+          - webcat_req
+          - webcat_resp
+        url_cat_specs:
+          IW_adlt: { code: '1006', name: 'Adult' }
+          IW_adv: { code: '1027', name: 'Advertisements' }
+          IW_alc: { code: '1077', name: 'Alcohol' }
+          IW_art: { code: '1002', name: 'Arts' }
+          IW_astr: { code: '1074', name: 'Astrology' }
+          IW_auct: { code: '1088', name: 'Auctions' }
+          IW_aud: { code: '1073', name: 'Streaming Audio' }
+          IW_busi: { code: '1019', name: 'Business and Industry' }
+          IW_cach: { code: '1108', name: 'Web Cache and Archives' }
+          IW_cann: { code: '1109', name: 'Cannabis' }
+          IW_card: { code: '1082', name: 'Digital Postcards' }
+          IW_cell: { code: '1070', name: 'Mobile Phones' }
+          IW_chat: { code: '1040', name: 'Chat and Instant Messaging' }
+          IW_comm: { code: '1024', name: 'Online Communities' }
+          IW_comp: { code: '1003', name: 'Computers and Internet' }
+          IW_cprn: { code: '1064', name: 'Child Abuse Content' }
+          IW_cryp: { code: '1111', name: 'Cryptocurrency' }
+          IW_csec: { code: '1065', name: 'Computer Security' }
+          IW_date: { code: '1055', name: 'Dating' }
+          IW_ddns: { code: '1114', name: 'Dynamic DNS Provider' }
+          IW_diy: { code: '1097', name: 'DIY Projects' }
+          IW_docs: { code: '1115', name: 'Online Document Sharing and Collaboration' }
+          IW_doht: { code: '1113', name: 'DoH and DoT' }
+          IW_drug: { code: '1047', name: 'Illegal Drugs' }
+          IW_dyn: { code: '1091', name: 'Dynamic and Residential' }
+          IW_edu: { code: '1001', name: 'Education' }
+          IW_ent: { code: '1093', name: 'Entertainment' }
+          IW_expo: { code: '1110', name: 'Conventions, Conferences and Trade Shows' }
+          IW_extr: { code: '1075', name: 'Extreme' }
+          IW_fash: { code: '1076', name: 'Fashion' }
+          IW_filt: { code: '1025', name: 'Filter Avoidance' }
+          IW_fnnc: { code: '1015', name: 'Finance' }
+          IW_food: { code: '1061', name: 'Dining and Drinking' }
+          IW_free: { code: '1068', name: 'Freeware and Shareware' }
+          IW_fts: { code: '1071', name: 'File Transfer Services' }
+          IW_gamb: { code: '1049', name: 'Gambling' }
+          IW_game: { code: '1007', name: 'Games' }
+          IW_gov: { code: '1011', name: 'Government and Law' }
+          IW_hack: { code: '1050', name: 'Hacking' }
+          IW_hate: { code: '1016', name: 'Hate Speech' }
+          IW_hmed: { code: '1104', name: 'Health and Medicine' }
+          IW_hunt: { code: '1022', name: 'Hunting' }
+          IW_ilac: { code: '1022', name: 'Illegal Activities' }
+          IW_ildl: { code: '1084', name: 'Illegal Downloads' }
+          IW_img: { code: '1090', name: 'Photo Search and Images' }
+          IW_infr: { code: '1018', name: 'Infrastructure and Content Delivery Networks' }
+          IW_iot: { code: '1116', name: 'Internet of Things' }
+          IW_job: { code: '1004', name: 'Job Search' }
+          IW_kids: { code: '1057', name: 'Safe for Kids' }
+          IW_ling: { code: '1031', name: 'Lingerie and Swimsuits' }
+          IW_lol: { code: '1079', name: 'Humor' }
+          IW_lotr: { code: '1034', name: 'Lotteries' }
+          IW_mail: { code: '1038', name: 'Web-based Email' }
+          IW_meet: { code: '1100', name: 'Online Meetings' }
+          IW_mil: { code: '1099', name: 'Military' }
+          IW_mine: { code: '1112', name: 'Cryptomining' }
+          IW_muse: { code: '1117', name: 'Museums' }
+          IW_nact: { code: '1103', name: 'Not Actionable' }
+          IW_ncon: { code: '1106', name: 'Nature and Conservation' }
+          IW_news: { code: '1058', name: 'News' }
+          IW_ngo: { code: '1087', name: 'Non-governmental Organizations' }
+          IW_nsn: { code: '1060', name: 'Non-sexual Nudity' }
+          IW_osb: { code: '1066', name: 'Online Storage and Backup' }
+          IW_p2p: { code: '1056', name: 'Peer File Transfer' }
+          IW_park: { code: '1092', name: 'Parked Domains' }
+          IW_pem: { code: '1085', name: 'Organizational Email' }
+          IW_pers: { code: '1081', name: 'Personal Sites' }
+          IW_pets: { code: '1107', name: 'Animals and Pets' }
+          IW_piah: { code: '1121', name: 'Private IP Addresses as Host' }
+          IW_plag: { code: '1051', name: 'Cheating and Plagiarism' }
+          IW_pnet: { code: '1089', name: 'Professional Networking' }
+          IW_pol: { code: '1083', name: 'Politics' }
+          IW_porn: { code: '1054', name: 'Pornography' }
+          IW_prnm: { code: '1101', name: 'Paranormal' }
+          IW_pvpn: { code: '1102', name: 'Personal VPN' }
+          IW_reci: { code: '1105', name: 'Recipes and Food' }
+          IW_ref: { code: '1017', name: 'Reference' }
+          IW_rel: { code: '1086', name: 'Religion' }
+          IW_rest: { code: '1045', name: 'Real Estate' }
+          IW_saas: { code: '1080', name: 'SaaS and B2B' }
+          IW_sci: { code: '1012', name: 'Science and Technology' }
+          IW_scty: { code: '1010', name: 'Society and Culture' }
+          IW_serv: { code: '1118', name: 'Cloud and Data Centers' }
+          IW_shop: { code: '1005', name: 'Shopping' }
+          IW_shrt: { code: '1120', name: 'URL Shorteners' }
+          IW_snet: { code: '1069', name: 'Social Networking' }
+          IW_socs: { code: '1014', name: 'Social Science' }
+          IW_sprt: { code: '1008', name: 'Sports and Recreation' }
+          IW_srch: { code: '1020', name: 'Search Engines and Portals' }
+          IW_swup: { code: '1053', name: 'Software Updates' }
+          IW_sxed: { code: '1052', name: 'Sex Education' }
+          IW_terr: { code: '1119', name: 'Terrorism and Violent Extremism' }
+          IW_tob: { code: '1078', name: 'Tobacco' }
+          IW_trad: { code: '1028', name: 'Online Trading' }
+          IW_tran: { code: '1063', name: 'Web Page Translation' }
+          IW_trns: { code: '1044', name: 'Transportation' }
+          IW_trvl: { code: '1046', name: 'Travel' }
+          IW_tunn: { code: '1122', name: 'DNS-Tuneling' }
+          IW_vid: { code: '1072', name: 'Streaming Video' }
+          IW_voip: { code: '1067', name: 'Internet Telephony' }
+          IW_weap: { code: '1036', name: 'Weapons' }
+          IW_whst: { code: '1037', name: 'Web Hosting' }
+          IW_xdeu: { code: '1125', name: 'Regional Restricted Sites (Germany)' }
+          IW_xgbr: { code: '1123', name: 'Regional Restricted Sites (Great Britain)' }
+          IW_xita: { code: '1124', name: 'Regional Restricted Sites (Italy)' }
+          IW_xpol: { code: '1126', name: 'Regional Restricted Sites (Poland)' }
+      source: |
+        // @timestamp
+        ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000);
+
+        // log.lovel
+        if (ctx.log?.level instanceof String)
+            ctx.log.level = ctx.log.level.toLowerCase();
+
+        // destination.address
+        if (ctx.destination?.ip instanceof String)
+            ctx.destination.address = ctx.destination.ip;
+        else if (ctx.destination?.domain instanceof String)
+            ctx.destination.address = ctx.destination.domain;
+
+        // cisco.wsa.acltag
+        if (ctx.cisco.wsa.acltag instanceof String) {
+            def dash = ctx.cisco.wsa.acltag.indexOf('-');
+            if (dash > -1) {
+                def pat_ignore = /_[0-9]+$/;
+                ctx.cisco.wsa.acltag_decision = ctx.cisco.wsa.acltag.substring(0, dash);
+                ctx.cisco.wsa.acltag_decision = pat_ignore.matcher(ctx.cisco.wsa.acltag_decision)
+                    .replaceFirst('');
+            }
+        }
+
+        // url category fields
+        for (int i = 0; i < params.url_cat_fields.length; i++) {
+            def abbr = ctx.cisco.wsa[params.url_cat_fields[i] + '_code_abbr'];
+            if (!(abbr instanceof String))
+                continue;
+            def spec = params.url_cat_specs[abbr];
+            if (spec == null)
+                ctx.cisco.wsa[params.url_cat_fields[i] + '_name'] = '('+abbr+')';
+            else {
+                ctx.cisco.wsa[params.url_cat_fields[i] + '_code'] = spec.code;
+                ctx.cisco.wsa[params.url_cat_fields[i] + '_name'] = spec.name+' ('+abbr+')';
+            }
+        }
+
+  # should already be a number in input JSON
+  - convert: { field: http.response.status_code, type: long, ignore_missing: true }
+  - convert: { field: http.response.bytes, type: long, ignore_missing: true }
+  - convert: { field: cisco.wsa.elapsed_time_ms, type: long, ignore_missing: true }
+
+  # based on sample logs, assume it is always a number
+  - convert: { field: cisco.wsa.avg_bw, type: float, ignore_missing: true }
+  - convert: { field: cisco.wsa.bw_throttled, type: long, ignore_missing: true }
+
+  # cisco.wsa.wbrs_score may be string "ns" or "dns"
+  # cisco.wsa.amp_score is not defined properly in documentation,
+  # assume it would be a number
+  - convert: { field: cisco.wsa.wbrs_score, target_field: cisco.wsa.wbrs_score_num, type: long, ignore_missing: true, ignore_failure: true }
+  - convert: { field: cisco.wsa.amp_score, target_field: cisco.wsa.amp_score_num, type: long, ignore_missing: true, ignore_failure: true }
+
+  # should be 0/1 flags, may be indexed as keywords
+  #- convert: { field: cisco.wsa.webroot_scanverdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.mcafee_scanverdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.sophos_scanverdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.icap_verdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.ids_verdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.amp_verdict, type: long, ignore_missing: true }
+  #- convert: { field: cisco.wsa.amp_upload, type: long, ignore_missing: true }

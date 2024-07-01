@@ -1,0 +1,47 @@
+version: 1
+index_patterns:
+  - logs-proxy.cisco.wsa-zlc
+  - logs-proxy.cisco.wsa-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-proxy.cisco.wsa-dynamic
+  - zlc-component-logs-proxy.cisco.wsa-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-proxy.cisco.wsa@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-proxy.cisco.wsa-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-proxy.cisco.wsa@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias source.user.domain to user.domain
+      user.domain: { type: keyword }
+      source.user.domain: { type: alias, path: user.domain }
+      # alias source.user.name to user.name
+      user.name: { type: keyword, fields: { text: { type: match_only_text } } }
+      source.user.name: { type: alias, path: user.name }
+
+      # alias source.ip to client.ip
+      client.ip: { type: ip }
+      source.ip: { type: alias, path: 'client.ip' }
+
+      # alias squid.request_status to cisco.wsa.result_code
+      cisco.wsa.result_code: { type: keyword }
+      squid.request_status: { type: alias, path: 'cisco.wsa.result_code' }
+      # alias squid.hierarchy_status to cisco.wsa.hierarchy
+      cisco.wsa.hierarchy: { type: keyword }
+      squid.hierarchy_status: { type: alias, path: 'cisco.wsa.hierarchy' }
+      # alias squid.last_peer to destination.address
+      destination.address: { type: keyword }
+      squid.last_peer: { type: alias, path: 'destination.address' }
