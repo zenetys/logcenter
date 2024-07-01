@@ -146,6 +146,9 @@ while read -r; do
         fi
     fi
 
+    # File counters
+    COUNTERS=( $(wc < "$ZLC_ARCHIVES_DIR/$REPLY") )
+
     # Compress the file.
     SECONDS=0
     nice -n 19 xz "${ZLC_XZ_OPTS[@]}" ${QUIET:+-q} \
@@ -154,7 +157,17 @@ while read -r; do
 
     if (( $? == 0 )); then
         (( success++ ))
-        info "Done compressing $REPLY in ${SECONDS}s"
+
+        # Add compressed duration and size
+        COUNTERS+=( "$SECONDS" )
+        COUNTERS+=( $(stat -c %s "$ZLC_ARCHIVES_DIR/$xfiletmp") )
+
+        CSTRING="in ${COUNTERS[3]}s, "
+        CSTRING+="${COUNTERS[0]} lines, "
+        CSTRING+="${COUNTERS[1]} words, "
+        CSTRING+="${COUNTERS[2]} bytes, "
+        CSTRING+="${COUNTERS[4]} bytes compressed."
+        info "Done compressing $REPLY $CSTRING"
     else
         (( error++ ))
         error "Call to xz failed, error compressing $REPLY"
