@@ -1,0 +1,14 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'event.module, string expected'
+      if: (ctx.event?.module instanceof String) == false
+
+  - pipeline:
+      name: zlc-pipeline-cisco-esa-{{{ event.module }}}
+      ignore_missing_pipeline: true

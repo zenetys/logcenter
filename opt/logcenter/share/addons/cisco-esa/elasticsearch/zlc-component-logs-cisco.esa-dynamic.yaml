@@ -1,0 +1,52 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - cisco_esa_ip:
+          path_match:
+            - 'cisco.esa.*IP'
+            - 'cisco.esa.DHASource'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - cisco_esa_date:
+          path_match:
+            - 'cisco.esa.ICIDTimestamp'
+            - 'cisco.esa.DCIDTimestamp'
+          match_mapping_type: string
+          mapping:
+            type: date
+
+      - cisco_esa_double:
+          path_match:
+            - 'cisco.esa.SBRSScore'
+          match_mapping_type: [ long, double ]
+          mapping:
+            type: double
+
+      - cisco_esa_keyword_and_text:
+          path_match:
+            - 'cisco.esa.*_raw'
+            - 'cisco.esa.*Country'
+            - 'cisco.esa.FriendlyFrom'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
+
+      - cisco_esa_flattened:
+          path_match:
+            - 'cisco.esa.AttachmentDetails'
+            - 'cisco.esa.CustomLogs'
+            - 'cisco.esa.LogHeaders'
+            - 'cisco.esa.MARAction'
+            - 'cisco.esa.SPFVerdict'
+            - 'cisco.esa.URLDetails'
+          match_mapping_type: object
+          mapping:
+            type: flattened

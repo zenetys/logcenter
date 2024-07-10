@@ -1,0 +1,239 @@
+/* version 2 */
+
+String unescapeCef(String input) {
+    StringBuilder buffer = new StringBuilder();
+    char bs = (char)'\\';
+    for (int i = 0, l = input.length(); i < l; i++) {
+        char c = input.charAt(i);
+        if (i < l-1) {
+            char cc = input.charAt(i+1);
+            if (c == bs && (cc == bs || cc == (char)'=')) {
+                c = cc;
+                i++;
+            }
+        }
+        buffer.append(c);
+    }
+    return buffer.toString();
+}
+
+String unescapeQuotedCefExtension(String input) {
+    int l = input.length();
+    if (l < 2)
+        return input;
+    char q, qd = (char)'"', qs = (char)'\'', bs = (char)'\\';
+    if (input.charAt(0) == qs && input.charAt(l-1) == qs)
+        q = qs;
+    else if (input.charAt(0) == qd && input.charAt(l-1) == qd)
+        q = qd;
+    else
+        return input;
+
+    StringBuilder buffer = new StringBuilder();
+    for (int i = 1; i < l-1; i++) {
+        char c = input.charAt(i);
+        if (i < l-2) {
+            char cc = input.charAt(i+1);
+            if (c == bs && (cc == bs || cc == q)) {
+                c = cc;
+                i++;
+            }
+        }
+        buffer.append(c);
+    }
+    return buffer.toString();
+}
+
+/**
+ * Looks like JSON but with single quotes and \x.. sequences
+ * where the backslash was not escaped.
+ * @throws
+ */
+Map decodeEsaObject(String input) {
+    String rest = input;
+    StringBuilder buffer = new StringBuilder();
+    while (true) {
+        def pos = rest.indexOf("\\x");
+        if (pos == -1) {
+            buffer.append(rest.replace("'", '"'));
+            break;
+        }
+        buffer.append(rest.substring(0, pos).replace("'", '"'));
+        rest = rest.substring(pos + 2);
+        if (buffer.charAt(buffer.length()-1) != (char)'\\' &&
+            rest.length() >= 2 &&
+            Character.digit(rest.charAt(0), 16) > -1 &&
+            Character.digit(rest.charAt(1), 16) > -1)
+            buffer.append('\\\\x');
+    }
+    return Json.load(buffer.toString());
+}
+
+if (!(ctx?.cisco?.esa?.cef?.extensions instanceof Map))
+    return;
+
+/**
+ * We are going to populate move cisco.esa.cef.extensions.* fields to
+ * cisco.esa.* with some renames.
+ */
+
+/**
+ * Non standard Cisco ESA CEF fields have prefix ESA in extensions keys,
+ * ex: ESAMsgSize=1366. The following moves these fields to cisco.esa.<key>,
+ * with the ESA prefix stripped from <key>.
+ * Some other Cisco ESA custom CEF fields use the cs<i> + cs<i>Label format,
+ * cs<i> is the <value>, cs<i>Label is the <key>. The following moves those
+ * fields as cisco.esa.<key> = <value>.
+ * The same principle is applied to cn<i> fields, decoded as long, and
+ * cfp<i> fields, decoded as double.
+ */
+
+def to_add = [ /* [ stripped_key, value ], ... */ ];
+def to_remove = [ /* key, ... */ ];
+def it = ctx.cisco.esa.cef.extensions.entrySet().iterator();
+def is_escaped = [:];
+while (it.hasNext()) {
+    def e = it.next();
+    def key = e.getKey();
+    def value = e.getValue();
+    if (is_escaped[key] == null) {
+        value = unescapeQuotedCefExtension(unescapeCef(value));
+        is_escaped[key] = true;
+    }
+
+    if (key.startsWith('ESA')) {
+        def realKey = key.substring(3);
+
+        if (key == 'ESASPFVerdict' || key == 'ESAURLDetails' ||
+            key == 'ESAAttachmentDetails' || key == 'ESAMARAction' ||
+            key == 'ESACustomLogs' || key == 'ESALogHeaders') {
+            try {
+                value = decodeEsaObject(value);
+                if (key == 'ESAURLDetails') {
+                    // tranform to array, the key is useless as it may be truncated
+                    // and the full URL is in ExpandedUrl
+                    def arrayValue = new ArrayList();
+                    def urlIt = value.entrySet().iterator();
+                    while (urlIt.hasNext())
+                        arrayValue.add(urlIt.next().getValue());
+                    value = arrayValue;
+                }
+            }
+            catch (Exception ex) {
+                to_add.add([ realKey + '_raw', value ]);
+                value = null;
+            }
+        }
+        to_add.add([ realKey, value ]);
+        it.remove();
+    }
+    else if ((key.startsWith('c') || key.startsWith('deviceCustom')) &&
+             (key.endsWith('Label'))) {
+        def realKey = value;
+        def valueKey = key.substring(0, key.length() - 5);
+        value = ctx.cisco.esa.cef.extensions[valueKey];
+        if (is_escaped[valueKey] == null) {
+            value = unescapeQuotedCefExtension(unescapeCef(value));
+            is_escaped[valueKey] = true;
+        }
+        if (value == null)
+            continue;
+        if (key.startsWith('cn') || key.startsWith('deviceCustomFloatingPoint')) {
+            try { value = Long.parseLong(value) }
+            catch (Exception ex) {
+                to_add.add([ realKey + '_raw', value ]);
+                value = null;
+            }
+        }
+        else if (key.startsWith('cfp') || key.startsWith('deviceCustomFloatingPoint')) {
+            try { value = Double.parseDouble(value) }
+            catch (Exception ex) {
+                to_add.add([ realKey + '_raw', value ]);
+                value = null;
+            }
+        }
+        to_add.add([ realKey, value ]);
+        it.remove();
+        to_remove.add(valueKey);
+    }
+    else {
+        e.setValue(value);
+    }
+}
+for (int i = 0; i < to_add.length; i++)
+    ctx.cisco.esa[to_add[i][0]] = to_add[i][1];
+for (int i = 0; i < to_remove.length; i++)
+    ctx.cisco.esa.cef.extensions.remove(to_remove[i]);
+
+
+/**
+ * Remaining standard CEF extensions fields in cisco.esa.cef.extensions.* are
+ * moved to cisco.esa.*, with renaming of keys to Cisco ESA names.
+ */
+
+def cef2esa = [
+    // <cisco.esa.cef.extensions.*>: <cisco.esa.*>
+    'deviceExternalId': 'SerialNumber',
+    'startTime': 'ICIDTimestamp',
+    'start': 'ICIDTimestamp',
+    // deviceInboundInterface for incoming mails
+    // deviceOutboundInterface for outgoing mails
+    'deviceInboundInterface': 'ListenerName',
+    'deviceOutboundInterface': 'ListenerName',
+    'sourceAddress': 'SenderIP',
+    'src': 'SenderIP',
+    'sourceHostName': 'SenderDomain',
+    'shost': 'SenderDomain',
+    // 0: incoming, 1: outgoing
+    'deviceDirection': 'MailDirection',
+    'deviceAddress': 'DataIP',
+    'dvc': 'DataIP',
+    'destinationUserName': 'Recipients',
+    'duser': 'Recipients',
+    'sourceUserName': 'MailFrom',
+    'suser': 'MailFrom',
+    'message': 'Subject',
+    'msg': 'Subject',
+    'endTime': 'DCIDTimestamp',
+    'end': 'DCIDTimestamp',
+    'deviceAction': 'MessageFinalAction',
+    'act': 'MessageFinalAction'
+];
+
+for (e in cef2esa.entrySet()) {
+    def kcef = e.getKey();
+    def kesa = e.getValue();
+    if (ctx.cisco.esa.cef.extensions[kcef] != null && ctx.cisco.esa[kesa] == null) {
+        ctx.cisco.esa[kesa] = ctx.cisco.esa.cef.extensions[kcef];
+        ctx.cisco.esa.cef.extensions.remove(kcef);
+    }
+}
+
+for (String k : new String[] { 'SenderIP', 'DataIP', 'HeloIP', 'RateLimitedIP', 'DHASource' }) {
+    def v = ctx.cisco.esa[k];
+    if (!(v instanceof String))
+        continue;
+    try { CIDR c = new CIDR(v); } // validate it is an IP...
+    catch (Exception ex) {
+        ctx.cisco.esa[k + '_raw'] = ctx.cisco.esa[k];
+        ctx.cisco.esa.remove(k);
+    }
+}
+
+if (ctx.cisco.esa.MailDirection == '0')
+    ctx.cisco.esa.MailDirection = 'inbound';
+else if (ctx.cisco.esa.MailDirection == '1')
+    ctx.cisco.esa.MailDirection = 'outbound';
+
+if (ctx.cisco.esa.MsgSize instanceof String) {
+    try { ctx.cisco.esa.MsgSize = Long.parseLong(ctx.cisco.esa.MsgSize) }
+    catch (Exception ex) {
+        ctx.cisco.esa.MsgSize_raw = ctx.cisco.esa.MsgSize;
+        ctx.cisco.esa.remove('MsgSize');
+    }
+}
+
+if (ctx.cisco.esa.MailFrom instanceof String)
+    ctx.cisco.esa.MailFrom = Arrays.asList(ctx.cisco.esa.MailFrom.splitOnToken(';'));
+if (ctx.cisco.esa.Recipients instanceof String)
+    ctx.cisco.esa.Recipients = Arrays.asList(ctx.cisco.esa.Recipients.splitOnToken(';'));

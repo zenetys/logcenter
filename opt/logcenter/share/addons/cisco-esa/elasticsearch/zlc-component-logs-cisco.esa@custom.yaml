@@ -1,0 +1,6 @@
+version: 1
+template:
+  settings:
+    index:
+      lifecycle:
+        name: zlc-lifecycle-logs-cisco.esa@custom

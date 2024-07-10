@@ -1,0 +1,56 @@
+version: 1
+index_patterns:
+  - logs-cisco.esa-zlc
+  - logs-cisco.esa-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-cisco.esa-dynamic
+  - zlc-component-logs-cisco.esa-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-cisco.esa@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-cisco.esa-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-cisco.esa@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias event.start to cisco.esa.ICIDTimestamp
+      cisco.esa.ICIDTimestamp: { type: date }
+      event.start: { type: alias, path: 'cisco.esa.ICIDTimestamp' }
+      # alias event.end to cisco.esa.DCIDTimestamp
+      cisco.esa.DCIDTimestamp: { type: date }
+      event.end: { type: alias, path: 'cisco.esa.DCIDTimestamp' }
+
+      # alias source.domain to cisco.esa.SenderDomain
+      cisco.esa.SenderDomain: { type: keyword }
+      source.domain: { type: alias, path: 'cisco.esa.SenderDomain' }
+      # alias source.ip to cisco.esa.SenderIP
+      cisco.esa.SenderIP: { type: ip }
+      source.ip: { type: alias, path: 'cisco.esa.SenderIP' }
+
+      # alias email.message_id to cisco.esa.MID
+      cisco.esa.MID: { type: wildcard }
+      email.message_id: { type: alias, path: 'cisco.esa.MID' }
+      # alias email.subject to cisco.esa.Subject
+      cisco.esa.Subject: { type: keyword, fields: { text: { type: text } } }
+      email.subject: { type: alias, path: 'cisco.esa.Subject' }
+      # alias email.direction to cisco.esa.MailDirection
+      cisco.esa.MailDirection: { type: keyword }
+      email.direction: { type: alias, path: 'cisco.esa.MailDirection' }
+      # alias email.to.address to  cisco.esa.Recipients
+      cisco.esa.Recipients: { type: keyword, fields: { text: { type: match_only_text } } }
+      email.to.address: { type: alias, path: 'cisco.esa.Recipients' }
+      # alias email.from.address to  cisco.esa.MailFrom
+      cisco.esa.MailFrom: { type: keyword, fields: { text: { type: match_only_text } } }
+      email.from.address: { type: alias, path: 'cisco.esa.MailFrom' }

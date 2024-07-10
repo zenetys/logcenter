@@ -1,0 +1,126 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        enable_pipeline_geoip: false
+        enable_pipeline_related_ip: false
+
+  - grok:
+      field: event.original
+      patterns:
+        - '^CEF:%{NUMBER}\|%{WORD:observer.vendor}\|%{DATA:observer.product}\|%{DATA:observer.version}\|%{DATA:event.code}\|%{DATA:event.provider}\|%{WORD:event.severity}\|%{GREEDYDATA:_.cef_ext_raw}$'
+
+  - kv:
+      field: _.cef_ext_raw
+      target_field: cisco.esa.cef.extensions
+      field_split: '(?:((\s+)?$|\s+(?=\w+=)))'
+      value_split: '='
+      ignore_failure: true
+      ignore_missing: true
+
+  - convert:
+      field: event.severity
+      type: long
+
+  - script:
+      id: zlc-script-ingest-cisco-esa-cef-norm
+
+  - date:
+      if: ctx.cisco.esa.ICIDTimestamp instanceof String
+      field: cisco.esa.ICIDTimestamp
+      target_field: cisco.esa.ICIDTimestamp
+      timezone: '{{{ _.tz }}}'
+      formats:
+        - EEE MMM  d HH:mm:ss yyyy
+        - EEE MMM dd HH:mm:ss yyyy
+      on_failure:
+        - date:
+            field: cisco.esa.ICIDTimestamp
+            target_field: cisco.esa.ICIDTimestamp
+            timezone: UTC
+            formats:
+              - EEE MMM  d HH:mm:ss yyyy
+              - EEE MMM dd HH:mm:ss yyyy
+            on_failure:
+              - rename:
+                  field: cisco.esa.ICIDTimestamp
+                  target_field: cisco.esa.ICIDTimestamp_raw
+  - date:
+      if: ctx.cisco.esa.DCIDTimestamp instanceof String
+      field: cisco.esa.DCIDTimestamp
+      target_field: cisco.esa.DCIDTimestamp
+      timezone: '{{{ _.tz }}}'
+      formats:
+        - EEE MMM  d HH:mm:ss yyyy
+        - EEE MMM dd HH:mm:ss yyyy
+      on_failure:
+        - date:
+            field: cisco.esa.DCIDTimestamp
+            target_field: cisco.esa.DCIDTimestamp
+            timezone: UTC
+            formats:
+              - EEE MMM  d HH:mm:ss yyyy
+              - EEE MMM dd HH:mm:ss yyyy
+            on_failure:
+              - rename:
+                  field: cisco.esa.DCIDTimestamp
+                  target_field: cisco.esa.DCIDTimestamp_raw
+
+  - append:
+        field: related.ip
+        value: '{{{ cisco.esa.SenderIP }}}'
+        allow_duplicates: false
+        if: ctx.cisco.esa.SenderIP != null
+  - append:
+        field: related.ip
+        value: '{{{ cisco.esa.DataIP }}}'
+        allow_duplicates: false
+        if: ctx.cisco.esa.DataIP != null
+  - append:
+        field: related.ip
+        value: '{{{ cisco.esa.HeloIP }}}'
+        allow_duplicates: false
+        if: ctx.cisco.esa.HeloIP != null
+  - append:
+        field: related.ip
+        value: '{{{ cisco.esa.RateLimitedIP }}}'
+        allow_duplicates: false
+        if: ctx.cisco.esa.RateLimitedIP != null
+  - append:
+        field: related.ip
+        value: '{{{ cisco.esa.DHASource }}}'
+        allow_duplicates: false
+        if: ctx.cisco.esa.DHASource != null
+
+  # assume source.ip is an alias to cisco.esa.SenderIP
+  - geoip:
+      field: cisco.esa.SenderIP
+      target_field: source.geo
+      properties:
+        - location
+        - country_iso_code
+        - country_name
+        - continent_name
+      ignore_missing: true
+      ignore_failure: true
+  - geoip:
+      database_file: GeoLite2-ASN.mmdb
+      field: cisco.esa.SenderIP
+      target_field: source.as
+      properties:
+        - organization_name
+      ignore_missing: true
+      ignore_failure: true
+  - rename:
+      field: source.as.organization_name
+      target_field: source.as.organization.name
+      ignore_missing: true
+
+  - remove:
+      field: event.original
