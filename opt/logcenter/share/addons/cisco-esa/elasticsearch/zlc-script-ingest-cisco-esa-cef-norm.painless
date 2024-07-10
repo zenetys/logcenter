@@ -237,3 +237,6 @@ if (ctx.cisco.esa.MailFrom instanceof String)
     ctx.cisco.esa.MailFrom = Arrays.asList(ctx.cisco.esa.MailFrom.splitOnToken(';'));
 if (ctx.cisco.esa.Recipients instanceof String)
     ctx.cisco.esa.Recipients = Arrays.asList(ctx.cisco.esa.Recipients.splitOnToken(';'));
+
+if (ctx.cisco.esa.Recipients instanceof List)
+    ctx.cisco.esa.Recipients_count = ctx.cisco.esa.Recipients.length;
