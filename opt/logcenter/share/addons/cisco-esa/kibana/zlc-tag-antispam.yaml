@@ -1,0 +1,20 @@
+attributes:
+  color: '#8b02f8'
+  description: ""
+  name: antispam
+coreMigrationVersion: 8.8.0
+created_at: "2024-07-10T13:48:06.727Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: f1147c48-2a18-49fb-ac65-3df5adcfa2fc
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-07-10T13:48:06.727Z"
+version: WzIzNDYyLDI4XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

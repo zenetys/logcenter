@@ -1,0 +1,73 @@
+attributes:
+  columns:
+    - host.name
+    - cisco.esa.MID
+    - cisco.esa.FriendlyFrom
+    - cisco.esa.Recipients
+    - cisco.esa.Subject
+    - cisco.esa.MessageFinalAction
+    - cisco.esa.FinalActionDetails
+    - source.geo.country_name
+    - cisco.esa.MsgSize
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 223
+      cisco.esa.FinalActionDetails:
+        width: 204
+      cisco.esa.FriendlyFrom:
+        width: 257
+      cisco.esa.MID:
+        width: 82
+      cisco.esa.MessageFinalAction:
+        width: 104
+      cisco.esa.MsgSize:
+        width: 85
+      cisco.esa.Recipients:
+        width: 242
+      cisco.esa.SenderCountry:
+        width: 130
+      event.module:
+        width: 107
+      host.name:
+        width: 95
+      source.geo.country_name:
+        width: 114
+  hideChart: true
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing cisco esa, consolidated
+coreMigrationVersion: 8.8.0
+created_at: "2024-07-10T13:48:10.252Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 77e064c8-f8e1-419c-baba-428df3fa4df0
+managed: false
+references:
+  - id: 65becd33-dbb1-4a2a-958b-53f2f5c29896
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: f1147c48-2a18-49fb-ac65-3df5adcfa2fc
+    name: tag-ref-f1147c48-2a18-49fb-ac65-3df5adcfa2fc
+    type: tag
+  - id: 40306b63-9002-4402-9901-48ea09fe242b
+    name: tag-ref-40306b63-9002-4402-9901-48ea09fe242b
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.3.0
+updated_at: "2024-07-10T16:40:06.603Z"
+version: WzI5NzYsMjRd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
