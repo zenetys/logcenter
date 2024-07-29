@@ -1,0 +1,21 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      # Sometimes it gets parsed fro rsyslog as string or floats,
+      # with .0, make sure it gets indexed as long or fix rsyslog
+      # parsing.
+      - haproxy_long:
+          path_match:
+            - '*.bytes'
+            - 'haproxy.*_ms'
+            - 'haproxy.connections.active'
+            - 'haproxy.connections.frontend'
+            - 'haproxy.connections.backend'
+            - 'haproxy.connections.server'
+            - 'haproxy.connections.retries'
+            - 'haproxy.connections.*_err'
+            - 'http.response.status_code'
+          mapping:
+            type: long

@@ -1,0 +1,108 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - date:
+      if: "ctx['@timestamp'] instanceof String && ctx['@timestamp'].charAt(2) == (char)'/'"
+      field: '@timestamp'
+      timezone: '{{{ _.tz }}}'
+      formats: [ 'dd/MMM/yyyy:HH:mm:ss.SSS' ]
+
+  # FIXME
+  # Do it from rsyslog because %xx in query part gets unescaped which make
+  # the field impossible to decode properly. They should use getRaw functions
+  # in main/java/org/elasticsearch/ingest/common/UriPartsProcessor.java.
+  - uri_parts:
+      field: url.original
+      target_field: url
+      keep_original: true
+      ignore_failure: true
+      ignore_missing: true
+
+  - kv:
+      field: haproxy.others
+      field_split: '(?:((\s+)?$|\s+(?=[\w_.-]+=)))'
+      value_split: '='
+      strip_brackets: true
+      ignore_failure: true
+      ignore_missing: true
+
+  - script:
+      #ignore_failure: true
+      lang: painless
+      source: |
+        // The kv processor will append if a field value already exist.
+        // We want to keep the url clean. This script keep the last value
+        // if an url.* field is an array. Fields given in haproxy.others
+        // always win.
+        if (ctx.url instanceof Map) {
+            for (e in ctx.url.entrySet()) {
+                def v = e.getValue();
+                if (v instanceof ArrayList)
+                    e.setValue(v.length == 0 ? null : v[v.length-1]);
+            }
+        }
+        // Same for host.name... need a more generic way for that.
+        if (ctx.host?.name instanceof ArrayList)
+            ctx.host.name = ctx.host.name.length == 0 ? null : ctx.host.name[ctx.host.name.length-1];
+
+        // drop haproxy.others still available in event.original
+        if (ctx.haproxy?.others != null)
+            ctx.haproxy.remove('others');
+
+        if (!(ctx.event instanceof Map))
+            ctx.event = [:];
+        if (!(ctx.event.category instanceof List))
+            ctx.event.category = new ArrayList();
+        if (!(ctx.event.type instanceof List))
+            ctx.event.type = new ArrayList();
+
+        ctx.event.kind = 'event';
+        if (ctx.url?.original != null)
+            ctx.event.category.add('web');
+        if (ctx.source?.ip != null) {
+            ctx.event.category.add('network');
+            ctx.event.type.add('connection');
+        }
+        if (ctx.http?.response?.status_code instanceof Long) {
+            if (ctx.http.response.status_code < 400)
+                ctx.event.outcome = 'success';
+            else
+                ctx.event.outcome = 'failure';
+        }
+
+        // field http.version should not contain "HTTP/" prefix
+        if (ctx.http?.version instanceof String && ctx.http.version.startsWith('HTTP/'))
+            ctx.http.version = ctx.http.version.substring(5);
+
+        // field tls.version should not contain "TLSv" prefix
+        // split into fields tls.version and tls.version_protocol
+        // see https://www.elastic.co/guide/en/ecs/current/ecs-tls.html
+        // sample input: SSLv3, TLSv1.3
+        if (ctx.tls?.version != null) {
+            def parse_ok = false;
+            if (ctx.tls.version instanceof String) {
+                Pattern p = /^([^v]+)v([0-9]+(?:\.[0-9]+)?)$/;
+                Matcher m = p.matcher(ctx.tls.version.toLowerCase());
+                if (m.matches()) {
+                    ctx.tls.version_protocol = m.group(1);
+                    ctx.tls.version = m.group(2);
+                    parse_ok = true;
+                }
+            }
+            if (!parse_ok) // drop the field, it is invalid
+                ctx.tls.remove('version');
+        }
+
+        // tls.resumed should be indexed as a boolean
+        if (ctx.tls?.resumed != null && !(ctx.tls.resumed instanceof Boolean)) {
+            if (ctx.tls.resumed instanceof String)
+                ctx.tls.resumed = ctx.tls.resumed == '1' ? true : false;
+            else if (ctx.tls.resumed instanceof Number)
+                ctx.tls.resumed = ctx.tls.resumed == 1 ? true : false;
+            else // drop the field, it is invalid
+                ctx.tls.remove('resumed');
+        }
