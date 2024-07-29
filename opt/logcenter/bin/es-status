@@ -66,12 +66,12 @@ echo "# es-curl _cluster/settings"
 es-curl _cluster/settings |jq -cM .
 echo
 
-echo "# es-curl _cat/shards (not STARTED)"
-es-curl '_cat/shards?s=i&h=i,sh,pr,st' |fgrep -v STARTED
-echo
-
 echo "# es-curl _cat/recovery (not done)"
 es-curl '_cat/recovery?s=i,s&h=i,s,source_node,target_node,tn,st,fp,bp,top' |
         awk '$5=="done"{next}{for(i=3;i<=4;i++)$(i)=gensub(/\..*/,"",1,$(i));print;}' |
         column -t -o ' '
+echo
+
+echo "# es-curl _cat/shards (not STARTED)"
+es-curl '_cat/shards?s=i&h=i,sh,pr,st' |fgrep -v STARTED
 echo
