@@ -1,6 +1,20 @@
 %{!?logcenter_version: %define logcenter_version 1.0.0}
 #define logcenter_revision HEAD
 
+%define unforced_deps \
+    bind-utils \
+    gawk \
+    jq \
+    lua \
+    openssl \
+    rsyslog8z \
+    rsync \
+    sed \
+    tar \
+    unzip \
+    xz \
+    yq \
+
 %define zenetys_git_source() %{lua:
     local version_source = 'https://github.com/zenetys/%s/archive/refs/tags/v%s.tar.gz#/%s-%s.tar.gz'
     local revision_source = 'http://git.zenetys.loc/data/projects/%s.git/snapshot/%s.tar.gz#/%s-%s.tar.gz'
@@ -24,16 +38,6 @@ Source0: %zenetys_git_source logcenter
 
 BuildArch: noarch
 
-#Requires: bind-utils
-#Requires: gawk
-#Requires: jq
-#Requires: lua
-#Requires: rsyslog8z
-#Requires: rsync
-#Requires: sed
-#Requires: unzip
-#Requires: yq
-
 %description
 Logcenter integration
 
@@ -49,6 +53,21 @@ mkdir -p -m 755 %{buildroot}/opt/logcenter
 mkdir -p -m 755 %{buildroot}/var/log/logcenter
 cp -RT --preserve=timestamp ./opt/logcenter/ %{buildroot}/opt/logcenter/
 cd ..
+
+unforced_deps=( %{unforced_deps} )
+(IFS=$'\n'; echo "${unforced_deps[*]}") \
+    > %{buildroot}/opt/logcenter/share/unforced_deps
+
+%posttrans
+ch=$'\x1b[7;91m'; cc=$'\x1b[0;34m'; crst=$'\x1b[0m';
+cat <<EOF
+
+${ch}# %{name}${crst}
+This RPM does not enforce most dependencies.
+Run the following command to install them manually:
+${cc}dnf shell <(sed -e 's,^,install ,; \$arun' /opt/logcenter/share/unforced_deps)${crst}
+
+EOF
 
 %files
 /etc/logcenter
