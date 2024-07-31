@@ -282,7 +282,7 @@ function process(line)
     local rj_id = vars.rj_id or DEFAULT.rj_id
     if src_ip then sd_zlc = sd_zlc..' srcIp="'..src_ip..'"' end
     if src_host then sd_zlc = sd_zlc..' srcHost="'..src_host..'"' end
-    if received then sd_zlc = sd_zlc..' srcReceived="'..received..'"' end
+    if received then sd_zlc = sd_zlc..' timeReceived="'..received..'"' end
     if rj_id then sd_zlc = sd_zlc..' rjId="'..rj_id..'"' end
 
     local sd = (vars.sd or '')
