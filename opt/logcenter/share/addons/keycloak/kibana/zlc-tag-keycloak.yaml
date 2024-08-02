@@ -1,0 +1,20 @@
+attributes:
+  color: '#b9ff21'
+  description: ""
+  name: keycloak
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-02T16:46:55.390Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 27f6d808-d74f-4634-810d-cc25c601449e
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-02T16:46:55.390Z"
+version: WzMzMTkzLDQyXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

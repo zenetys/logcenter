@@ -1,0 +1,23 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+      - keycloak_ip:
+          path_match:
+            - 'keycloak.ipAddress'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - keycloak_keyword_and_text:
+          path_match:
+            - 'keycloak.*name'
+            - 'keycloak.*uri'
+            - 'keycloak.*url'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text

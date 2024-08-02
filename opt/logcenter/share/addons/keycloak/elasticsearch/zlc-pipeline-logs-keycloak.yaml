@@ -1,0 +1,49 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - set:
+      field: _
+      value:
+        remove_empty_string: [ '', '-', 'null' ]
+
+  - date:
+      if: ctx.keycloak?.timestamp != null
+      field: keycloak.timestamp
+      target_field: keycloak.timestamp
+      timezone: UTC
+      formats: [ 'yyyy-MM-dd HH:mm:ss.SSS' ]
+
+  - kv:
+      field: keycloak.attributes
+      target_field: keycloak
+      field_split: '(?:((\s+)?$|,\s+(?=[\w]+=)))'
+      value_split: '='
+      strip_brackets: true
+      ignore_failure: true
+      ignore_missing: true
+
+  # Make sure keycloak.ipAddress is a valid IP address, otherwize drop the field.
+  - convert:
+      field: keycloak.ipAddress
+      type: ip
+      ignore_missing: true
+      on_failure: [ { remove: { field: keycloak.ipAddress } } ]
+
+  - script:
+      lang: painless
+      source: |
+        // drop keycloak.attributes still available in event.original
+        if (ctx.keycloak?.attributes != null)
+            ctx.keycloak.remove('attributes');
+
+        // copy keycloak.ipAddress to source.ip, it is easier as it will
+        // automatically set related.ip and source.geo
+        if (ctx.keycloak?.ipAddress != null) {
+            if (!(ctx.source instanceof Map))
+                ctx.source = [:];
+            ctx.source.ip = ctx.keycloak.ipAddress;
+        }
