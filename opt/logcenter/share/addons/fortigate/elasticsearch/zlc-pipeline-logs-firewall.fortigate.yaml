@@ -194,6 +194,7 @@ processors:
   # Target fields are ECS standards, we assume standard ECS source.ip and
   # destination.ip will be aliases in mapping.
   - geoip:
+      if: ctx._?.skip_src_geoip != 1
       field: fortigate.srcip
       target_field: source.geo
       properties:
@@ -204,6 +205,7 @@ processors:
       ignore_missing: true
       ignore_failure: true
   - geoip:
+      if: ctx._?.skip_dst_geoip != 1
       field: fortigate.dstip
       target_field: destination.geo
       properties:
@@ -214,6 +216,7 @@ processors:
       ignore_missing: true
       ignore_failure: true
   - geoip:
+      if: ctx._?.skip_src_geoip != 1
       database_file: GeoLite2-ASN.mmdb
       field: fortigate.srcip
       target_field: source.as
@@ -222,6 +225,7 @@ processors:
       ignore_missing: true
       ignore_failure: true
   - geoip:
+      if: ctx._?.skip_dst_geoip != 1
       database_file: GeoLite2-ASN.mmdb
       field: fortigate.dstip
       target_field: destination.as
