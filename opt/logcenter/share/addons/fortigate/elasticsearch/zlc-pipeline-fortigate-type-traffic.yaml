@@ -26,6 +26,12 @@ processors:
             ctx.event.type.add('denied');
         }
         else {
-            ctx.event.outcome = 'success';
             ctx.event.type.add('allowed');
+
+            // Note fortigate.action timeout, client-rst, server-rst will give success,
+            // maybe do better?
+            if (ctx.fortigate.action == 'ip-conn' || ctx.fortigate.action == 'dns')
+                ctx.event.outcome = 'falure';
+            else
+                ctx.event.outcome = 'success';
         }
