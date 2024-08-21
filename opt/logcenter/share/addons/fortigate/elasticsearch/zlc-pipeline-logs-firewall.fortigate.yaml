@@ -63,12 +63,17 @@ processors:
         if (ctx.network == null)
             ctx.network = [:];
 
-        // event.duration
+        // event.duration (best effort, ignore errors)
         def duration = ctx.fortigate.duration;
-        if (duration != null && duration != '') {
-            if (duration instanceof String)
-                duration = Long.parseLong(ctx.fortigate.duration);
-            ctx.event.duration = duration * 1000000000;
+        if (duration != null) {
+            try {
+                if (duration instanceof String)
+                    duration = Long.parseLong(ctx.fortigate.duration);
+                if (duration instanceof Number)
+                    ctx.event.duration = duration * 1000000000;
+            }
+            catch (Exception e) {}
+        }
 
         // split fortigate.logid (best effort, ignore errors)
         if (ctx.fortigate.logid instanceof String && ctx.fortigate.logid.length() == 10) {
