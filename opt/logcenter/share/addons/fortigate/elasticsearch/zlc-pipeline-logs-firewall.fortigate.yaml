@@ -69,6 +69,15 @@ processors:
             if (duration instanceof String)
                 duration = Long.parseLong(ctx.fortigate.duration);
             ctx.event.duration = duration * 1000000000;
+
+        // split fortigate.logid (best effort, ignore errors)
+        if (ctx.fortigate.logid instanceof String && ctx.fortigate.logid.length() == 10) {
+            try {
+                ctx.fortigate._logid_type = Long.parseLong(ctx.fortigate.logid.substring(0, 2), 10);
+                ctx.fortigate._logid_subtype = Long.parseLong(ctx.fortigate.logid.substring(2, 4), 10);
+                ctx.fortigate._logid_msgid = Long.parseLong(ctx.fortigate.logid.substring(4), 10);
+            }
+            catch (Exception e) {}
         }
 
   - pipeline:
