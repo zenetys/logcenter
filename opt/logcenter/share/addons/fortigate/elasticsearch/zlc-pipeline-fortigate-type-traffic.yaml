@@ -10,7 +10,6 @@ processors:
       source: |
         ctx.event.kind = 'event';
         ctx.event.category.add('network');
-
         ctx.event.type.add('connection');
 
         if (ctx.fortigate.action == 'start')
