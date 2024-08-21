@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"fortigate.rcvddelta":{},"fortigate.sentdelta":{},"destination.bytes":{},"source.bytes":{},"network.bytes":{},"fortigate.rcvdbyte":{},"fortigate.sentbyte":{},"fortigate._rcvddelta_norm":{},"fortigate._rxtxdelta_norm":{},"fortigate._sentdelta_norm":{},"fortigate.shaperdroprcvdbyte":{},"fortigate.shaperdropsentbyte":{}}'
+  fieldFormatMap: '{"fortigate.rcvddelta":{"id":"bytes","params":{}},"fortigate.sentdelta":{"id":"bytes","params":{}},"destination.bytes":{"id":"bytes","params":{}},"source.bytes":{"id":"bytes","params":{}},"network.bytes":{"id":"bytes","params":{}},"fortigate.rcvdbyte":{"id":"bytes","params":{}},"fortigate.sentbyte":{"id":"bytes","params":{}},"fortigate._rcvddelta_norm":{"id":"bytes","params":{}},"fortigate._rxtxdelta_norm":{"id":"bytes","params":{}},"fortigate._sentdelta_norm":{"id":"bytes","params":{}},"fortigate.shaperdroprcvdbyte":{"id":"bytes","params":{}},"fortigate.shaperdropsentbyte":{"id":"bytes","params":{}}}'
+  fields: '[]'
+  name: logs-firewall.fortigate-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-firewall.fortigate-zlc,logs-firewall.fortigate-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-07-30T17:07:06.912Z"
+id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-21T02:37:59.969Z"
+version: WzQyNjcsMzld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

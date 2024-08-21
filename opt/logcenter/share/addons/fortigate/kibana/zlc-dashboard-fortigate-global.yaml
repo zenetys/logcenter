@@ -1,0 +1,58 @@
+attributes:
+  description: ""
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[]}'
+  optionsJSON: '{"useMargins":true,"syncColors":false,"syncCursor":true,"syncTooltips":false,"hidePanelTitles":false}'
+  panelsJSON: '[{"type":"visualization","gridData":{"x":0,"y":0,"w":11,"h":8,"i":"3e52adeb-f1a7-468a-bb53-15a3d64e194b"},"panelIndex":"3e52adeb-f1a7-468a-bb53-15a3d64e194b","embeddableConfig":{"savedVis":{"id":"","title":"","description":"","type":"markdown","params":{"fontSize":12,"openLinksInNewTab":false,"markdown":"Use the filter bar to start investigating, then go deeper with the appropriate dashboard by clicking on the links below.\\\nExample: __`\"192.168.100.43\" or *.google.com`__ (search all fields), __`source.ip:192.168.100.43`__ (target specific fields)"},"uiState":{},"data":{"aggs":[],"searchSource":{"query":{"query":"","language":"kuery"},"filter":[]}}},"enhancements":{}}},{"type":"lens","gridData":{"x":12,"y":0,"w":9,"h":8,"i":"b3af05ab-e37b-4357-94da-cd4055f01bd7"},"panelIndex":"b3af05ab-e37b-4357-94da-cd4055f01bd7","embeddableConfig":{"attributes":{"title":"","visualizationType":"lnsDatatable","type":"lens","references":[{"type":"index-pattern","id":"1a8c7205-6b0d-4693-9160-557e92f4fc45","name":"indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2"}],"state":{"visualization":{"layerId":"b354c8ce-f666-4874-9aa7-bd0b246778a2","layerType":"data","columns":[{"columnId":"a84dda40-f802-4590-bced-4d23775dccd3"},{"columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb","width":129}]},"query":{"query":"","language":"kuery"},"filters":[],"datasourceStates":{"formBased":{"layers":{"b354c8ce-f666-4874-9aa7-bd0b246778a2":{"columns":{"a84dda40-f802-4590-bced-4d23775dccd3":{"label":"fortigate.type","dataType":"string","operationType":"terms","scale":"ordinal","sourceField":"fortigate.type","isBucketed":true,"params":{"size":15,"orderBy":{"type":"column","columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"},"orderDirection":"desc","otherBucket":true,"missingBucket":false,"parentFormat":{"id":"terms"},"include":[],"exclude":[],"includeIsRegex":false,"excludeIsRegex":false},"customLabel":true},"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb":{"label":"#","dataType":"number","operationType":"count","isBucketed":false,"scale":"ratio","sourceField":"___records___","params":{"emptyAsNull":true},"customLabel":true}},"columnOrder":["a84dda40-f802-4590-bced-4d23775dccd3","03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"],"incompleteColumns":{},"sampling":1}}},"indexpattern":{"layers":{}},"textBased":{"layers":{}}},"internalReferences":[],"adHocDataViews":{}}},"enhancements":{}}},{"type":"lens","gridData":{"x":21,"y":0,"w":9,"h":14,"i":"7a9f349b-d186-418b-983b-f0b538e63fbd"},"panelIndex":"7a9f349b-d186-418b-983b-f0b538e63fbd","embeddableConfig":{"attributes":{"title":"","visualizationType":"lnsDatatable","type":"lens","references":[{"type":"index-pattern","id":"1a8c7205-6b0d-4693-9160-557e92f4fc45","name":"indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2"}],"state":{"visualization":{"layerId":"b354c8ce-f666-4874-9aa7-bd0b246778a2","layerType":"data","columns":[{"columnId":"a84dda40-f802-4590-bced-4d23775dccd3"},{"columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb","width":129}]},"query":{"query":"","language":"kuery"},"filters":[],"datasourceStates":{"formBased":{"layers":{"b354c8ce-f666-4874-9aa7-bd0b246778a2":{"columns":{"a84dda40-f802-4590-bced-4d23775dccd3":{"label":"event.action","dataType":"string","operationType":"terms","scale":"ordinal","sourceField":"event.action","isBucketed":true,"params":{"size":15,"orderBy":{"type":"column","columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"},"orderDirection":"desc","otherBucket":true,"missingBucket":false,"parentFormat":{"id":"terms"},"include":[],"exclude":[],"includeIsRegex":false,"excludeIsRegex":false,"secondaryFields":[]},"customLabel":true},"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb":{"label":"#","dataType":"number","operationType":"count","isBucketed":false,"scale":"ratio","sourceField":"___records___","params":{"emptyAsNull":true},"customLabel":true}},"columnOrder":["a84dda40-f802-4590-bced-4d23775dccd3","03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"],"incompleteColumns":{},"sampling":1,"indexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"}},"currentIndexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"},"indexpattern":{"layers":{}},"textBased":{"layers":{}}},"internalReferences":[],"adHocDataViews":{}}},"enhancements":{}}},{"type":"lens","gridData":{"x":30,"y":0,"w":9,"h":14,"i":"ae2383b8-219f-4a82-b5eb-ffbc1977e364"},"panelIndex":"ae2383b8-219f-4a82-b5eb-ffbc1977e364","embeddableConfig":{"attributes":{"title":"","visualizationType":"lnsDatatable","type":"lens","references":[{"type":"index-pattern","id":"1a8c7205-6b0d-4693-9160-557e92f4fc45","name":"indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2"}],"state":{"visualization":{"layerId":"b354c8ce-f666-4874-9aa7-bd0b246778a2","layerType":"data","columns":[{"columnId":"a84dda40-f802-4590-bced-4d23775dccd3"},{"columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb","width":129}]},"query":{"query":"","language":"kuery"},"filters":[],"datasourceStates":{"formBased":{"layers":{"b354c8ce-f666-4874-9aa7-bd0b246778a2":{"columns":{"a84dda40-f802-4590-bced-4d23775dccd3":{"label":"related.ip","dataType":"ip","operationType":"terms","scale":"ordinal","sourceField":"related.ip","isBucketed":true,"params":{"size":15,"orderBy":{"type":"column","columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"},"orderDirection":"desc","otherBucket":true,"missingBucket":false,"parentFormat":{"id":"terms"},"include":[],"exclude":[],"includeIsRegex":false,"excludeIsRegex":false,"secondaryFields":[]},"customLabel":true},"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb":{"label":"#","dataType":"number","operationType":"count","isBucketed":false,"scale":"ratio","sourceField":"___records___","params":{"emptyAsNull":true},"customLabel":true}},"columnOrder":["a84dda40-f802-4590-bced-4d23775dccd3","03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"],"incompleteColumns":{},"sampling":1,"indexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"}},"currentIndexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"},"indexpattern":{"layers":{}},"textBased":{"layers":{}}},"internalReferences":[],"adHocDataViews":{}}},"enhancements":{}}},{"type":"lens","gridData":{"x":39,"y":0,"w":9,"h":14,"i":"52215703-9ba8-407e-b5fe-7ab9e7b1551f"},"panelIndex":"52215703-9ba8-407e-b5fe-7ab9e7b1551f","embeddableConfig":{"attributes":{"title":"","visualizationType":"lnsDatatable","type":"lens","references":[{"type":"index-pattern","id":"1a8c7205-6b0d-4693-9160-557e92f4fc45","name":"indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2"}],"state":{"visualization":{"layerId":"b354c8ce-f666-4874-9aa7-bd0b246778a2","layerType":"data","columns":[{"columnId":"a84dda40-f802-4590-bced-4d23775dccd3"},{"columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb","width":129}]},"query":{"query":"","language":"kuery"},"filters":[],"datasourceStates":{"formBased":{"layers":{"b354c8ce-f666-4874-9aa7-bd0b246778a2":{"columns":{"a84dda40-f802-4590-bced-4d23775dccd3":{"label":"related.user","dataType":"string","operationType":"terms","scale":"ordinal","sourceField":"related.user","isBucketed":true,"params":{"size":15,"orderBy":{"type":"column","columnId":"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"},"orderDirection":"desc","otherBucket":true,"missingBucket":false,"parentFormat":{"id":"terms"},"include":[],"exclude":[],"includeIsRegex":false,"excludeIsRegex":false,"secondaryFields":[]},"customLabel":true},"03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb":{"label":"#","dataType":"number","operationType":"count","isBucketed":false,"scale":"ratio","sourceField":"___records___","params":{"emptyAsNull":true},"customLabel":true}},"columnOrder":["a84dda40-f802-4590-bced-4d23775dccd3","03fea31f-0fc6-4d07-a4c5-1a0fc58e1ceb"],"incompleteColumns":{},"sampling":1,"indexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"}},"currentIndexPatternId":"1a8c7205-6b0d-4693-9160-557e92f4fc45"},"indexpattern":{"layers":{}},"textBased":{"layers":{}}},"internalReferences":[],"adHocDataViews":{}}},"enhancements":{}}},{"type":"links","gridData":{"x":0,"y":8,"w":11,"h":6,"i":"0e32e372-e2f6-4f0a-b3ba-95ff466f5d38"},"panelIndex":"0e32e372-e2f6-4f0a-b3ba-95ff466f5d38","embeddableConfig":{"disabledActions":["OPEN_FLYOUT_ADD_DRILLDOWN"],"attributes":{"links":[{"type":"dashboardLink","id":"be9a70ca-69c8-4fea-866f-2f9466a6df29","order":0,"destinationRefName":"link_be9a70ca-69c8-4fea-866f-2f9466a6df29_dashboard"},{"type":"dashboardLink","id":"e3b3ae2c-6631-4189-9f65-840bd2dd2673","order":1,"destinationRefName":"link_e3b3ae2c-6631-4189-9f65-840bd2dd2673_dashboard"},{"type":"dashboardLink","id":"bd1a5010-c90f-40d3-b5b5-6948cf314ea0","order":2,"destinationRefName":"link_bd1a5010-c90f-40d3-b5b5-6948cf314ea0_dashboard"}],"layout":"vertical"},"enhancements":{}}},{"type":"search","gridData":{"x":0,"y":14,"w":48,"h":36,"i":"248e7e8c-168f-424e-adc3-e00ecd43fd25"},"panelIndex":"248e7e8c-168f-424e-adc3-e00ecd43fd25","embeddableConfig":{"enhancements":{},"rowHeight":-1},"panelRefName":"panel_248e7e8c-168f-424e-adc3-e00ecd43fd25"}]'
+  timeRestore: false
+  title: Dashboard fortigate global
+  version: 2
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-21T02:19:13.744Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 38a62b85-9983-4cb7-a146-532345a2b89e
+managed: false
+references:
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: b3af05ab-e37b-4357-94da-cd4055f01bd7:indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2
+    type: index-pattern
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: 7a9f349b-d186-418b-983b-f0b538e63fbd:indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2
+    type: index-pattern
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: ae2383b8-219f-4a82-b5eb-ffbc1977e364:indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2
+    type: index-pattern
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: 52215703-9ba8-407e-b5fe-7ab9e7b1551f:indexpattern-datasource-layer-b354c8ce-f666-4874-9aa7-bd0b246778a2
+    type: index-pattern
+  - id: 99a5857c-9c69-4b10-acfb-9e21ab7c4320
+    name: 0e32e372-e2f6-4f0a-b3ba-95ff466f5d38:link_be9a70ca-69c8-4fea-866f-2f9466a6df29_dashboard
+    type: dashboard
+  - id: 909db9ca-ddbe-4fb3-ad3b-6f4c7cc3e98d
+    name: 0e32e372-e2f6-4f0a-b3ba-95ff466f5d38:link_e3b3ae2c-6631-4189-9f65-840bd2dd2673_dashboard
+    type: dashboard
+  - id: 8a415229-5bed-4a4c-ba62-53d2dbcfab40
+    name: 0e32e372-e2f6-4f0a-b3ba-95ff466f5d38:link_bd1a5010-c90f-40d3-b5b5-6948cf314ea0_dashboard
+    type: dashboard
+  - id: 58b78e46-e3d9-4f85-b83a-853170741f77
+    name: 248e7e8c-168f-424e-adc3-e00ecd43fd25:panel_248e7e8c-168f-424e-adc3-e00ecd43fd25
+    type: search
+  - id: aba62814-ea35-4608-86d0-c44980c810d9
+    name: tag-ref-aba62814-ea35-4608-86d0-c44980c810d9
+    type: tag
+  - id: 57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    name: tag-ref-57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: dashboard
+typeMigrationVersion: 10.2.0
+updated_at: "2024-08-21T03:03:44.338Z"
+version: WzQzMDQsMzld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

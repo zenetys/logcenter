@@ -1,0 +1,19 @@
+attributes:
+  color: '#f477d6'
+  description: ""
+  name: firewall
+coreMigrationVersion: 8.8.0
+created_at: "2024-06-04T09:49:30.809Z"
+id: aba62814-ea35-4608-86d0-c44980c810d9
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-06-04T09:49:30.809Z"
+version: WzEwMjAwLDRd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

@@ -1,0 +1,57 @@
+attributes:
+  columns:
+    - host.name
+    - fortigate.type
+    - source.ip
+    - destination.ip
+    - fortigate
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 213
+      destination.ip:
+        width: 134
+      fortigate.type:
+        width: 96
+      host.name:
+        width: 125
+      source.ip:
+        width: 129
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing fortigate global
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-21T02:24:19.793Z"
+id: 58b78e46-e3d9-4f85-b83a-853170741f77
+managed: false
+references:
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: aba62814-ea35-4608-86d0-c44980c810d9
+    name: tag-ref-aba62814-ea35-4608-86d0-c44980c810d9
+    type: tag
+  - id: 57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    name: tag-ref-57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.4.0
+updated_at: "2024-08-21T02:39:14.990Z"
+version: WzQyNzAsMzld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
