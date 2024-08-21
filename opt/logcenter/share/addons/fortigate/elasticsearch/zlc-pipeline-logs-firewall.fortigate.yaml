@@ -63,6 +63,10 @@ processors:
         if (ctx.network == null)
             ctx.network = [:];
 
+        // copy fortigate.action to ECS field event.action instead of using an
+        // alias so we can modify it if wise
+        ctx.event.action = ctx.fortigate.action;
+
         // event.duration (best effort, ignore errors)
         def duration = ctx.fortigate.duration;
         if (duration != null) {
@@ -92,7 +96,6 @@ processors:
   # alias: event.code                      fortigate.logid      keyword
   # alias: log.level                       fortigate.level      keyword
   # alias: observer.serial_number          fortigate.devid      keyword
-  # alias: event.action                    fortigate.action     keyword
   # alias: transaction.id                  fortigate.sessionid  keyword
   # alias: source.ip                       fortigate.srcip      ip
   # alias: destination.ip                  fortigate.dstip      ip

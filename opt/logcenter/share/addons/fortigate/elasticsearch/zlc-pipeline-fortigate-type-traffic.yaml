@@ -12,6 +12,10 @@ processors:
         ctx.event.category.add('network');
         ctx.event.type.add('connection');
 
+        // override "accept" to "progress" for stat logs (ID 20)
+        if (ctx.fortigate._logid_msgid == 20)
+            ctx.event.action = 'progress';
+
         if (ctx.fortigate.action == 'start')
             ctx.event.type.add('start');
         else if (ctx.fortigate._logid_msgid == 13 || ctx.fortigate._logid_msgid == 14)

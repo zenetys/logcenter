@@ -37,7 +37,6 @@ template:
       fortigate.logid: { type: keyword }
       fortigate.level: { type: keyword }
       fortigate.devid: { type: keyword }
-      fortigate.action: { type: keyword }
       fortigate.sessionid: { type: keyword }
       fortigate.srcip: { type: ip }
       fortigate.dstip: { type: ip }
@@ -67,7 +66,6 @@ template:
       event.code: { type: alias, path: fortigate.logid }
       log.level: { type: alias, path: fortigate.level }
       observer.serial_number: { type: alias, path: fortigate.devid }
-      event.action: { type: alias, path: fortigate.action }
       transaction.id: { type: alias, path: fortigate.sessionid }
       source.ip: { type: alias, path: fortigate.srcip }
       destination.ip: { type: alias, path: fortigate.dstip }
