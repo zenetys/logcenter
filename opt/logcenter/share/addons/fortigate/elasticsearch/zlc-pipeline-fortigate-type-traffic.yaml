@@ -15,7 +15,7 @@ processors:
 
         if (ctx.fortigate.action == 'start')
             ctx.event.type.add('start');
-        else if (ctx.fortigate.action != null)
+        else if (ctx.fortigate._logid_msgid == 13 || ctx.fortigate._logid_msgid == 14)
             ctx.event.type.add('end');
 
         if (ctx.fortigate.app != null && ctx.fortigate.action != 'deny')
