@@ -38,3 +38,33 @@ processors:
             else
                 ctx.event.outcome = 'success';
         }
+
+        // Some traffic end logs (ID 13, 14) have no delta byte fields,
+        // thus it is impossible to produce accurate tops on rx/tx bytes by
+        // doing sum() on the delta fields. We assume that the associated
+        // transactions have no stat/progress logs (ID 20). Here we create
+        // fortigate._{rcvddelta,sentdelta}_norm fields as follows with the
+        // following logic. Copy standard fortigate.{rcvddelta,sentdelta} fields
+        // to their _norm counterpart. When not present on end logs (ID 13, 14)
+        // copy fortigate.{rcvdbyte,sentbyte} to their _norm counterpart.
+        // This logic may be wrong but should work based on what we observed
+        // in log samples.
+        if (ctx.fortigate.rcvddelta != null && ctx.fortigate.sentdelta != null) {
+            try {
+                ctx.fortigate._rcvddelta_norm = Long.parseLong(ctx.fortigate.rcvddelta);
+                ctx.fortigate._sentdelta_norm = Long.parseLong(ctx.fortigate.sentdelta);
+            }
+            catch (Exception e) {}
+        }
+        if (ctx.fortigate._logid_msgid == 13 || ctx.fortigate._logid_msgid == 14) {
+            if (ctx.fortigate.rcvddelta == null && ctx.fortigate.sentdelta == null) {
+                try {
+                    ctx.fortigate._rcvddelta_norm = Long.parseLong(ctx.fortigate.rcvdbyte);
+                    ctx.fortigate._sentdelta_norm = Long.parseLong(ctx.fortigate.sentbyte);
+                }
+                catch (Exception e) {}
+            }
+        }
+        // Also introduce fortigate._rxtxdelta_norm which is the sum.
+        if (ctx.fortigate._rcvddelta_norm != null && ctx.fortigate._sentdelta_norm != null)
+            ctx.fortigate._rxtxdelta_norm = ctx.fortigate._rcvddelta_norm + ctx.fortigate._sentdelta_norm;
