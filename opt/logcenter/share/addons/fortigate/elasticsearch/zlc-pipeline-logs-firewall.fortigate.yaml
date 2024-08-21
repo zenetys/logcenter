@@ -259,6 +259,11 @@ processors:
         value: '{{{ fortigate.tranip }}}'
         allow_duplicates: false
         if: ctx.fortigate.tranip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.ip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate.ip != null
   - foreach:
       field: dns.resolved_ip
       if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List
