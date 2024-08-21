@@ -22,6 +22,7 @@ template:
             - 'fortigate.proto'
             - 'fortigate.*size'
             - 'fortigate.*time'
+            - 'fortigate.total'
             - 'fortigate.totalsession'
             - 'fortigate.used'
           match_mapping_type: string
