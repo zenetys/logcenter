@@ -154,7 +154,7 @@ processors:
       lang: painless
       source: |
         if (ctx.fortigate.type != 'event' && ctx.fortigate.service != null)
-            ctx.network.protocol = ctx.fortigate.service.toLowerCase();
+            ctx.network.application = ctx.fortigate.service.toLowerCase();
 
         if (ctx.fortigate.rcvdbyte != null && ctx.fortigate.sentbyte != null) {
             try {
