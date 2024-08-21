@@ -1,6 +1,5 @@
 attributes:
   columns:
-    - host.ip
     - host.name
     - log.syslog.facility.name
     - log.syslog.severity.name
@@ -10,17 +9,17 @@ attributes:
   grid:
     columns:
       '@timestamp':
-        width: 232
+        width: 223
       host.ip:
         width: 113
       host.name:
-        width: 182
+        width: 188
       log.syslog.appname:
-        width: 142
+        width: 172
       log.syslog.facility.name:
         width: 70
       log.syslog.severity.name:
-        width: 85
+        width: 74
   headerRowHeight: 0
   hideChart: false
   isTextBasedQuery: false
@@ -49,7 +48,7 @@ references:
     type: tag
 type: search
 typeMigrationVersion: 10.3.0
-updated_at: "2024-06-17T07:58:09.721Z"
+updated_at: "2024-08-21T03:17:54.758Z"
 version: WzM4MzMsNV0=
 ---
 excludedObjects: []
