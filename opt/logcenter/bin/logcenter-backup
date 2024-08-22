@@ -6,7 +6,7 @@ set -o pipefail
 set -f
 
 PROGNAME=${0##*/}
-DESTDIR=/var/backup/es
+DESTDIR=/var/backup/logcenter
 KEEPCOUNT=30
 declare -A INCLUDE=()
 declare -A EXCLUDE=()
