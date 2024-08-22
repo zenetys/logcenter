@@ -20,6 +20,7 @@ Usage: $PROGNAME -d DESTINATION
 Backup files and configuration related to logcenter
 
 Available options:
+    -c, --config        Configuration file
     -d, --destdir       Destination base directory
     -k, --keepcount     Number of backups to keep
     -i, --include       Include only given backup item (may repeat)
@@ -313,6 +314,7 @@ fi
 
 while (( $# > 0 )); do
     case "$1" in
+        -c|--config) source "$2" || fatal 'Failed to source config file'; shift ;;
         -d|destdir) DESTDIR=$2; shift ;;
         -k|--keepcount) KEEPCOUNT=$2; shift ;;
         -i|--include) INCLUDE["$2"]=1; shift ;;
