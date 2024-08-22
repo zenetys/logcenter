@@ -207,7 +207,7 @@ function bkp_kibana() {
     return 0
 }
 
-function bkp_haproxy() {
+function bkp_keepalived() {
     [[ -d /etc/keepalived/. ]] || return 0
     info "Dump keepalived"
     { find /etc/keepalived/ -not -type d -ls
