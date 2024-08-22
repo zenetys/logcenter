@@ -1,0 +1,1 @@
+13 5 * * 0 root /opt/logcenter/bin/logcenter-backup -c /etc/logcenter/backup.conf
