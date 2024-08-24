@@ -1,5 +1,10 @@
 #!/bin/bash
 
+[[ -f /etc/profile.d/logcenter-path.sh ]] &&
+    source /etc/profile.d/logcenter-path.sh
+[[ -f /etc/profile.d/logcenter-es.sh ]] &&
+    source /etc/profile.d/logcenter-es.sh
+
 OIFS=$IFS
 PROGNAME=${0##*/}
 LOCKFILE="/dev/shm/$PROGNAME.lock"
