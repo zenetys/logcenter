@@ -1,0 +1,19 @@
+attributes:
+  color: '#74dfb8'
+  description: ""
+  name: dnsmasq
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-24T16:30:15.960Z"
+id: b01da718-d968-4b7a-a5bc-d5b19bdaa71d
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-24T16:30:15.960Z"
+version: WzEzNTksMl0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

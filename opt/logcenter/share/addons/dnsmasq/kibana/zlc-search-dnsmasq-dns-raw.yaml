@@ -42,10 +42,10 @@ attributes:
     - - '@timestamp'
       - desc
   timeRestore: false
-  title: '# dnsmasq raw'
+  title: Listing dnsmasq, DNS raw logs
   usesAdHocDataView: false
 coreMigrationVersion: 8.8.0
-created_at: "2024-05-22T02:43:51.478Z"
+created_at: "2024-08-24T15:48:03.272Z"
 id: 0e9854ea-e2d7-47fc-b6d9-524df4059d03
 managed: false
 references:
@@ -67,10 +67,16 @@ references:
   - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
+  - id: b01da718-d968-4b7a-a5bc-d5b19bdaa71d
+    name: tag-ref-b01da718-d968-4b7a-a5bc-d5b19bdaa71d
+    type: tag
+  - id: 683ac530-363d-4d5d-88d5-906f3b89885a
+    name: tag-ref-683ac530-363d-4d5d-88d5-906f3b89885a
+    type: tag
 type: search
-typeMigrationVersion: 10.2.0
-updated_at: "2024-05-22T08:00:54.951Z"
-version: WzcxNTYsNl0=
+typeMigrationVersion: 10.4.0
+updated_at: "2024-08-24T16:32:35.488Z"
+version: WzI1MiwzXQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0

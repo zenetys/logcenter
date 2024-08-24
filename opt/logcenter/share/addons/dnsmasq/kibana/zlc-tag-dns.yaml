@@ -1,0 +1,19 @@
+attributes:
+  color: '#bec10d'
+  description: ""
+  name: dns
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-24T16:31:21.679Z"
+id: 683ac530-363d-4d5d-88d5-906f3b89885a
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-24T16:31:21.679Z"
+version: WzEzOTIsMl0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
