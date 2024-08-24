@@ -25,7 +25,7 @@ processors:
             ctx.event.type.add('protocol');
 
         if (ctx.fortigate.utmaction == 'block' || ctx.fortigate.action == 'deny') {
-            ctx.event.outcome = 'falure';
+            ctx.event.outcome = 'failure';
             ctx.event.type.add('denied');
         }
         else {
@@ -34,7 +34,7 @@ processors:
             // Note fortigate.action timeout, client-rst, server-rst will give success,
             // maybe do better?
             if (ctx.fortigate.action == 'ip-conn' || ctx.fortigate.action == 'dns')
-                ctx.event.outcome = 'falure';
+                ctx.event.outcome = 'failure';
             else
                 ctx.event.outcome = 'success';
         }
