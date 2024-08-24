@@ -1,0 +1,21 @@
+attributes:
+  color: '#d0a8e8'
+  description: ""
+  name: iptables
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-24T13:15:05.256Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 7a6f7626-8ff7-4602-b344-3ea35f0f27bc
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-24T13:15:05.256Z"
+updated_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+version: WzUxMDc2LDQ0XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

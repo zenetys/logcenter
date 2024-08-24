@@ -1,0 +1,168 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'iptables.raw.* fields expected'
+      if: (ctx.iptables instanceof Map) == false ||
+          (ctx.iptables.raw instanceof Map) == false
+
+  - script:
+      lang: painless
+      source: |
+        // prepare for adding standard event fields
+        if (!(ctx.event instanceof Map))
+            ctx.event = [:];
+        if (!(ctx.event.category instanceof List))
+            ctx.event.category = new ArrayList();
+        if (!(ctx.event.type instanceof List))
+            ctx.event.type = new ArrayList();
+        if (!(ctx.source instanceof Map))
+            ctx.source = [:];
+        if (!(ctx.destination instanceof Map))
+            ctx.destination = [:];
+        if (!(ctx.network instanceof Map))
+            ctx.network = [:];
+        if (!(ctx.related instanceof Map))
+            ctx.related = [:];
+        if (!(ctx.related.ip instanceof List))
+            ctx.related.ip = new ArrayList();
+
+        ctx.event.kind = 'event';
+        ctx.event.category.add('network');
+        ctx.event.type.add('connection');
+
+        // preserve flags as they are sent from rsyslog with a null value
+        for (e in ctx.iptables.raw.entrySet()) {
+            def v = e.getValue();
+            if (v == null)
+                e.setValue(true);
+        }
+
+        if (ctx.iptables.raw.MAC instanceof String) {
+            def mac_len = ctx.iptables.raw.MAC.length();
+            if (mac_len >= 35) {
+                ctx.iptables.raw.MACSRC = ctx.iptables.raw.MAC.substring(0, 17);
+                ctx.iptables.raw.MACDST = ctx.iptables.raw.MAC.substring(18, 35);
+                if (mac_len >= 41)
+                    ctx.iptables.raw.MACPROTO = ctx.iptables.raw.MAC.substring(36, 41);
+            }
+        }
+
+        if (ctx.iptables.raw.SRC != null)
+            ctx.source.ip = ctx.iptables.raw.SRC;
+        else if (ctx.iptables.raw.IPSRC != null)
+            ctx.source.ip = ctx.iptables.raw.IPSRC;
+
+        if (ctx.iptables.raw.DST != null)
+            ctx.destination.ip = ctx.iptables.raw.DST;
+        else if (ctx.iptables.raw.IPDST != null)
+            ctx.destination.ip = ctx.iptables.raw.IPDST;
+
+        // redirect gateway in ICMP redirect logs, add to related.ip
+        // source/destination.ip are added automatically in default pipeline
+        if (ctx.iptables.raw.GATEWAY != null)
+            ctx.related.ip.add(ctx.iptables.raw.GATEWAY);
+
+        // add SRC/DST fields from related packets to related.ip if present
+        if (ctx.iptables.raw?.related?.SRC != null)
+            ctx.related.ip.add(ctx.iptables.raw.related.SRC);
+        if (ctx.iptables.raw?.related?.DST != null)
+            ctx.related.ip.add(ctx.iptables.raw.related.DST);
+
+        // TUNNEL=src_ip4->dst_ip4 may be present in case of 6to4 sit device,
+        // add them to related.ip
+        if (ctx.iptables.raw.TUNNEL instanceof String) {
+            def sep = ctx.iptables.raw.TUNNEL.indexOf('->');
+            if (sep > -1) {
+                def ip1 = ctx.iptables.raw.TUNNEL.substring(0, sep);
+                def ip2 = ctx.iptables.raw.TUNNEL.substring(sep+2);
+                if (ip1.length() > 0)
+                    ctx.related.ip.add(ip1);
+                if (ip2.length() > 0)
+                    ctx.related.ip.add(ip2);
+            }
+        }
+
+        if (ctx.iptables.raw.PROTO instanceof String) {
+            try { ctx.network.iana_number = Long.parseLong(ctx.iptables.raw.PROTO); }
+            catch (Exception x) {
+                ctx.network.transport = ctx.iptables.raw.PROTO.toLowerCase();
+                if (ctx.network.transport == 'icmpv6')
+                    ctx.network.transport = 'ipv6-icmp';
+            }
+        }
+
+        ctx.iptables.tcp_flags = new ArrayList();
+        if (ctx.iptables.raw.CWR == true)
+            ctx.iptables.tcp_flags.add('cwr');
+        if (ctx.iptables.raw.ECE == true)
+            ctx.iptables.tcp_flags.add('ece');
+        if (ctx.iptables.raw.URG == true)
+            ctx.iptables.tcp_flags.add('urg');
+        if (ctx.iptables.raw.ACK == true)
+            ctx.iptables.tcp_flags.add('ack');
+        if (ctx.iptables.raw.PSH == true)
+            ctx.iptables.tcp_flags.add('psh');
+        if (ctx.iptables.raw.RST == true)
+            ctx.iptables.tcp_flags.add('rst');
+        if (ctx.iptables.raw.SYN == true)
+            ctx.iptables.tcp_flags.add('syn');
+        if (ctx.iptables.raw.FIN == true)
+            ctx.iptables.tcp_flags.add('fin');
+
+        ctx.iptables.frag_flags = new ArrayList();
+        if (ctx.iptables.raw.CE == true)
+            ctx.iptables.frag_flags.add('ce');
+        if (ctx.iptables.raw.DF == true)
+            ctx.iptables.frag_flags.add('df');
+        if (ctx.iptables.raw.MF == true)
+            ctx.iptables.frag_flags.add('mf');
+
+        if (ctx.iptables.prefix instanceof String) {
+            def lc_prefix = ctx.iptables.prefix.toUpperCase();
+            if (lc_prefix.contains('ACCEPT') ||
+                lc_prefix.contains('ALLOW')) {
+                ctx.event.action = 'ACCEPT';
+                ctx.event.type.add('allowed');
+                ctx.event.outcome = 'success';
+            }
+            else if (lc_prefix.contains('DROP') ||
+                     lc_prefix.contains('DENIED') ||
+                     lc_prefix.contains('DENY')) {
+                ctx.event.action = 'DROP';
+                ctx.event.outcome = 'failure';
+                ctx.event.type.add('denied');
+            }
+            else if (lc_prefix.contains('REJECT')) {
+                ctx.event.action = 'REJECT';
+                ctx.event.outcome = 'failure';
+                ctx.event.type.add('denied');
+            }
+            else
+                ctx.event.outcome = 'unknown';
+        }
+
+  - script:
+      if: ctx.network.iana_number != null
+      id: zlc-script-ingest-network-transport
+      params:
+        field_path: [ network, iana_number ]
+        target_field_path: [ network, transport ] 
+
+  # Parse specific genrules prefix
+  - grok:
+      if: ctx.iptables.prefix != null
+      field: iptables.prefix
+      ignore_failure: true
+      patterns:
+        - '^%{WORD:iptables.genrules.action}\(%{POSINT:iptables.genrules.position:int},%{WORD:iptables.genrules.table},%{GENRULES_COMMENT:iptables.genrules.comment}\)$'
+      pattern_definitions:
+        GENRULES_COMMENT: '[^ )]+'
+  - set:
+      if: ctx.iptables.genrules?.action != null 
+      field: event.action
+      copy_from: iptables.genrules.action

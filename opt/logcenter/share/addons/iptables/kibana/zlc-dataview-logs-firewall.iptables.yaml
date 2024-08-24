@@ -1,0 +1,27 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"iptables.raw.LEN":{},"iptables.raw.related.LEN":{},"destination.port":{},"source.port":{},"iptables.raw.DPT":{},"iptables.raw.related.DPT":{},"iptables.raw.SPT":{},"iptables.raw.related.SPT":{}}'
+  fieldFormatMap: '{"iptables.raw.LEN":{"id":"bytes","params":{}},"iptables.raw.related.LEN":{"id":"bytes","params":{}},"destination.port":{"id":"number","params":{"pattern":"0"}},"source.port":{"id":"number","params":{"pattern":"0"}},"iptables.raw.DPT":{"id":"number","params":{"pattern":"0"}},"iptables.raw.related.DPT":{"id":"number","params":{"pattern":"0"}},"iptables.raw.SPT":{"id":"number","params":{"pattern":"0"}},"iptables.raw.related.SPT":{"id":"number","params":{"pattern":"0"}}}'
+  fields: '[]'
+  name: logs-firewall.iptables-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-firewall.iptables-zlc,logs-firewall.iptables-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-24T12:46:22.838Z"
+created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+id: 472e1a5a-3957-47e0-8c3f-cd663179e2b3
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-24T13:13:20.364Z"
+updated_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+version: WzQ0MzEsMzld
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

@@ -1,0 +1,62 @@
+version: 1
+index_patterns:
+  - logs-firewall.iptables-zlc
+  - logs-firewall.iptables-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-firewall.iptables-dynamic
+  - zlc-component-logs-firewall.iptables-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.iptables@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-firewall.iptables-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.iptables@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias observer.ingress.interface.name to iptables.raw.IN
+      iptables.raw.IN: { type: keyword, fields: { text: { type: match_only_text } } }
+      observer.ingress.interface.name: { type: alias, path: iptables.raw.IN }
+
+      # alias observer.egress.interface.name to iptables.raw.OUT
+      iptables.raw.OUT: { type: keyword, fields: { text: { type: match_only_text } } }
+      observer.egress.interface.name: { type: alias, path: iptables.raw.OUT }
+
+      # alias source.port to iptables.raw.SPT
+      iptables.raw.SPT: { type: long }
+      source.port: { type: alias, path: iptables.raw.SPT }
+
+      # alias destination.port to iptables.raw.DPT
+      iptables.raw.DPT: { type: long }
+      destination.port: { type: alias, path: iptables.raw.DPT }
+
+      # alias source.mac to iptables.raw.MACSRC
+      iptables.raw.MACSRC: { type: keyword }
+      source.mac: { type: alias, path: iptables.raw.MACSRC }
+
+      # alias destination.mac to iptables.raw.MACDST
+      iptables.raw.MACDST: { type: keyword }
+      destination.mac: { type: alias, path: iptables.raw.MACDST }
+
+      # alias user.id to iptables.raw.UID
+      # alias source.user.id to iptables.raw.UID
+      iptables.raw.UID: { type: keyword }
+      user.id: { type: alias, path: iptables.raw.UID }
+      source.user.id: { type: alias, path: iptables.raw.UID }
+
+      # alias user.group.id to iptables.raw.GID
+      # alias source.user.group.id to iptables.raw.GID
+      iptables.raw.GID: { type: keyword }
+      user.group.id: { type: alias, path: iptables.raw.GID }
+      source.user.group.id: { type: alias, path: iptables.raw.GID }

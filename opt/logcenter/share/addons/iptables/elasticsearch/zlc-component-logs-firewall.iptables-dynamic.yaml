@@ -1,0 +1,54 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - iptables_ip:
+          path_match:
+            - 'iptables.*.DST'
+            - 'iptables.*.GATEWAY'
+            - 'iptables.*.IPDST'
+            - 'iptables.*.IPSRC'
+            - 'iptables.*.SRC'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - iptables_long:
+          path_match:
+            - 'iptables.*.ACK'
+            - 'iptables.*.CODE'
+            - 'iptables.*.DPT'
+            - 'iptables.*.FLOWLBL'
+            - 'iptables.*.GID'
+            - 'iptables.*.HTYPE'
+            - 'iptables.*.HOPLIMIT'
+            - 'iptables.*.ID'
+            - 'iptables.*.LEN'
+            - 'iptables.*.MTU'
+            - 'iptables.*.OPCODE'
+            - 'iptables.*.PARAMETER'
+            - 'iptables.*.SEQ'
+            - 'iptables.*.SPT'
+            - 'iptables.*.TC'
+            - 'iptables.*.TTL'
+            - 'iptables.*.TYPE'
+            - 'iptables.*.UID'
+            - 'iptables.*.VID'
+            - 'iptables.*.WINDOW'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - iptables_keyword_and_text:
+          path_match:
+            - 'iptables.*.IN'
+            - 'iptables.*.OUT'
+            - 'iptables.*.PHYSIN'
+            - 'iptables.*.PHYSOUT'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text
