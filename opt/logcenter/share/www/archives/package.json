@@ -1,0 +1,33 @@
+{
+  "name": "logvault",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
+    "format": "prettier --write src/"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "axios": "^1.7.2",
+    "chart.js": "^4.4.3",
+    "material-design-icons-iconfont": "^6.7.0",
+    "vue": "^3.4.21",
+    "vue-chartjs": "^5.3.1",
+    "vue-router": "^4.3.0",
+    "vuetify": "^3.6.9"
+  },
+  "devDependencies": {
+    "@rushstack/eslint-patch": "^1.8.0",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/eslint-config-prettier": "^9.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.23.0",
+    "prettier": "^3.2.5",
+    "sass": "^1.77.6",
+    "vite": "^5.2.8"
+  }
+}

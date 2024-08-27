@@ -1,0 +1,28 @@
+/* @import './base.css'; */
+
+body {
+  background: rgb(23, 184, 206);
+  background: linear-gradient(
+    90deg,
+    rgba(23, 184, 206, 1) -100%,
+    rgba(255, 255, 255, 1) 33%,
+    rgba(255, 255, 255, 1) 66%,
+    rgba(23, 184, 206, 1) 200%
+  );
+}
+
+#app {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  font-weight: normal;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
