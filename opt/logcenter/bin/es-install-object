@@ -2,6 +2,7 @@
 
 set -f
 OIFS=$IFS
+LIBEXEC_DIR=${LIBEXEC_DIR:-${0%/*}/../libexec}
 PROGNAME=${0##*/}
 ECS_GITHUB_OWNER=elastic
 ECS_GITHUB_REPO=ecs
@@ -126,6 +127,10 @@ function push_to_es() {
 
     if ! data=$(convert_to_json "$3"); then
         REPLY='Convert to JSON failed'
+        return 1
+    fi
+    if ! data=$(echo "$data" |"$LIBEXEC_DIR/es-object-preprocessor"); then
+        REPLY='Preprocessor failed'
         return 1
     fi
     if [[ -n $DEBUG ]]; then

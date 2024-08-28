@@ -1,0 +1,46 @@
+#!/usr/bin/env -S jq -f
+
+def pp_template:
+    if (.template.mappings.properties != null) then
+        .template.mappings.properties = (.template.mappings.properties |
+            to_entries |
+            reduce .[] as $x ([];
+                if ($x.value.type == "zlc_alias") then
+                    # z.name: { type: zlc_alias, target: { path: x.y, type: [ keyword, text ] } } // produces match_only_text
+                    # z.raw: { type: zlc_alias, target: { path: x.y, type: [ keyword, { text: { type: text, norms: false }} ] } }
+                    # z.version: { type: zlc_alias, target: { path: fireeye.version, type: keyword } }
+                    if ($x.value.target |type != "object") then error("zlc_alias: target object expected") else . end |
+                    if ($x.value.target.path |type != "string") then error("zlc_alias: target.path string expected") else . end |
+                    if ($x.value.target.type == null) then error("zlc_alias: target.type expected") else . end |
+                    . + [
+                        { key: $x.value.target.path, value: { type: $x.value.target.type } } |
+                        if ($x.value.target.type |type == "array") then
+                            .value.type = (.value.type |first) |
+                            .value.fields = reduce $x.value.target.type[1:][] as $f ({}; . +
+                                if $f |type == "object" then $f
+                                elif $f |type != "string" then error("zlc_alias: target.type[] string|object expected")
+                                else { "\($f)": { type: (if $f == "text" then "match_only_text" else $f end) } } end
+                            )
+                        else . end
+                    ] |
+                    . + [
+                        $x |
+                        .value.type = "alias" |
+                        .value.path = .value.target.path |
+                        del(.value.target)
+                    ]
+                else
+                    . + [$x]
+                end
+            ) |
+            from_entries
+        )
+    else . end
+    ;
+
+
+if .index_patterns != null then
+    . |pp_template
+else
+    .
+end
