@@ -1,0 +1,19 @@
+attributes:
+  color: '#0e3bbc'
+  description: ""
+  name: fireeye
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-29T14:31:01.395Z"
+id: adf0c119-e957-4333-9d38-acfed53fa220
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-29T14:31:01.395Z"
+version: WzU0NTExLDQ0XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

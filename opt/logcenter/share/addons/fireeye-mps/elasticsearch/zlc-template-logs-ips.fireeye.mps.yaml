@@ -1,0 +1,39 @@
+version: 1
+index_patterns:
+  - logs-ips.fireeye.mps-zlc
+  - logs-ips.fireeye.mps-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-ips.fireeye.mps-dynamic
+  - zlc-component-logs-ips.fireeye.mps-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-ips.fireeye.mps@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-ips.fireeye.mps-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-ips.fireeye.mps@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+
+      destination.mac: { type: zlc_alias, target: { path: fireeye.alert.dst.mac, type: keyword } }
+      destination.port: { type: zlc_alias, target: { path: fireeye.alert.dst.port, type: long } }
+      event.action: { type: zlc_alias, target: { path: fireeye.alert.action, type: keyword } }
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+      log.level: { type: zlc_alias, target: { path: fireeye.alert.severity, type: keyword } }
+      network.vlan.id: { type: zlc_alias, target: { path: fireeye.alert.vlan, type: keyword } }
+      observer.ingress.interface.alias: { type: zlc_alias, target: { path: fireeye.alert.interface.label, type: [ keyword, text ] } }
+      observer.ingress.interface.name: { type: zlc_alias, target: { path: fireeye.alert.interface.interface, type: [ keyword, text ] } }
+      observer.ingress.vlan.id: { type: zlc_alias, target: { path: fireeye.alert.vlan, type: keyword } }
+      observer.name: { type: zlc_alias, target: { path: fireeye.appliance, type: [ keyword, text ] } }
+      observer.version: { type: zlc_alias, target: { path: fireeye.version, type: keyword } }
+      observer.product: { type: zlc_alias, target: { path: fireeye.product, type: keyword } }
+      observer.serial_number: { type: zlc_alias, target: { path: fireeye.appliance-id, type: keyword } }
+      source.mac: { type: zlc_alias, target: { path: fireeye.alert.src.mac, type: keyword } }
+      source.port: { type: zlc_alias, target: { path: fireeye.alert.src.port, type: long } }

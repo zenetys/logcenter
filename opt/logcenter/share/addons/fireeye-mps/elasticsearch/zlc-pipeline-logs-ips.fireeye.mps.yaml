@@ -1,0 +1,31 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'fireeye.* fields expected'
+      if: (ctx.fireeye instanceof Map) == false
+
+  - set:
+      field: _
+      value:
+        remove_empty_string: [ '', 'N/A' ]
+
+  # Copy fireeye.alert.{src,dst}.ip, to {source,destinatio}.ip instead of using
+  # field aliases so that default geoip and related.ip pipeline can be used.
+  # Remove the field on failure to prevent mapping error.
+  - convert:
+      field: fireeye.alert.src.ip
+      target_field: source.ip
+      type: ip
+      ignore_missing: true
+      on_failure: [ { remove: { field: fireeye.alert.src.ip } } ]
+  - convert:
+      field: fireeye.alert.dst.ip
+      target_field: destination.ip
+      type: ip
+      ignore_missing: true
+      on_failure: [ { remove: { field: fireeye.alert.dst.ip } } ]

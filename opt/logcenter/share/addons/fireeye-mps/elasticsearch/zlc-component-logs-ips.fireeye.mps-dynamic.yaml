@@ -1,0 +1,44 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - fireeye_ip:
+          path_match:
+            - 'fireeye.*.ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - fireeye_long:
+          path_match:
+            - 'fireeye.*.port'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - fireeye_text:
+          path_match:
+            - 'fireeye.alert.explanation.cnc-services.cnc-service.channel'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - fireeye_date:
+          path_match:
+            - 'fireeye.alert.attack-time'
+            - 'fireeye.alert.occurred'
+            - 'fireeye.alert.explanation.malware-detected.malware.submitted-at'
+          match_mapping_type: string
+          mapping:
+            type: date
+
+      - fireeye_keyword_and_text:
+          path_match:
+            - 'fireeye.*.sig-name'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

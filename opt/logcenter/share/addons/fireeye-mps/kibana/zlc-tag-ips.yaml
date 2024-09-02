@@ -1,0 +1,19 @@
+attributes:
+  color: '#70e6c0'
+  description: ""
+  name: ips
+coreMigrationVersion: 8.8.0
+created_at: "2024-08-29T14:30:54.328Z"
+id: e2cbb445-9d4c-4d9c-8c6b-1c95c71dd0b2
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-08-29T14:30:54.328Z"
+version: WzU0NTEwLDQ0XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
