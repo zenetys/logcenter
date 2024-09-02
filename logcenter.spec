@@ -26,6 +26,8 @@
     else print(revision_source:format(name, revision, name, revision)) end
 }
 
+%global __brp_mangle_shebangs_exclude_from ^(/opt/logcenter/libexec/es-object-preprocessor)$
+
 Name: logcenter
 Version: %{logcenter_version}
 Release: 1%{?dist}.zenetys
