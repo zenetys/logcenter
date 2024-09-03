@@ -1,0 +1,197 @@
+#!/bin/bash
+
+set -o pipefail
+
+function info() { echo "INFO: $*" >&2; }
+function fatal() { echo "FATAL: $*" >&2; exit 2; }
+
+function exit_usage() {
+    local status=${1:-0}
+    echo "${0##*/} OPTION..."
+    echo 'Script to help on installation of certificates'
+    echo
+    echo 'Available options:'
+    awk '
+    match($0, /^[ ]+#> (.+)/, cap) { txt = cap[1]; next; }
+    match($0, /^[ ]+(-[^)]+)/, cap) { printf("  %-25s %s\n",
+        gensub(/\|/, ", ", "g", cap[1]), txt); }
+    ' "$0"
+    exit "$status"
+}
+
+# $1: file to read, using -|/dev/stdin prompts if stdin is a terminal
+# $2: optional interractive intro text
+# Output on stdout
+function cat_ascii() {
+    if [[ $1 == - || $1 == /dev/stdin ]]; then
+        if [[ -t 0 ]]; then
+            [[ -n $2 ]] && info "$2"
+            echo 'Terminate with Ctrl+D...'
+        fi
+        REPLY=$(cat)
+    else
+        REPLY=$(< "$1")
+    fi
+    [[ $? != 0 || -z $REPLY ]] && return 1
+    echo "$REPLY"
+}
+
+# Input is piped in
+# Output on stdout
+function clean_pem() {
+    REPLY=$(awk '/^-----BEGIN /,/^-----END / {print}')
+    [[ $? != 0 || -z $REPLY ]] && return 1
+    echo "$REPLY"
+}
+
+# $1: data to write
+# $2: target file
+function write_file() {
+    if [[ $2 == */* && ! -d ${2%/*} ]]; then
+        mkdir -p -m 0700 "${2%/*}" || return 1
+    fi
+    # preserve existing permissions
+    echo "$1" > "$2"
+}
+
+verbose=
+input_pfx_file=
+input_pfx_passin=
+input_key_file=
+input_crt_file=
+input_ca_file=()
+output_key_file=
+output_crt_file=
+output_ca_file=
+output_crt_bundle_file=
+output_full_bundle_file=
+
+while (( $# > 0 )); do
+    case "$1" in
+        #> Input pkcs12/pfx file
+        --input-pfx) input_pfx_file=$2; shift ;;
+        #> Openssl -passin option to decrypt PFX file, eg: stdin, env:P
+        --input-pfx-passin) input_pfx_passin=$2; shift ;;
+        #> Input key in PEM format
+        --input-key) input_key_file=$2; shift ;;
+        #> Input certificate in PEM format
+        --input-crt) input_crt_file=$2; shift ;;
+        #> Input CA certificate in PEM format, may repeat
+        --input-ca) input_ca_file+=( ${2:+"$2"} ); shift ;;
+        #> Output file for key
+        --output-key) output_key_file=$2; shift ;;
+        #> Output file for certificate
+        --output-crt) output_crt_file=$2; shift ;;
+        #> Output file for CA certificate(s)
+        --output-ca) output_ca_file=$2; shift ;;
+        #> Output file for certificate bundle
+        --output-crt-bundle) output_crt_bundle_file=$2; shift ;;
+        #> Output file for full certificate bundle
+        --output-full-bundle) output_full_bundle_file=$2; shift ;;
+        #> Enable verbose mode
+        -v|--verbose) (( verbose++ )) ;;
+        #> Display this help
+        -h|--help) exit_usage ;;
+    esac
+    shift
+done
+
+[[ -z $input_pfx_file && -z $input_key_file && -z $input_crt_file && -z $input_ca_file ]] &&
+    fatal 'Missing input, check usage'
+
+[[ -n $input_pfx_file && ( -n $input_key_file || -n $input_crt_file || -n $input_ca_file ) ]] &&
+    fatal 'PFX input is mutually exclusive with KEY/CRT/CA input'
+
+if [[ -n $input_pfx_file && ( -z $input_pfx_passin || $input_pfx_passin == - || $input_pfx_passin == stdin ) ]]; then
+    echo -n 'Enter PFX import password: '
+    read -rs P; echo
+    input_pfx_passin=env:P
+    export P
+fi
+
+input_key_data=
+input_crt_data=
+input_ca_data=
+nl=$'\n'
+
+if [[ -n $input_key_file ]]; then
+    REPLY=$(cat_ascii "$input_key_file" 'Enter unencrypted key in PEM format') ||
+        fatal "KEY: Read failed"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "KEY: Invalid PEM data"
+    input_key_data=$REPLY
+fi
+
+if [[ -n $input_crt_file ]]; then
+    REPLY=$(cat_ascii "$input_crt_file" 'Enter certificate in PEM format') ||
+        fatal "CRT: Read failed"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "CRT: Invalid PEM data"
+    input_crt_data=$REPLY
+fi
+
+for i in "${input_ca_file[@]}"; do
+    REPLY=$(cat_ascii "$i" 'Enter CA certificate in PEM format') ||
+        fatal "CA: Read failed"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "CA: Invalid PEM data"
+    input_ca_data+="${input_ca_data:+$nl}$REPLY"
+done
+
+if [[ -n $input_pfx_file ]]; then
+    REPLY=$(openssl pkcs12 -in "$input_pfx_file" -passin "$input_pfx_passin" -nocerts -nodes) ||
+        fatal "PFX: Failed to extract key"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "PFX: Extracted key, invalid PEM data"
+    input_key_data=$REPLY
+
+    REPLY=$(openssl pkcs12 -in "$input_pfx_file" -passin "$input_pfx_passin" -nokeys -clcerts) ||
+        fatal "PFX: Failed to extract certificate"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "PFX: Extracted certificate, invalid PEM data"
+    input_crt_data=$REPLY
+
+    REPLY=$(openssl pkcs12 -in "$input_pfx_file" -passin "$input_pfx_passin" -nokeys -cacerts) ||
+        fatal "PFX: Failed to extract CA certificate"
+    REPLY=$(echo "$REPLY" |clean_pem) ||
+        fatal "PFX: Extracted CA certificate, invalid PEM data"
+    input_ca_data=$REPLY
+fi
+
+if (( verbose > 0 )); then
+    info 'Key data'
+    [[ -n $input_key_data ]] && echo "$input_key_data"
+    info 'Certificate data'
+    [[ -n $input_crt_data ]] && echo "$input_crt_data"
+    info 'CA certificate data'
+    [[ -n $input_ca_data ]] && echo "$input_ca_data"
+fi
+
+# minimal check before any write
+[[ ( -n $output_key_file || -n $output_crt_bundle_file || -n $output_full_bundle_file ) && -z $input_key_data ]] &&
+    fatal 'No data to write to given output key file'
+[[ ( -n $output_crt_file || -n $output_crt_bundle_file || -n $output_full_bundle_file ) && -z $input_crt_data ]] &&
+    fatal 'No data to write to given output certificate file'
+[[ ( -n $output_ca_file || -n $output_full_bundle_file ) && -z $input_ca_data ]] &&
+    fatal 'No data to write to given output CA certificate file'
+
+if [[ -n $output_key_file ]]; then
+    write_file "$input_key_data" "$output_key_file" ||
+        fatal "Failed to write key to $output_key_file"
+fi
+if [[ -n $output_crt_file ]]; then
+    write_file "$input_crt_data" "$output_crt_file" ||
+        fatal "Failed to write certificate to $output_crt_file"
+fi
+if [[ -n $output_ca_file ]]; then
+    write_file "$input_ca_data" "$output_ca_file" ||
+        fatal "Failed to write CA certificate to $output_ca_file"
+fi
+if [[ -n $output_crt_bundle_file ]]; then
+    write_file "${input_key_data}${nl}${input_crt_data}" "$output_crt_bundle_file" ||
+        fatal "Failed to write bundle to $output_crt_bundle_file"
+fi
+if [[ -n $output_full_bundle_file ]]; then
+    write_file "${input_key_data}${nl}${input_crt_data}${input_ca_data:+${nl}${input_ca_data}}" "$output_full_bundle_file" ||
+        fatal "Failed to write full bundle to $output_full_bundle_file"
+fi
