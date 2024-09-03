@@ -3,7 +3,7 @@
 function exit_usage() {
     local status=${1:-0}
     [[ $status != 0 ]] && exec >&2
-    echo "Usage: ${0##*/} status|start|start-full|stop"
+    echo "Usage: ${0##*/} status|begin-rolling|end-rolling|begin-node|end-node"
     exit "$status"
 }
 
@@ -11,7 +11,7 @@ op=
 while (( $# > 0 )); do
     case "$1" in
         -h|--help) exit_usage 0 ;;
-        status|start|start-full|stop) op=$1 ;;
+        status|begin-rolling|end-rolling|begin-node|end-node) op=$1 ;;
         *) exit_usage 1 ;;
     esac
     shift
@@ -22,20 +22,26 @@ done
 if [[ $op == status ]]; then
     es-curl _cluster/settings
 
-elif [[ $op == start ]]; then
+elif [[ $op == begin-rolling ]]; then
+    es-curl _cluster/settings -X PUT -d '{ "persistent": {
+            "cluster.routing.rebalance.enable": "none",
+            "cluster.routing.allocation.node_concurrent_recoveries": "6",
+            "indices.recovery.max_bytes_per_sec": "125mb"
+        }}'
+elif [[ $op == end-rolling ]]; then
+    es-curl _cluster/settings -X PUT -d '{ "persistent": {
+            "cluster.routing.rebalance.enable": null,
+            "cluster.routing.allocation.node_concurrent_recoveries": null,
+            "indices.recovery.max_bytes_per_sec": null
+        }}'
+
+elif [[ $op == begin-node ]]; then
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.allocation.enable": "primaries"
         }}'
 
-elif [[ $op == start-full ]]; then
+elif [[ $op == end-node ]]; then
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
-            "cluster.routing.allocation.enable": "none",
-            "cluster.routing.rebalance.enable": "none"
-        }}'
-
-elif [[ $op == stop ]]; then
-    es-curl _cluster/settings -X PUT -d '{ "persistent": {
-            "cluster.routing.allocation.enable": null,
-            "cluster.routing.rebalance.enable": null
+            "cluster.routing.allocation.enable": null
         }}'
 fi |jq -c
