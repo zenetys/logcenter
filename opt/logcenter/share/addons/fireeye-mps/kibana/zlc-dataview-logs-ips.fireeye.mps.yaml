@@ -1,7 +1,7 @@
 attributes:
   allowHidden: false
-  fieldAttrs: '{"destination.port":{},"fireeye.alert.dst.port":{},"fireeye.alert.src.port":{},"source.port":{},"fireeye.alert.explanation.cnc-services.cnc-service.port":{},"fireeye.alert.alert-url":{}}'
-  fieldFormatMap: '{"destination.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.dst.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.src.port":{"id":"number","params":{"pattern":"0"}},"source.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.explanation.cnc-services.cnc-service.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.alert-url":{"id":"url","params":{}}}'
+  fieldAttrs: '{"destination.port":{},"fireeye.alert.dst.port":{},"fireeye.alert.src.port":{},"source.port":{},"fireeye.alert.explanation.cnc-services.cnc-service.port":{},"fireeye.alert.alert-url":{},"fireeye.alert.id":{}}'
+  fieldFormatMap: '{"destination.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.dst.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.src.port":{"id":"number","params":{"pattern":"0"}},"source.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.explanation.cnc-services.cnc-service.port":{"id":"number","params":{"pattern":"0"}},"fireeye.alert.alert-url":{"id":"url"},"fireeye.alert.id":{"id":"number","params":{"pattern":"0"}}}'
   fields: '[]'
   name: logs-ips.fireeye.mps-zlc
   runtimeFieldMap: '{}'
@@ -9,14 +9,14 @@ attributes:
   timeFieldName: '@timestamp'
   title: logs-ips.fireeye.mps-zlc,logs-ips.fireeye.mps-zlc.*
 coreMigrationVersion: 8.8.0
-created_at: "2024-08-29T13:43:00.757Z"
+created_at: "2024-09-03T16:59:31.469Z"
 id: f4618f6f-eeba-40db-bac3-11209d9b8f23
 managed: false
 references: []
 type: index-pattern
 typeMigrationVersion: 8.0.0
-updated_at: "2024-09-02T06:57:11.889Z"
-version: WzQ3NDgsNDBd
+updated_at: "2024-09-09T10:48:09.483Z"
+version: WzYzOTMsMTFd
 ---
 excludedObjects: []
 excludedObjectsCount: 0
