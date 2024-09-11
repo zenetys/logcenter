@@ -26,7 +26,7 @@ template:
       event.dataset: { type: alias, path: 'data_stream.dataset' }
 
       # alias event.code to squid.request_status
-      squid.request_status: { type: keyword }
+      squid.request_status: { type: keyword, fields: { text: { type: text, index_options: docs, norms: false, analyzer: simple } } }
       event.code: { type: alias, path: squid.request_status }
 
       # alias source.user.domain to user.domain

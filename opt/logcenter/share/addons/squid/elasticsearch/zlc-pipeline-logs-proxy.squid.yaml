@@ -10,18 +10,11 @@ processors:
       source: |
         ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000);
 
-  # try to isolate the registered domain
-  - registered_domain:
-      field: url.domain
-      target_field: url
-      ignore_missing: true
-      ignore_failure: true
-
   # try to get a destination IP out of squid.last_peer
   - convert:
       if: ctx.destination?.ip == null &&
           ctx.squid?.last_peer != null &&
-          ctx.squid?.last_peer != '-'
+          ctx.squid.last_peer != '-'
       field: squid.last_peer
       target_field: destination.ip
       type: ip
@@ -34,4 +27,22 @@ processors:
       field: url.domain
       target_field: destination.ip
       type: ip
+      ignore_failure: true
+
+  # try to get a URL domain out of squid.ssl.sni
+  - set:
+      if: ctx.squid?.ssl?.sni instanceof String &&
+          ctx.squid.ssl.sni != '-' &&
+          ctx.squid.ssl.sni != '' &&
+          ctx.squid.ssl.sni != ctx.url?.domain
+      field: url.domain
+      copy_from: squid.ssl.sni
+      override: true
+      ignore_failure: true
+
+  # try to isolate the registered domain
+  - registered_domain:
+      field: url.domain
+      target_field: url
+      ignore_missing: true
       ignore_failure: true

@@ -3,7 +3,7 @@ template:
   mappings:
     dynamic_templates:
 
-      - squid_keyword_and_text:
+      - squid_keyword_and_text_simple:
           path_match:
             - 'squid.request_status'
             - 'squid.hierarchy_status'
@@ -13,4 +13,8 @@ template:
             ignore_above: 1024
             fields:
               text:
-                type: match_only_text
+                # like match_only_text but with simple analyzer
+                type: text
+                index_options: docs
+                norms: false
+                analyzer: simple
