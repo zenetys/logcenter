@@ -1,11 +1,13 @@
 attributes:
   columns:
     - host.name
+    - event.type
     - squid.response_time_ms
     - source.ip
     - squid.request_status
     - http.response.status_code
     - http.request.method
+    - url.domain
     - url.original
     - user.name
     - squid.hierarchy_status
@@ -16,6 +18,8 @@ attributes:
     columns:
       '@timestamp':
         width: 219
+      event.type:
+        width: 67
       host.name:
         width: 112
       http.request.method:
@@ -25,7 +29,7 @@ attributes:
       http.response.status_code:
         width: 53
       source.ip:
-        width: 157
+        width: 145
       squid.hierarchy_status:
         width: 146
       squid.last_peer:
@@ -46,7 +50,7 @@ attributes:
   timeRestore: false
   title: Listing squid
 coreMigrationVersion: 8.8.0
-created_at: "2024-06-13T01:35:45.419Z"
+created_at: "2024-09-11T20:10:59.324Z"
 id: 09e19b55-87c3-47d6-9835-029cacdd6824
 managed: false
 references:
@@ -63,9 +67,9 @@ references:
     name: tag-ref-75a48a1e-6863-4fbd-aed4-da4890a70ebb
     type: tag
 type: search
-typeMigrationVersion: 10.3.0
-updated_at: "2024-06-13T01:54:01.210Z"
-version: WzM1MiwxXQ==
+typeMigrationVersion: 10.4.0
+updated_at: "2024-09-12T16:32:56.270Z"
+version: WzQ5Niw0XQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0
