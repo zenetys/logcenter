@@ -72,25 +72,23 @@ to_entries |
         index: .key,
         fields: (
             .value.mappings.properties |
-                flatten_keys |
-                . as $root |
-                with_entries(
-                    select(.key |test("\\.type$")) |
-
-                    .key as $orikey |
-                    .key = (.key |
-                        gsub("\\.properties|\\.type$"; "") |
-                        gsub("\\.fields\\.(?<f>[^.]+)$"; "[.\(.f)]")
-                    ) |
-                    if (.value == "alias") then
-                        ($root |getpath([$orikey|sub("\\.type$";".path")])) as $alias_target |
-                        ($root |getpath(  [($alias_target |gsub("\\.";".properties.")) + ".type"]   )) as $alias_type |
-                        .value = "alias\t\($alias_target)\t\($alias_type)"
-                    else
-                        .value = "\(.value)\t\t"
-                    end
-                )
+            flatten_keys |
+            with_entries(.key |= gsub("(?<x>[^.]+\\.)properties\\."; "\(.x)")) |
+            with_entries(.key |= gsub("(?<x>[^.]+\\.)fields\\."; "\(.x)")) as $root |
+            with_entries(
+                .key as $orikey |
+                .key |= gsub("(?<x>[^.]+)\\.fields(?<y>\\.[^.]+)"; "\(.x)[\(.y)]") |
+                select(.key |test("\\.type$")) |
+                .key |= gsub("\\.type$"; "") |
+                if (.value == "alias") then
+                    ($root |getpath([ $orikey |sub("\\.type$"; ".path") ])) as $alias_target |
+                    ($root |getpath([ $alias_target + ".type" ])) as $alias_type |
+                    .value = "alias\t\($alias_target)\t\($alias_type)"
+                else
+                    .value = "\(.value)\t\t"
+                end
             )
+        )
     }) |
     map(
         .index as $index |
