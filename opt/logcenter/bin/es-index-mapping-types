@@ -120,4 +120,4 @@ to_entries |
         }
     }' |
     LC_ALL=C sort -u |
-    { [[ -n $PRINT_RAW ]] && cat || column -t -s $'\t'; }
+    { [[ -n $PRINT_RAW ]] && cat || { column -t -s $'\t' |sed -re 's,\s+$,,'; }; }
