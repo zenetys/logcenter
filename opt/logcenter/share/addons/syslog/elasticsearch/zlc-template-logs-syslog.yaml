@@ -24,15 +24,9 @@ template:
 
       log.syslog.severity.code:
         type: long
-      event.severity:
-        type: alias
-        path: log.syslog.severity.code
 
       log.syslog.severity.name:
         type: keyword
-      log.level:
-        type: alias
-        path: log.syslog.severity.name
 
       log.syslog.appname:
         type: keyword
