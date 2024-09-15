@@ -1,23 +1,24 @@
 attributes:
   columns:
     - host.name
-    - source.ip
-    - user.name
+    - event.type
     - cisco.wsa.elapsed_time_ms
+    - source.ip
     - cisco.wsa.result_code
     - http.response.status_code
     - http.request.method
+    - url.domain
     - url.original
+    - user.name
     - cisco.wsa.webcat_code_abbr
     - cisco.wsa.hierarchy
-    - destination.address
     - http.response.bytes
     - cisco.wsa.acltag_decision
   description: ""
   grid:
     columns:
       '@timestamp':
-        width: 215
+        width: 219
       cisco.wsa.acltag_decision:
         width: 136
       cisco.wsa.elapsed_time_ms:
@@ -30,22 +31,28 @@ attributes:
         width: 84
       destination.address:
         width: 192
+      event.type:
+        width: 81
       host.name:
-        width: 109
+        width: 118
       http.request.method:
         width: 84
       http.response.bytes:
-        width: 109
+        width: 97
       http.response.status_code:
-        width: 69
+        width: 52
       source.ip:
-        width: 121
+        width: 129
+      url.domain:
+        width: 192
       user.name:
         width: 95
+  headerRowHeight: 0
   hideChart: true
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 0
   sort:
     - - '@timestamp'
       - desc
@@ -53,7 +60,6 @@ attributes:
   title: Listing cisco wsa
 coreMigrationVersion: 8.8.0
 created_at: "2024-07-01T06:14:08.304Z"
-created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
 id: 5ac2a82c-12d2-442f-9f01-548af7466af9
 managed: false
 references:
@@ -70,9 +76,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: search
-typeMigrationVersion: 10.3.0
-updated_at: "2024-07-01T06:14:38.984Z"
-version: WzI2NTIsMjFd
+typeMigrationVersion: 10.4.0
+updated_at: "2024-09-15T21:48:07.670Z"
+version: WzUwNTIsNDBd
 ---
 excludedObjects: []
 excludedObjectsCount: 0
