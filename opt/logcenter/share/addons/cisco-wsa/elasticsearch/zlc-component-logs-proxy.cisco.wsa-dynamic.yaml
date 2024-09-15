@@ -14,3 +14,12 @@ template:
             fields:
               text:
                 type: match_only_text
+
+      - cisco_wsa_force_keyword:
+          path_match:
+            - 'cisco.wsa.amp_score'
+            - 'cisco.wsa.wbrs_score'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024

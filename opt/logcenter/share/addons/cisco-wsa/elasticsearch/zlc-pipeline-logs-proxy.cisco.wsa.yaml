@@ -199,8 +199,8 @@ processors:
   # cisco.wsa.wbrs_score may be string "ns" or "dns"
   # cisco.wsa.amp_score is not defined properly in documentation,
   # assume it would be a number
-  - convert: { field: cisco.wsa.wbrs_score, target_field: cisco.wsa.wbrs_score_num, type: long, ignore_missing: true, ignore_failure: true }
-  - convert: { field: cisco.wsa.amp_score, target_field: cisco.wsa.amp_score_num, type: long, ignore_missing: true, ignore_failure: true }
+  - convert: { field: cisco.wsa.wbrs_score, target_field: cisco.wsa.wbrs_score_num, type: float, ignore_missing: true, ignore_failure: true }
+  - convert: { field: cisco.wsa.amp_score, target_field: cisco.wsa.amp_score_num, type: float, ignore_missing: true, ignore_failure: true }
 
   # should be 0/1 flags, may be indexed as keywords
   #- convert: { field: cisco.wsa.webroot_scanverdict, type: long, ignore_missing: true }
