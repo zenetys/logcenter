@@ -19,12 +19,6 @@ processors:
       params:
         empty_string: [ '', '-' ]
 
-  - uri_parts:
-      if: 'ctx.url?.original != null'
-      field: url.original
-      target_field: url
-      keep_original: true
-
   - registered_domain:
       if: 'ctx.url?.domain != null'
       field: url.domain
