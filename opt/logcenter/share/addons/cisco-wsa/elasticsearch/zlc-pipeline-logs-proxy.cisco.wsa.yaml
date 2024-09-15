@@ -19,11 +19,6 @@ processors:
       params:
         empty_string: [ '', '-' ]
 
-  - registered_domain:
-      if: 'ctx.url?.domain != null'
-      field: url.domain
-      target_field: url
-
   - script:
       lang: painless
       params:
@@ -176,6 +171,12 @@ processors:
                 ctx.cisco.wsa[params.url_cat_fields[i] + '_name'] = spec.name+' ('+abbr+')';
             }
         }
+
+  - registered_domain:
+      if: 'ctx.url?.domain != null'
+      field: url.domain
+      target_field: url
+      ignore_failure: true
 
   # should already be a number in input JSON
   - convert: { field: http.response.status_code, type: long, ignore_missing: true }
