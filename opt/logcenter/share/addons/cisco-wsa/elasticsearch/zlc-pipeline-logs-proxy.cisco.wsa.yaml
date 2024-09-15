@@ -172,6 +172,15 @@ processors:
             }
         }
 
+  # try to get a destination IP out of url.domain
+  - convert:
+      if: ctx.destination?.ip == null &&
+          ctx.url?.domain != null
+      field: url.domain
+      target_field: destination.ip
+      type: ip
+      ignore_failure: true
+
   - registered_domain:
       if: 'ctx.url?.domain != null'
       field: url.domain
