@@ -7,7 +7,7 @@ attributes:
   grid:
     columns:
       '@timestamp':
-        width: 225
+        width: 236
       keycloak.auth_method:
         width: 133
       keycloak.ipAddress:
@@ -17,7 +17,7 @@ attributes:
       log.level:
         width: 86
       log.logger:
-        width: 354
+        width: 374
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:

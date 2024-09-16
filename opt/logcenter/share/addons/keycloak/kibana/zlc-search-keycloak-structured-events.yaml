@@ -11,7 +11,7 @@ attributes:
   grid:
     columns:
       '@timestamp':
-        width: 225
+        width: 235
       keycloak.auth_method:
         width: 133
       keycloak.ipAddress:
