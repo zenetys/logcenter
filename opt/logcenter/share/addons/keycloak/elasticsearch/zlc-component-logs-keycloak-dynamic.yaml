@@ -21,3 +21,18 @@ template:
             fields:
               text:
                 type: match_only_text
+
+      - keycloak_keyword_and_text_simple:
+          path_match:
+            - 'keycloak.type'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                # like match_only_text but with simple analyzer
+                type: text
+                index_options: docs
+                norms: false
+                analyzer: simple
