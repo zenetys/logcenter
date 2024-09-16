@@ -18,7 +18,8 @@ processors:
       formats: [ 'yyyy-MM-dd HH:mm:ss.SSS' ]
 
   - kv:
-      field: keycloak.attributes
+      if: ctx.log?.logger == 'org.keycloak.events'
+      field: message
       target_field: keycloak
       field_split: '(?:((\s+)?$|,\s+(?=[\w]+=)))'
       value_split: '='
@@ -36,10 +37,6 @@ processors:
   - script:
       lang: painless
       source: |
-        // drop keycloak.attributes still available in event.original
-        if (ctx.keycloak?.attributes != null)
-            ctx.keycloak.remove('attributes');
-
         // copy keycloak.ipAddress to source.ip, it is easier as it will
         // automatically set related.ip and source.geo
         if (ctx.keycloak?.ipAddress != null) {

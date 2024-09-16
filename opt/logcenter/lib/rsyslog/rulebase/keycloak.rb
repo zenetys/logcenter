@@ -18,7 +18,7 @@ rule=keycloak.event:%[
     { "type": "literal", "text": "(" },
     { "type": "char-to", "name": "process.thread.name", "extradata": ")" },
     { "type": "literal", "text": ") " },
-    { "type": "rest", "name": "keycloak.attributes" }
+    { "type": "rest", "name": "message" }
 ]%
 
 # Workaround EOF after ']%' or '}%'
