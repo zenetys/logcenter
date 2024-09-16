@@ -6,11 +6,19 @@ version=2
 ##
 
 rule=keycloak.event:%[
-    { "type": "char-to", "name": "keycloak.date", "extradata": " " }, { "type": "literal", "text": " " },
-    { "type": "char-to", "name": "keycloak.time", "extradata": " " }, { "type": "literal", "text": " " },
-    { "type": "char-to", "name": "log.level", "extradata": " " }, { "type": "whitespace" },
+    { "type": "char-to", "name": "keycloak.date", "extradata": " " },
+    { "type": "literal", "text": " " },
+    { "type": "char-to", "name": "keycloak.time", "extradata": " " },
+    { "type": "literal", "text": " " },
+    { "type": "char-to", "name": "log.level", "extradata": " " },
+    { "type": "whitespace" },
     { "type": "literal", "text": "[" },
-    { "type": "char-to", "name": "event.module", "extradata": "]" }, { "type": "literal", "text": "] " },
+    { "type": "char-to", "name": "log.logger", "extradata": "]" },
+    { "type": "literal", "text": "] " },
     { "type": "literal", "text": "(" },
-    { "type": "char-to", "name": "process.thread.name", "extradata": ")" }, { "type": "literal", "text": ") " },
-    { "type": "rest", "name": "keycloak.attributes" } ]%
+    { "type": "char-to", "name": "process.thread.name", "extradata": ")" },
+    { "type": "literal", "text": ") " },
+    { "type": "rest", "name": "keycloak.attributes" }
+]%
+
+# Workaround EOF after ']%' or '}%'
