@@ -1,7 +1,7 @@
 attributes:
   allowHidden: false
-  fieldAttrs: '{}'
-  fieldFormatMap: '{}'
+  fieldAttrs: '{"log.level":{},"keycloak.type":{}}'
+  fieldFormatMap: '{"log.level":{"id":"color","params":{"fieldType":"string","colors":[{"range":"-Infinity:Infinity","regex":"INFO|CONFIG","text":"#000000","background":"#def6ff"},{"range":"-Infinity:Infinity","regex":"WARN","text":"#000000","background":"#fff5cf"},{"range":"-Infinity:Infinity","regex":"ERROR","text":"#000000","background":"#ffe0e0"},{"range":"-Infinity:Infinity","regex":"FATAL|SEVERE","text":"#000000","background":"#ffb5b5"}]}},"keycloak.type":{"id":"color","params":{"fieldType":"string","colors":[{"range":"-Infinity:Infinity","regex":"ERROR","text":"#000000","background":"#FFE0E0"}]}}}'
   fields: '[]'
   name: logs-keycloak-zlc
   runtimeFieldMap: '{}'
@@ -10,14 +10,13 @@ attributes:
   title: logs-keycloak-zlc,logs-keycloak-zlc.*
 coreMigrationVersion: 8.8.0
 created_at: "2024-08-02T16:16:31.527Z"
-created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
 id: 869ef01d-d740-4ef4-abf2-1e25b671600c
 managed: false
 references: []
 type: index-pattern
 typeMigrationVersion: 8.0.0
-updated_at: "2024-08-02T16:41:19.408Z"
-version: WzM0MDYsMzhd
+updated_at: "2024-09-16T12:42:17.596Z"
+version: WzUzMDMsNDBd
 ---
 excludedObjects: []
 excludedObjectsCount: 0
