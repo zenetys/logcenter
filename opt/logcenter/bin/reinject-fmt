@@ -64,6 +64,30 @@ PARSER_HOSTNAME = {
     },
 }
 
+PARSER_TAG = {
+    {
+        name = 'program[pid]',
+        match = {
+            pattern = '^([^%[]+)%[([^%]]+)%]$',
+            set = { app_name = 1, procid = 2 },
+        },
+    },
+    {
+        name = 'program[]',
+        match = {
+            pattern = '^([^%[]+)%[%]$',
+            set = { app_name = 1 },
+        },
+    },
+    {
+        name = 'program',
+        match = {
+            pattern = '^([^%[]+)$',
+            set = { app_name = 1 },
+        },
+    },
+}
+
 -- main parsers
 
 PARSER_MAIN_ARCHIVE_LINE_V2 = {
@@ -125,32 +149,7 @@ PARSER_MAIN_ARCHIVE_LINE_V1 = {
     chain = {
         { input = '_date', parser = PARSER_DATE },
         { input = '_hostname', parser = PARSER_HOSTNAME },
-        {
-            input = '_tag',
-            parser = {
-                {
-                    name = 'program[pid]',
-                    match = {
-                        pattern = '^([^%[]+)%[([^%]]+)%]$',
-                        set = { app_name = 1, procid = 2 },
-                    },
-                },
-                {
-                    name = 'program[]',
-                    match = {
-                        pattern = '^([^%[]+)%[%]$',
-                        set = { app_name = 1 },
-                    },
-                },
-                {
-                    name = 'program',
-                    match = {
-                        pattern = '^([^%[]+)$',
-                        set = { app_name = 1 },
-                    },
-                },
-            },
-        },
+        { input = '_tag', parser = PARSER_TAG },
     },
 }
 
