@@ -10,6 +10,7 @@ PROGNAME = arg[0]:match('([^/]*)$')
 VERBOSE = 1
 
 DEFAULT = {
+    year = os.date('%Y'),
     facility = 1,
     severity = 6,
     hostname = 'localhost',
@@ -37,6 +38,31 @@ PARSER_DATE = {
             set = { reported = 1 },
         },
     },
+}
+
+PARSER_LEGACY_DATE = {
+    {
+        name = 'legacy-date',
+        match = {
+            fn = function (input, def, vars)
+                local cap = { input:match('^(%u%l%l) ([%d ]%d) (%d%d):(%d%d):(%d%d)(.*)$') }
+                local m,d,h,i,s = LEGACY_MONTH2NUM[cap[1]], tonumber(cap[2]), tonumber(cap[3]), tonumber(cap[4]), tonumber(cap[5])
+                if not m then return false end
+                if not d or d < 1 or d > 31 then return false end
+                if not h or h < 0 or h > 23 then return false end
+                if not i or i < 0 or i > 59 then return false end
+                if not s or s < 0 or s > 59 then return false end
+                vars._rest = cap[6]
+                -- try to get a year, which may conflict with hostname...
+                local y = vars._rest:match('^ (2%d%d%d) [^ ]')
+                if y then vars._rest = vars._rest:sub(6) end
+                vars.reported = os.date('%Y-%m-%dT%H:%M:%S%z', os.time({
+                    day=d, month=m, year=(y or DEFAULT.year), hour=h, min=i, sec=s }))
+                vars.reported = vars.reported:gsub('(..)$', ':%1')
+                return true
+            end,
+        }
+    }
 }
 
 function is_hostname(input)
@@ -167,10 +193,35 @@ PARSER_MAIN_RSYSLOG_FileFormat = {
     },
 }
 
+PARSER_MAIN_RSYSLOG_TraditionalFileFormat = {
+    -- Sep 17 03:40:06 zvault-col-01 systemd[157685]: Reached target Exit the Session.
+    name = 'rsyslog-traditional-file-format',
+    chain = {
+        { parser = PARSER_LEGACY_DATE },
+        {
+            input = '_rest',
+            parser = {
+                {
+                    name = 'after-legacy-date',
+                    match = {
+                        pattern = '^ ([^ ]+) ([^: ]+): (.*)$',
+                        set = { _hostname = 1, _tag = 2, msg = 3 },
+                    },
+                    chain = {
+                        { input = '_hostname', parser = PARSER_HOSTNAME },
+                        { input = '_tag', parser = PARSER_TAG },
+                    },
+                },
+            },
+        },
+    },
+}
+
 PARSER_MAIN = {
     PARSER_MAIN_ARCHIVE_LINE_V2,
     PARSER_MAIN_ARCHIVE_LINE_V1,
     PARSER_MAIN_RSYSLOG_FileFormat,
+    PARSER_MAIN_RSYSLOG_TraditionalFileFormat,
 }
 
 FACILITY_TEXT2NUM = {
@@ -209,6 +260,21 @@ SEVERITY_TEXT2NUM = {
     notice = 5,
     info = 6,
     debug = 7,
+}
+
+LEGACY_MONTH2NUM = {
+    Jan = 1,
+    Feb = 2,
+    Mar = 3,
+    Apr = 4,
+    May = 5,
+    Jun = 6,
+    Jul = 7,
+    Aug = 8,
+    Sep = 9,
+    Oct = 10,
+    Nov = 11,
+    Dec = 12,
 }
 
 function perr(message)
