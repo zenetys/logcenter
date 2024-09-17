@@ -205,51 +205,57 @@ function date_rfc3339(ts)
     return d:sub(1, -3)..':'..d:sub(-2)
 end
 
-function parse(input, defs, vars)
-    function try_def_match(def)
-        local cap
-        debug('def='..def.name..', input='..input);
+function parse(input, defs, vars, is_recurse)
+    function try_def_match(input, def, vars)
+        local cap, verdict
         if (def.match.pattern) then
-            debug('def='..def.name..', test pattern');
             cap = { input:match(def.match.pattern) }
-            if (#cap == 0) then
-                return false
-            end
+            verdict = (#cap > 0)
+            debug('def='..def.name..', test pattern => '..tostring(verdict));
+            if not verdict then return false end
         end
         if (def.match.fn) then
-            debug('def='..def.name..', test fn');
-            if (not def.match.fn(input, def, vars, cap, table.unpack(def.match.args or {}))) then
-                return false
-            end
+            verdict = def.match.fn(input, def, vars, cap, table.unpack(def.match.args or {}))
+            debug('def='..def.name..', test fn => '..tostring(verdict));
+            if not verdict then return false end
         end
         if (def.match.set) then
             for kk,vv in pairs(def.match.set) do
-                vars[kk] = cap[vv]
+                if vv == 0 then vars[kk] = input
+                else vars[kk] = cap[vv] end
             end
         end
         return true
     end
-
-    for i,v in ipairs(defs) do
-        if (not v.match or try_def_match(v)) then
-            if (v.finalize) then
-                debug('def='..v.name..', finalize fn');
-                if (not v.finalize.fn(input, vars, table.unpack(v.finalize.args or {}))) then
-                    return false, 'finalize failed'
-                end
-            end
-            if (v.chain) then
-                for ii,vv in ipairs(v.chain) do
-                    local ret, err = parse(vars[vv.input], vv.parser, vars);
-                    if (not ret) then
-                        return false, err
-                    end
-                end
-            end
-            return true
+    function try_def_finalize(input, def, vars)
+        local verdict
+        verdict = def.finalize.fn(input, vars, table.unpack(def.finalize.args or {}))
+        debug('def='..def.name..', finalize fn => '..tostring(verdict));
+        if not verdict then return false end
+        return true
+    end
+    function try_def_chain(input, def, vars)
+        local verdict
+        for i,v in ipairs(def.chain) do
+            verdict,_ = parse(vars[v.input] or input, v.parser, vars, true);
+            debug('def='..def.name..', chain['..i..'] => '..tostring(verdict));
+            if not verdict then return false end
         end
+        return true
     end
 
+    for i,def in ipairs(defs) do
+        -- reset <vars> container for next main parser
+        if not is_recurse then for k,_ in pairs(vars) do vars[k] = nil end end
+
+        debug('def='..def.name..', input='..input);
+        local verdict = (not def.match or try_def_match(input, def, vars)) and
+            (not def.finalize or try_def_finalize(input, def, vars)) and
+            (not def.chain or try_def_chain(input, def, vars))
+        debug('def='..def.name..' => '..tostring(verdict)..(vars.__is_fatal and ' [fatal]' or ''));
+        if verdict then return true
+        elseif vars.__is_fatal then break end
+    end
     return false, 'no match'
 end
 
