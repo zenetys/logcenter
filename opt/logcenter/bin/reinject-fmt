@@ -110,7 +110,7 @@ PARSER_MAIN_ARCHIVE_LINE_V1 = {
     name = 'archive-line-v1',
     match = {
         pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^:]+): (.*)',
-        set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, message = 6 },
+        set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, msg = 6 },
     },
     chain = {
         { input = '_date', parser = PARSER_DATE },
