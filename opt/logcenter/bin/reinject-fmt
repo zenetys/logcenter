@@ -149,7 +149,7 @@ PARSER_MAIN = {
     PARSER_MAIN_ARCHIVE_LINE_V1,
 }
 
-SYSLOG_FACILITY_TEXT2NUM = {
+FACILITY_TEXT2NUM = {
     kern = 0,
     user = 1,
     mail = 2,
@@ -176,7 +176,7 @@ SYSLOG_FACILITY_TEXT2NUM = {
     local7 = 23,
 }
 
-SYSLOG_SEVERITY_TEXT2NUM = {
+SEVERITY_TEXT2NUM = {
     emerg = 0,
     alert = 1,
     crit = 2,
@@ -275,8 +275,8 @@ function process(line)
 
     local pri = vars.pri
     if not pri then
-        local facility = (vars.facility and SYSLOG_FACILITY_TEXT2NUM[vars.facility] or DEFAULT.facility)
-        local severity = (vars.severity and SYSLOG_SEVERITY_TEXT2NUM[vars.severity] or DEFAULT.severity)
+        local facility = (vars.facility and FACILITY_TEXT2NUM[vars.facility] or DEFAULT.facility)
+        local severity = (vars.severity and SEVERITY_TEXT2NUM[vars.severity] or DEFAULT.severity)
         pri = num2pri(facility, severity)
     end
 
