@@ -153,9 +153,24 @@ PARSER_MAIN_ARCHIVE_LINE_V1 = {
     },
 }
 
+PARSER_MAIN_RSYSLOG_FileFormat = {
+    -- 2024-09-16T03:55:17.235459+02:00 zvault-col-01.zenetys.loc rsyslogd-pstats: { "name": "resource-usage", ...
+    name = 'rsyslog-file-format',
+    match = {
+        pattern = '^([^ ]+) ([^ ]+) ([^: ]+): (.*)$',
+        set = { _date = 1, _hostname = 2, _tag = 3, msg = 4 },
+    },
+    chain = {
+        { input = '_date', parser = PARSER_DATE },
+        { input = '_hostname', parser = PARSER_HOSTNAME },
+        { input = '_tag', parser = PARSER_TAG },
+    },
+}
+
 PARSER_MAIN = {
     PARSER_MAIN_ARCHIVE_LINE_V2,
     PARSER_MAIN_ARCHIVE_LINE_V1,
+    PARSER_MAIN_RSYSLOG_FileFormat,
 }
 
 FACILITY_TEXT2NUM = {
