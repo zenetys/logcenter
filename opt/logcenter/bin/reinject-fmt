@@ -39,19 +39,27 @@ PARSER_DATE = {
     },
 }
 
+function is_hostname(input)
+    return input:match('^[%w_.-]+$') and
+        not input:find('%.%.') and
+        input:sub(1, 1) ~= '.' and
+        input:sub(-1) ~= '.'
+end
+
 PARSER_HOSTNAME = {
     {
         name = 'hostname/ip',
         match = {
-            pattern = '^([^ /]+)/([0-9a-fA-F:.]+)',
+            pattern = '^([^/]+)/([0-9a-fA-F:.]+)',
+            fn = function (input, def, vars, cap) return is_hostname(cap[1]) end,
             set = { hostname = 1, src_ip = 2 },
         },
     },
     {
         name = 'hostname',
         match = {
-            pattern = '^([^ ]+)',
-            set = { hostname = 1 },
+            fn = function (input) return is_hostname(input) end,
+            set = { hostname = 0 }
         },
     },
 }
@@ -65,7 +73,8 @@ PARSER_MAIN_ARCHIVE_LINE_V2 = {
     -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "msg": "multi\nlines\nmsg..." }
     name = 'archive-line-v2',
     match = {
-        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) (.+)',
+        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) (.+)$',
+        fn = function (_,_,_, cap) return FACILITY_TEXT2NUM[cap[2]] ~= nil and SEVERITY_TEXT2NUM[cap[3]] ~= nil end,
         set = { _date = 1, facility = 2, severity = 3, _hostname = 4, app_name = 5, procid = 6, msgid = 7, _rest = 8 },
     },
     chain = {
@@ -109,7 +118,8 @@ PARSER_MAIN_ARCHIVE_LINE_V1 = {
     -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy[32098]: msg...
     name = 'archive-line-v1',
     match = {
-        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^:]+): (.*)',
+        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^: ]+): (.*)$',
+        fn = function (_,_,_, cap) return FACILITY_TEXT2NUM[cap[2]] ~= nil and SEVERITY_TEXT2NUM[cap[3]] ~= nil end,
         set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, msg = 6 },
     },
     chain = {
