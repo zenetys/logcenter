@@ -56,91 +56,97 @@ PARSER_HOSTNAME = {
     },
 }
 
+-- main parsers
+
+PARSER_MAIN_ARCHIVE_LINE_V2 = {
+    -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
+    -- 2023-11-30T09:35:20.411141+01:00/2018-10-31T18:00:00+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
+    -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "sd": "<rfc5424-sd>", "msg": "msg..." }
+    -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "msg": "multi\nlines\nmsg..." }
+    name = 'archive-line-v2',
+    match = {
+        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) (.+)',
+        set = { _date = 1, facility = 2, severity = 3, _hostname = 4, app_name = 5, procid = 6, msgid = 7, _rest = 8 },
+    },
+    chain = {
+        { input = '_date', parser = PARSER_DATE },
+        { input = '_hostname', parser = PARSER_HOSTNAME },
+        {
+            input = '_rest',
+            parser = {
+                {
+                    name = 'msg',
+                    match = { fn = function (input) return input:sub(1,2) == '- ' end },
+                    finalize = { fn = function (input, vars) vars.msg = input:sub(3); return true end },
+                },
+                {
+                    name = 'json-[sd-]msg',
+                    --match = { pattern = '^{.+' },
+                    match = { fn = function (input) return input:sub(1,1) == '{' end },
+                    finalize = {
+                        fn = function (input, vars)
+                            local success, data = pcall(json.decode, vars._rest);
+                            if not success or not data.msg then return false end
+                            vars.msg = data.msg
+                            if data.sd then vars.sd = data.sd end
+                            return true
+                        end,
+                    },
+                },
+            },
+        },
+    }
+}
+
+PARSER_MAIN_ARCHIVE_LINE_V1 = {
+    -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
+    -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
+    -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy: msg...
+    -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy[32098]: msg...
+    -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
+    -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
+    -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy: msg...
+    -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy[32098]: msg...
+    name = 'archive-line-v1',
+    match = {
+        pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^:]+): (.*)',
+        set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, message = 6 },
+    },
+    chain = {
+        { input = '_date', parser = PARSER_DATE },
+        { input = '_hostname', parser = PARSER_HOSTNAME },
+        {
+            input = '_tag',
+            parser = {
+                {
+                    name = 'program[pid]',
+                    match = {
+                        pattern = '^([^%[]+)%[([^%]]+)%]$',
+                        set = { app_name = 1, procid = 2 },
+                    },
+                },
+                {
+                    name = 'program[]',
+                    match = {
+                        pattern = '^([^%[]+)%[%]$',
+                        set = { app_name = 1 },
+                    },
+                },
+                {
+                    name = 'program',
+                    match = {
+                        pattern = '^([^%[]+)$',
+                        set = { app_name = 1 },
+                    },
+                },
+            },
+        },
+    },
+}
+
 PARSER_MAIN = {
-    {
-        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
-        -- 2023-11-30T09:35:20.411141+01:00/2018-10-31T18:00:00+01:00 authpriv.info lb1/10.10.1.231 sshd 1341672 - - msg...
-        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "sd": "<rfc5424-sd>", "msg": "msg..." }
-        -- 2023-11-30T09:35:20.411141+01:00 authpriv.info lb1 sshd 1341672 - { "msg": "multi\nlines\nmsg..." }
-        name = 'archive-line-v2',
-        match = {
-            pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) (.+)',
-            set = { _date = 1, facility = 2, severity = 3, _hostname = 4, app_name = 5, procid = 6, msgid = 7, _rest = 8 },
-        },
-        chain = {
-            { input = '_date', parser = PARSER_DATE },
-            { input = '_hostname', parser = PARSER_HOSTNAME },
-            {
-                input = '_rest',
-                parser = {
-                    {
-                        name = 'msg',
-                        match = { fn = function (input) return input:sub(1,2) == '- ' end },
-                        finalize = { fn = function (input, vars) vars.msg = input:sub(3); return true end },
-                    },
-                    {
-                        name = 'json-[sd-]msg',
-                        --match = { pattern = '^{.+' },
-                        match = { fn = function (input) return input:sub(1,1) == '{' end },
-                        finalize = {
-                            fn = function (input, vars)
-                                local success, data = pcall(json.decode, vars._rest);
-                                if not success or not data.msg then return false end
-                                vars.msg = data.msg
-                                if data.sd then vars.sd = data.sd end
-                                return true
-                            end,
-                        },
-                    },
-                },
-            },
-        }
-    },
-    {
-        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
-        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
-        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy: msg...
-        -- 2018-10-31T18:00:00.189614+01:00 local0.info lb1 haproxy[32098]: msg...
-        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy: msg...
-        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1/10.10.1.231 haproxy[32098]: msg...
-        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy: msg...
-        -- 2018-10-31T18:00:00.189614+01:00/2018-10-31T18:00:00+01:00 local0.info lb1 haproxy[32098]: msg...
-        name = 'archive-line-v1',
-        match = {
-            pattern = '^([^ ]+) ([^.]+)%.([^ ]+) ([^ ]+) ([^:]+): (.*)',
-            set = { _date = 1, facility = 2, severity = 3, _hostname = 4, _tag = 5, message = 6 },
-        },
-        chain = {
-            { input = '_date', parser = PARSER_DATE },
-            { input = '_hostname', parser = PARSER_HOSTNAME },
-            {
-                input = '_tag',
-                parser = {
-                    {
-                        name = 'program[pid]',
-                        match = {
-                            pattern = '^([^%[]+)%[([^%]]+)%]$',
-                            set = { app_name = 1, procid = 2 },
-                        },
-                    },
-                    {
-                        name = 'program[]',
-                        match = {
-                            pattern = '^([^%[]+)%[%]$',
-                            set = { app_name = 1 },
-                        },
-                    },
-                    {
-                        name = 'program',
-                        match = {
-                            pattern = '^([^%[]+)$',
-                            set = { app_name = 1 },
-                        },
-                    },
-                },
-            },
-        },
-    },
+    PARSER_MAIN_ARCHIVE_LINE_V2,
+    PARSER_MAIN_ARCHIVE_LINE_V1,
 }
 
 SYSLOG_FACILITY_TEXT2NUM = {
