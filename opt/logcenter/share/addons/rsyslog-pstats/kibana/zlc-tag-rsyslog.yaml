@@ -1,0 +1,19 @@
+attributes:
+  color: '#5af6c1'
+  description: ""
+  name: rsyslog
+coreMigrationVersion: 8.8.0
+created_at: "2024-09-17T20:48:55.601Z"
+id: 0bcd0972-ee05-472f-af5e-c62240451c15
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-09-17T20:51:28.926Z"
+version: WzY3MzcxLDQ0XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

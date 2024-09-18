@@ -1,0 +1,22 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - rsyslog_pstats_keyword_and_text:
+          path_match:
+            - rsyslog.name
+            - rsyslog.origin
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text
+
+      - rsyslog_pstats_flattened:
+          path_match:
+            - rsyslog.values
+          match_mapping_type: object
+          mapping:
+            type: flattened

@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{}'
+  fieldFormatMap: '{}'
+  fields: '[]'
+  name: logs-rsyslog.pstats-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-rsyslog.pstats-zlc,logs-rsyslog.pstats-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-09-17T20:04:32.453Z"
+id: bb0a4d68-2bad-4bf7-9fe9-78431725dfe6
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-09-18T12:21:44.801Z"
+version: WzU2NDMsNDBd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

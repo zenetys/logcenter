@@ -1,0 +1,26 @@
+version: 1
+index_patterns:
+  - logs-rsyslog.pstats-zlc
+  - logs-rsyslog.pstats-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-rsyslog.pstats-dynamic
+  - zlc-component-logs-rsyslog.pstats-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-rsyslog.pstats@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-rsyslog.pstats-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-rsyslog.pstats@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      # alias event.dataset to data_stream.dataset
+      data_stream.dataset: { type: constant_keyword }
+      event.dataset: { type: alias, path: 'data_stream.dataset' }
