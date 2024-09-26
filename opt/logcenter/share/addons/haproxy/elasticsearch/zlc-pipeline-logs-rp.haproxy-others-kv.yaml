@@ -1,0 +1,33 @@
+version: 1
+
+processors:
+
+  - script:
+      id: zlc-script-ingest-parse-kv
+      params:
+        field: haproxy.others
+        mode_field: _.haproxy_others_parse_kv_mode
+        # default quoted as string, non-quoted as number
+        mode: 1
+
+  # drop haproxy.others still available in event.original
+  - remove:
+      field: haproxy.others
+
+  # if host header was set in url.domain, it may include a port
+  - script:
+      if: ctx.url?.domain instanceof String
+      #ignore_failure: true
+      lang: painless
+      source: |
+        int colon = ctx.url.domain.indexOf(':');
+        if (colon != -1) {
+            try {
+                long port = Long.parseLong(ctx.url.domain.substring(colon+1));
+                if (port >= 1 && port <= 65535) {
+                    ctx.url.port = port;
+                    ctx.url.domain = ctx.url.domain.substring(0, colon);
+                }
+            }
+            catch (Exception e) {}
+        }

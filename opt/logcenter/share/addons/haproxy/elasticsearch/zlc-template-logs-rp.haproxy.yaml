@@ -19,8 +19,30 @@ ignore_missing_component_templates:
   - zlc-component-logs-rp.haproxy@custom
 data_stream: {}
 template:
+
+  settings:
+    analysis:
+      char_filter:
+        haproxy_frontend_base_filter:
+          type: mapping
+          mappings:
+            - '~ =>'
+      normalizer:
+        haproxy_frontend_base_normalizer:
+          type: custom
+          char_filter: [ haproxy_frontend_base_filter ]
+
   mappings:
     properties:
       # alias event.dataset to data_stream.dataset
       data_stream.dataset: { type: constant_keyword }
       event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      haproxy.frontend_name:
+        type: keyword
+        ignore_above: 1024
+        fields:
+          base:
+            # strip the '~' ssl suffix
+            type: keyword
+            normalizer: haproxy_frontend_base_normalizer

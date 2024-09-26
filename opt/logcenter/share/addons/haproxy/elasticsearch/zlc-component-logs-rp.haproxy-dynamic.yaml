@@ -3,19 +3,25 @@ template:
   mappings:
     dynamic_templates:
 
-      # Sometimes it gets parsed fro rsyslog as string or floats,
-      # with .0, make sure it gets indexed as long or fix rsyslog
-      # parsing.
+      # KV fiels parsed from haproxy.others give strings.
+      # Some conversion may not be needed with these rules.
       - haproxy_long:
+          match_mapping_type: string
           path_match:
             - '*.bytes'
-            - 'haproxy.*_ms'
-            - 'haproxy.connections.active'
-            - 'haproxy.connections.frontend'
-            - 'haproxy.connections.backend'
-            - 'haproxy.connections.server'
-            - 'haproxy.connections.retries'
-            - 'haproxy.connections.*_err'
-            - 'http.response.status_code'
+            - 'bytes_*'
+            - '*_time_ms'
+            - 'time_*_ms'
           mapping:
             type: long
+
+      - haproxy_keyword_and_text:
+          path_match:
+            - 'haproxy.error_message'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
