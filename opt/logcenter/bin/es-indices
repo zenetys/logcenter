@@ -20,19 +20,20 @@ function mode_listing() {
         fi
 }
 
+WATCH_INTERVAL=
 while (( $# > 0 )); do
     case "$1" in
         -h|--help) exit_usage 0 ;;
-        -w|--watch) watch=${2:-5}; shift ;;
+        -w|--watch) WATCH_INTERVAL=${2:-5}; shift ;;
         *) exit_usage 1 ;;
     esac
     shift
 done
 
-if [[ -n $watch ]]; then
-    [[ -z ${watch//[0-9]} ]] || exit_usage 1
+if [[ -n $WATCH_INTERVAL ]]; then
+    [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
     export WATCHING=1
-    exec watch -n "$watch" "$0"
+    exec watch -n "$WATCH_INTERVAL" "$0"
 else
     mode_listing
 fi
