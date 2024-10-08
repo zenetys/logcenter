@@ -7,6 +7,19 @@ function exit_usage() {
     exit "$status"
 }
 
+function mode_listing() {
+    es-curl _cat/indices?s=i |
+        if [[ -z $WATCHING ]]; then
+            cat
+        else
+            grep -F -f <({
+                es-curl '_cat/aliases/*,-.*,-ilm-history*?s=a' |awk '$(NF)=="true"{print $2}';
+                es-curl '_data_stream/*,-.*,.monitoring-es-*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]'
+            }) |
+            column -t -o ' '
+        fi
+}
+
 while (( $# > 0 )); do
     case "$1" in
         -h|--help) exit_usage 0 ;;
@@ -20,15 +33,6 @@ if [[ -n $watch ]]; then
     [[ -z ${watch//[0-9]} ]] || exit_usage 1
     export WATCHING=1
     exec watch -n "$watch" "$0"
+else
+    mode_listing
 fi
-
-es-curl _cat/indices?s=i |
-    if [[ -z $WATCHING ]]; then
-        cat
-    else
-        grep -F -f <({
-            es-curl '_cat/aliases/*,-.*,-ilm-history*?s=a' |awk '$(NF)=="true"{print $2}';
-            es-curl '_data_stream/*,-.*,.monitoring-es-*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]'
-        }) |
-        column -t -o ' '
-    fi
