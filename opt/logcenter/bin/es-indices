@@ -20,20 +20,89 @@ function mode_listing() {
         fi
 }
 
+function mode_size() {
+    awk -v "SIZE_VERBOSITY=$SIZE_VERBOSITY" \
+        -v "SIZE_RAW=$SIZE_RAW" \
+        -v "SIZE_SORT=$SIZE_SORT" \
+    '
+function human(input, mult, sep, _sym) {
+    _sym = 1;
+    while (input >= mult && _sym < HSYM_LEN) {
+        _sym++;
+        input = input / mult;
+    }
+    return sprintf("%.1lf%s%s", input, sep, HSYM[_sym]);
+}
+BEGIN {
+    HSYM_LEN = split(",K,M,G,T", HSYM, ",");
+}
+ARGIND == 1 || ARGIND == 2 {
+    num_groups_by_indice[$2]++;
+    indice2group[$2,num_groups_by_indice[$2]] = $1;
+}
+ARGIND == 3 {
+    for (i = 1; i <= num_groups_by_indice[$3]; i++) {
+        group = indice2group[$3,i];
+        store_size_by_group[group] += $(NF-2)
+        pri_store_size_by_group[group] += $(NF-1)
+    }
+}
+END {
+    # gawk specific sort
+    ordered_groups_len = asorti(store_size_by_group, ordered_groups, SIZE_SORT)
+    for (i = 1; i <= ordered_groups_len; i++) {
+        group = ordered_groups[i];
+        if (SIZE_VERBOSITY < 2 && substr(group, 1, 1) == ".")
+            continue;
+        store_size = store_size_by_group[group];
+        pri_store_size = pri_store_size_by_group[group];
+        printf("%s %s %s\n", group,
+            SIZE_RAW ? store_size : (human(store_size, 1024) "B"),
+            SIZE_RAW ? pri_store_size : (human(pri_store_size, 1024) "B"));
+    }
+}
+    '   <(es-curl _cat/aliases?s=a) \
+        <(es-curl _data_stream |jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
+        <(es-curl '_cat/indices?s=i&bytes=b') |
+    column -t -o ' ' -R 2,3
+}
+
+SIZE_VERBOSITY=
+SIZE_RAW=
+SIZE_SORT=@ind_str_asc
 WATCH_INTERVAL=
+shopt -s extglob
 while (( $# > 0 )); do
     case "$1" in
         -h|--help) exit_usage 0 ;;
+        -s|--size) (( SIZE_VERBOSITY++ )) ;;
+        -r|--size-raw) SIZE_RAW=1 ;;
+        -n|--size-asc) SIZE_SORT=@val_num_asc ;;
+        -N|--size-desc) SIZE_SORT=@val_num_desc ;;
         -w|--watch) WATCH_INTERVAL=${2:-5}; shift ;;
+        -+([srnNh]))
+            for (( i = 1; i < ${#1}; i++ )); do
+                case "${1:i:1}" in
+                    s) (( SIZE_VERBOSITY++ )) ;;
+                    r) SIZE_RAW=1 ;;
+                    n) SIZE_SORT=@val_num_asc ;;
+                    N) SIZE_SORT=@val_num_desc ;;
+                    h) exit_usage 0 ;;
+                esac
+            done
+            ;;
         *) exit_usage 1 ;;
     esac
     shift
 done
+shopt -u extglob
 
 if [[ -n $WATCH_INTERVAL ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
     export WATCHING=1
     exec watch -n "$WATCH_INTERVAL" "$0"
+elif [[ -n $SIZE_VERBOSITY ]]; then
+    mode_size
 else
     mode_listing
 fi
