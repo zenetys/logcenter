@@ -1,0 +1,41 @@
+#!/bin/bash
+cd "${0%/*}"
+ok=OK; err=ERROR; skip=SKIP
+cok=$'\x1b[7;92m'; cerr=$'\x1b[7;91m'; cskip=$'\x1b[7;90m'; crst=$'\x1b[0m'
+[[ -t 1 ]] && { ok="${cok}${ok}${crst}"; err="${cerr}${err}${crst}"; skip="${cskip}${skip}${crst}"; }
+filter_re=${1:-^}; filter_not=; [[ $filter_re == '!'* ]] && { filter_re=${filter_re:1}; filter_not=1; }
+function run() {
+    echo -n "$* => "
+    [[ $* =~ $filter_re ]]; local filter_ret=$?
+    [[ -n $filter_not ]] && (( filter_ret = (filter_ret + 1) % 2 ))
+    if (( filter_ret == 1 )); then
+        echo "$skip"
+        ((nskip++))
+        return
+    fi
+    if [[ -n $TEST_MEMORY ]]; then
+        "$@" 2>&1 >/dev/null |fgrep -q '== All heap blocks were freed -- no leaks are possible'
+    else
+        "$@" >/dev/null 2>&1
+    fi
+    if (( $? == 0 )); then
+        echo "$ok"
+        ((nok++))
+    else
+        echo "$err"
+        ((nerr++))
+    fi
+}
+function on_exit() {
+    echo -n "SUMMARY, $ok: $nok"
+    (( nerr > 0 )) && echo -n ", $err: $nerr"
+    (( nskip > 0 )) && echo -n ", $skip: $nskip"
+    echo
+    exit $(( nerr > 0 ? 2 : 0 ))
+}
+trap on_exit EXIT
+
+for i in *.list; do
+    name=${i%.list}
+    run ./test "$name.rb" "$name.list" "$name.expect"
+done

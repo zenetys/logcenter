@@ -1,0 +1,10 @@
+{"originalmsg":" at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]"}
+{"originalmsg":"\tat org.jboss.resteasy.reactive.server.handlers.InvocationHandler.handle(InvocationHandler.java:29)"}
+{"originalmsg":"\tat org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)"}
+{"originalmsg":" at org.jboss.resteasy.reactive.server.handlers.InvocationHandler.handle(InvocationHandler.java:29)"}
+{"originalmsg":" at org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)"}
+{"originalmsg":"Caused by: java.lang.ArithmeticException: The denominator must not be zero"}
+{"originalmsg":"Caused by: java.lang.NullPointerException"}
+{"originalmsg":"\t... 16 more"}
+{"originalmsg":" ... 3 more"}
+{"originalmsg":"\tat org.redacted.protocol.oauth.OAuthService$redactedinvoker$redactedBinding_1fb0e5777b2f3e9a4251d283c18c67ce996774b7.invoke(Unknown Source)"}

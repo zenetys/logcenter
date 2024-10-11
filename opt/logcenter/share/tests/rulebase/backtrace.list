@@ -1,0 +1,10 @@
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]
+	at org.jboss.resteasy.reactive.server.handlers.InvocationHandler.handle(InvocationHandler.java:29)
+	at org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)
+ at org.jboss.resteasy.reactive.server.handlers.InvocationHandler.handle(InvocationHandler.java:29)
+ at org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)
+Caused by: java.lang.ArithmeticException: The denominator must not be zero
+Caused by: java.lang.NullPointerException
+	... 16 more
+ ... 3 more
+	at org.redacted.protocol.oauth.OAuthService$redactedinvoker$redactedBinding_1fb0e5777b2f3e9a4251d283c18c67ce996774b7.invoke(Unknown Source)

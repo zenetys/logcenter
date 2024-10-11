@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e
+set -o pipefail
+[[ $1 == -h || $1 == --help ]] && { echo "Usage: ${0##*/} rb [list [expect]]"; exit 1; }
+rb=$1; list=${2:-${rb%.*}.list}; expect=${3:-${list%.*}.expect}
+export LIBLOGNORM_RULEBASES=${LIBLOGNORM_RULEBASES:-/opt/logcenter/lib/rsyslog/rulebase}
+[[ ( -r $rb || -r $LIBLOGNORM_RULEBASES/$rb ) ]] || { echo 'rb read error' >&2; exit 1; }
+[[ -r $list ]] || { echo 'list read error' >&2; exit 1; }
+function cat_file() {
+    case "${1##*.}" in
+        xz) xzcat "$1" ;;
+        gz) zcat "$1" ;;
+        *) cat "$1" ;;
+    esac
+}
+function rb() {
+    cat_file "$list" |
+        lognormalizer -T -oaddOriginalMsg -r "$rb" -e json |
+        jq -Sc
+}
+if [[ -n $TEST_DUMP ]]; then
+    rb
+elif [[ -n $TEST_MEMORY ]]; then
+    function lognormalizer() { valgrind --leak-check=full --malloc-fill=ff --free-fill=fe lognormalizer "$@"; }
+    function jq() { cat; }
+    rb
+else
+    [[ -r $expect ]] || { echo 'expect read error' >&2; exit 1; }
+    if [[ -n $TEST_EXPLAIN ]]; then
+        diff -u <(cat_file "$expect" |jq) <(rb |jq)
+    else
+        diff -u <(cat_file "$expect") <(rb)
+    fi
+fi

@@ -1,0 +1,11 @@
+1725627417.284    118 10.50.1.11 TCP_MISS/302 688 GET http://www.debian.org/ - ORIGINAL_DST/194.177.211.216 text/html
+1725976484.617     19 10.50.1.11 NONE_NONE/000 0 CONNECT 130.89.148.77:443 - HIER_NONE/- - squid.ssl.bump_mode=splice squid.ssl.sni=www.debian.org
+1725631953.393     75 10.50.1.11 TCP_TUNNEL/200 20296 CONNECT www.debian.org:443 - ORIGINAL_DST/130.89.148.77 - squid.ssl.bump_mode=splice squid.ssl.sni=www.debian.org
+1725954621.388      1 10.50.1.11 NONE_NONE/000 0 CONNECT 5.39.122.36:443 - HIER_NONE/- - squid.ssl.bump_mode=terminate squid.ssl.sni=-
+1725976493.018      1 10.50.1.11 TCP_DENIED/403 3784 GET http://dl.rockylinux.org/ - HIER_NONE/- text/html
+1725976495.984     19 10.50.1.11 NONE_NONE/000 0 CONNECT 199.232.198.132:443 - HIER_NONE/- - squid.ssl.bump_mode=terminate squid.ssl.sni=dl.rockylinux.org
+1726047956.640     40 10.50.1.11 NONE_NONE/000 0 CONNECT 199.232.194.132:443 - HIER_NONE/- - squid.ssl.bump_mode=bump squid.ssl.sni=dl.rockylinux.org
+1726047956.751    108 10.50.1.11 TCP_MISS/200 540 GET https://dl.rockylinux.org/vault/README.txt - ORIGINAL_DST/199.232.194.132 text/plain squid.ssl.bump_mode=bump squid.ssl.sni=dl.rockylinux.org
+1726048022.924      0 10.50.1.11 TCP_DENIED/403 3775 GET https://linuxfr.org/aide - HIER_NONE/- text/html squid.ssl.bump_mode=bump squid.ssl.sni=linuxfr.org
+1726048134.261      0 10.50.1.11 NONE_NONE/000 0 - error:transaction-end-before-headers - HIER_NONE/- -
+1726048134.261      0 10.50.1.11 NONE_NONE/000 0 - error:transaction-end-before-headers - HIER_NONE/- - squid.ssl.bump_mode=peek squid.ssl.sni=-

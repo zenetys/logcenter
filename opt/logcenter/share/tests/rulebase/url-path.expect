@@ -1,0 +1,7 @@
+{"fragment":"top","originalmsg":"/home/index.php?x=1&b=%32#top","path":"/home/index.php","query":"x=1&b=%32"}
+{"originalmsg":"/home/index.php?x=1&b=%32","path":"/home/index.php","query":"x=1&b=%32"}
+{"fragment":"top","originalmsg":"/home/index.php#top","path":"/home/index.php"}
+{"originalmsg":"/home/index.php","path":"/home/index.php"}
+{"originalmsg":"/?","path":"/","query":""}
+{"fragment":"","originalmsg":"/#","path":"/"}
+{"fragment":"","originalmsg":"/?#","path":"/","query":""}
