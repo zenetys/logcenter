@@ -174,23 +174,32 @@ type=@_http:%[
     { "type": "literal",    "text": "/" },
     { "type": "number",     "name": "haproxy.backend_queue", "format": "number" },
     { "type": "@caphdr",    "name": "." },
+]%
+
+rule=type.http,fmt.http:%[
+    { "type": "@_http",     "name": "." },
     { "type": "@req",       "name": "." },
     { "type": "literal",    "text": "\"" }
 ]%
 
-rule=type.http,fmt.http:%[
-    { "type": "@_http",     "name": "." }
+rule=type.http,fmt.http_truncated:%[
+    { "type": "@_http",     "name": "." },
+    { "type": "char-to",    "name": "http.request.method", "extradata": " " },
+    { "type": "literal",    "text": " " },
+    { "type": "string",     "name": "url.original", "quoting.mode": "none", "quoting.escape.mode": "none" }
 ]%
 
 rule=type.http,fmt.http_kv:%[
     { "type": "@_http",     "name": "." },
-    { "type": "literal",    "text": " " },
+    { "type": "@req",       "name": "." },
+    { "type": "literal",    "text": "\" " },
     { "type": "rest",       "name": "haproxy.others" }
 ]%
 
 rule=type.http,fmt.https:%[
     { "type": "@_http",     "name": "." },
-    { "type": "literal",    "text": " " },
+    { "type": "@req",       "name": "." },
+    { "type": "literal",    "text": "\" " },
     { "type": "number",     "name": "haproxy.connections.fc_err", "format": "number" },
     { "type": "literal",    "text": "/" },
     { "type": "@hexstr",    "name": "haproxy.connections.ssl_fc_err_hex" },
@@ -210,7 +219,8 @@ rule=type.http,fmt.https:%[
 
 rule=type.http,fmt.https_kv:%[
     { "type": "@_http",     "name": "." },
-    { "type": "literal",    "text": " " },
+    { "type": "@req",       "name": "." },
+    { "type": "literal",    "text": "\" " },
     { "type": "number",     "name": "haproxy.connections.fc_err", "format": "number" },
     { "type": "literal",    "text": "/" },
     { "type": "@hexstr",    "name": "haproxy.connections.ssl_fc_err_hex" },
@@ -356,5 +366,7 @@ annotate=type.http:+haproxy.log.kind="traffic"
 annotate=type.tcp:+haproxy.log.kind="traffic"
 annotate=type.default:+haproxy.log.kind="traffic"
 annotate=type.error:+haproxy.log.kind="traffic"
+
+annotate=fmt.http_truncated:+haproxy.log.truncated="1"
 
 # Workaround EOF after ']%' or '}%'

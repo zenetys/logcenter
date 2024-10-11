@@ -23,6 +23,7 @@ processors:
   # http.version: string
   # tls.version: string
   # tls.resumed: long
+  # haproxy.frontend_name: string
   # haproxy.logasap: long
   # haproxy.redispatched: long
   # haproxy.others: string
@@ -50,6 +51,10 @@ processors:
             }
         }
 
+        // add haproxy.frontend_ssl true flag
+        if (ctx.haproxy.frontend_name != null && ctx.haproxy.frontend_name.endsWith('~'))
+            ctx.haproxy.frontend_ssl = true;
+
         // tls.resumed, expected as number, should be indexed as boolean
         if (ctx.tls?.resumed != null)
             ctx.tls.resumed = ctx.tls.resumed == 1 ? true : false;
@@ -69,6 +74,10 @@ processors:
             else
                 ctx.haproxy.connections.remove('redispatched');
         }
+
+        // haproxy.log.truncated, if set, should be indexed as true flag
+        if (ctx.haproxy.log?.truncated != null)
+            ctx.haproxy.log.truncated = true;
 
         // event.duration
         if (ctx.haproxy.total_time_ms != null)
