@@ -1,0 +1,19 @@
+attributes:
+  color: '#57d4d6'
+  description: ""
+  name: haproxy
+coreMigrationVersion: 8.8.0
+created_at: "2024-10-07T08:29:59.645Z"
+id: d80936fc-1dcd-47f3-9c97-32b0bcdec6d7
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-10-16T08:04:22.353Z"
+version: WzExMDI4MCw0NV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

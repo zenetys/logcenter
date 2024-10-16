@@ -1,0 +1,19 @@
+attributes:
+  color: '#585366'
+  description: ""
+  name: rp
+coreMigrationVersion: 8.8.0
+created_at: "2024-10-07T08:29:51.577Z"
+id: bd1e1218-8334-464f-8ad2-9c4a62b6156f
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-10-07T08:29:51.577Z"
+version: Wzc5OTc0LDQ1XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

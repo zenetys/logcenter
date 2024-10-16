@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"source.port":{},"url.port":{},"haproxy.bytes_read":{},"haproxy.bytes_uploaded":{},"http.request.body.bytes":{},"http.request.bytes":{},"http.response.bytes":{},"haproxy.total_time_ms":{},"haproxy.total_waiting_time_ms":{},"haproxy.http.request.time_wait_without_data_ms":{},"haproxy.http.request.time_wait_ms":{},"haproxy.connection_wait_time_ms":{}}'
+  fieldFormatMap: '{"source.port":{"id":"number","params":{"pattern":"0"}},"url.port":{"id":"number","params":{"pattern":"0"}},"haproxy.bytes_read":{"id":"bytes","params":{}},"haproxy.bytes_uploaded":{"id":"bytes","params":{}},"http.request.body.bytes":{"id":"bytes","params":{}},"http.request.bytes":{"id":"bytes","params":{}},"http.response.bytes":{"id":"bytes","params":{}},"haproxy.total_time_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","useShortSuffix":true,"showSuffix":true,"outputPrecision":2,"includeSpaceWithSuffix":true}},"haproxy.total_waiting_time_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","useShortSuffix":true,"outputPrecision":2,"showSuffix":true,"includeSpaceWithSuffix":true}},"haproxy.http.request.time_wait_without_data_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","useShortSuffix":true,"outputPrecision":2,"showSuffix":true,"includeSpaceWithSuffix":true}},"haproxy.http.request.time_wait_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","useShortSuffix":true,"outputPrecision":2,"showSuffix":true,"includeSpaceWithSuffix":true}},"haproxy.connection_wait_time_ms":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","useShortSuffix":true,"outputPrecision":2,"showSuffix":true,"includeSpaceWithSuffix":true}}}'
+  fields: '[]'
+  name: logs-rp.haproxy-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-rp.haproxy-zlc,logs-rp.haproxy-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-10-07T07:45:47.723Z"
+id: fe1bba72-8dee-455e-8160-aa15ab9c9383
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-10-07T10:06:24.350Z"
+version: WzU4NDYsNDFd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
