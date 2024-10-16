@@ -1,0 +1,96 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] FILE-NDJSON..
+Split kibana saved objects ndjson exports in single yaml files
+
+Available options:
+    -d, --dedup BASE-DIR    Tags only, symlink to existing files
+    -h, --help              Display this help
+"
+    exit "$status"
+}
+
+function info() {
+    echo "$PROGNAME: $*"
+}
+
+# $1: input file, ndjson
+function do_file() {
+    local dir=${1%/*}
+    [[ $dir == $1 ]] && dir=.
+
+    info "Process $1"
+    jq -c . "$1" |while read -r; do
+        name=$(echo "$REPLY" |jq -r 'if .exportedCount then "" else "\(.attributes.name//.attributes.title)" end')
+        [[ -z $name ]] && continue
+
+        name=${name//[^[:alnum:].-]/-}
+        name=${name,,}
+        type=$(echo "$REPLY" |jq -r '.type')
+        case "$type" in
+            dashboard) name=${name#dashboard-} ;;&
+            search) name=${name#listing-} ;;&
+            index-pattern) name="dataview-${name%-zlc}" ;;
+            *) name="$type-$name" ;;
+        esac
+        name="zlc-$name"
+
+        info "Build $dir/$name.yaml"
+        {
+            echo "$REPLY" |jq '
+                del(.created_by) |
+                del(.updated_by) |
+                if (.type == "index-pattern" and (.attributes?.fieldFormatMap |type) == "string") then
+                    .attributes.fieldFormatMap = (
+                        .attributes.fieldFormatMap |
+                        fromjson |
+                        with_entries(del(.value.params.parsedUrl)) |
+                        @json
+                    )
+                else
+                    .
+                end
+            '
+            echo '{"excludedObjects":[],"excludedObjectsCount":0,"exportedCount":1,"missingRefCount":0,"missingReferences":[]}'
+        } |
+            yq -pj -oy > "$dir/$name.yaml"
+
+        if [[ $type == tag && -n $DEDUP_BASE_DIR ]]; then
+            local my_id=$(yq -r 'select(.id) |.id' "$dir/$name.yaml")
+            find "$DEDUP_BASE_DIR" -type f -name "$name.yaml" -not -samefile "$dir/$name.yaml" |
+                xargs --no-run-if-empty realpath -s --relative-to "$dir" --relative-base "$DEDUP_BASE_DIR" |
+                while read -r; do
+                    this_id=$(yq -r 'select(.id) |.id' "$dir/$REPLY")
+                    if [[ $this_id == $my_id ]]; then
+                        info "Sylink $dir/$name.yaml to $REPLY"
+                        rm -fv "$dir/$name.yaml"
+                        ln -s "$REPLY" "$dir/$name.yaml"
+                        break
+                    fi
+                done
+        fi
+    done
+}
+
+args=()
+while (( $# > 0 )); do
+    case "$1" in
+        -d|--dedup) DEDUP_BASE_DIR=$2; shift ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+args+=( "$@" )
+
+for i in "${args[@]}"; do
+    do_file "$i"
+done
