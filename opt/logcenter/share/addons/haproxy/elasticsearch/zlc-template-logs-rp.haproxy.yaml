@@ -34,9 +34,18 @@ template:
 
   mappings:
     properties:
+
       # alias event.dataset to data_stream.dataset
       data_stream.dataset: { type: constant_keyword }
       event.dataset: { type: alias, path: 'data_stream.dataset' }
+
+      # alias tls.client.x509.subject.distinguished_name to haproxy.connections.ssl_c_s_dn
+      haproxy.connections.ssl_c_s_dn: { type: keyword, fields: { text: { type: match_only_text } } }
+      tls.client.x509.subject.distinguished_name: { type: alias, path: haproxy.connections.ssl_c_s_dn }
+
+      # alias tls.client.x509.issuer.distinguished_name to haproxy.connections.ssl_c_i_dn
+      haproxy.connections.ssl_c_i_dn: { type: keyword, fields: { text: { type: match_only_text } } }
+      tls.client.x509.issuer.distinguished_name: { type: alias, path: haproxy.connections.ssl_c_i_dn }
 
       haproxy.frontend_name:
         type: keyword
