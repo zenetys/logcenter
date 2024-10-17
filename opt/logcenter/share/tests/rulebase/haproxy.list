@@ -1,5 +1,6 @@
 10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027 HTTP/1.1"
 10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated 
 10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027 HTTP/1.1" host.name=DMZ-ALOHA1 http.request.bytes=129 http.request.referrer=- client.ip=- url.domain=portail.acme.fr haproxy.http.headers.content_length=- user_agent.original="curl/7.51.0" haproxy.unique.id=C0A8070B:8A06_C0A80477:01BB_66F53D6C_1A5E28:289E haproxy.header.modsec_code=-
 10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/+24 200 +12016 - - ---- 689/1/0/0/+0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027 HTTP/1.1"
 10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 {portail.acme.fr|Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36} "GET /home/portal/?orgname=acmecorp&domainid=1558014427027 HTTP/1.1"
@@ -33,6 +34,16 @@
 1.2.3.4:36543 [21/Nov/2017:23:52:09.059] ft_tcp bk_tcp/srv1 1/0/38 4523 -- 408/194/194/49/0 0/0
 1.2.3.4:37187 [21/Nov/2017:23:57:58.168] ft_tcp bk_tcp/srv2 1/0/300021 3238 cD 367/179/179/50/0 0/0 aaa=123 bbb="some value" ccc=test ddd= eeee=-
 Connect from 1.2.3.4:60878 to 10.109.21.43:443 (ft_tcp/TCP)
+Connect from 1.2.3.4:60878 to 10.109.21.43:443 (ft_tcp/TCP) 
 1.2.3.4:43558 [30/Sep/2024:02:53:06.580] ft_main/bind_443: SSL handshake failure
 1.2.3.4:23523 [27/Sep/2024:06:09:54.228] ft_portal/2: SSL handshake failure (error:14209102:SSL routines:tls_early_post_process_client_hello:unsupported protocol)
 1.2.3.4:43774 [30/Sep/2024:03:02:55.778] ft_pub~ 2/2 34/000000000A00018C/0/0/0 -/SSLv3/(NONE)
+1.2.3.4:6656 [26/Sep/2024:00:22:28.350] ft_main ft_main/<NOSRV> -1/-1/-1/-1/0 503 9650 - - SC-- 81/69/0/0/0 0/0 "GET /cgi-bin/action.cgi HTTP/truncated
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated1024"
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated1024" 
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated1024" key1=42 key2="value2"
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?this_log=has_a%20&long_query=string&is+truncated1024" key1=42 key2="value2" 
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027+truncated1024" 0/0000000000000000/0/0/0 portail.acme.fr/TLSv1.2/ECDHE-ECDSA-AES256-GCM-SHA384
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027+truncated1024" 0/0000000000000000/0/0/0 portail.acme.fr/TLSv1.2/ECDHE-ECDSA-AES256-GCM-SHA384 
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027+truncated1024" 0/0000000000000000/0/0/0 portail.acme.fr/TLSv1.2/ECDHE-ECDSA-AES256-GCM-SHA384 key1=42 key2="value2"
+10.109.3.11:35334 [26/Sep/2024:12:54:36.932] portail.acme.fr_ft1~ portail.acme.fr_bk1/PORTAL-WEB1 0/0/12/12/24 200 12016 - - ---- 689/1/0/0/0 0/0 "GET /home/portal/?orgname=acmecorp&domainid=1558014427027+truncated1024" 0/0000000000000000/0/0/0 portail.acme.fr/TLSv1.2/ECDHE-ECDSA-AES256-GCM-SHA384 key1=42 key2="value2" 

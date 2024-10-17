@@ -110,16 +110,26 @@ type=@caphdr:%{
 type=@req_proper:%[
     { "type": "char-to",    "name": "http.request.method", "extradata": " " },
     { "type": "literal",    "text": " " },
-    { "type": "char-to",    "name": "url.original", "extradata": " " },
+    { "type": "char-to",    "name": "url.original", "extradata": " \"" },
     { "type": "literal",    "text": " " },
     { "type": "char-to",    "name": "http.version", "extradata": "\"" }
+]%
+
+# case "<method> <truncated-request>"
+# case "<method> <truncated-request><EOL>
+# case "<method> <truncated-request><space><EOL>
+type=@req_truncated:%[
+    { "type": "char-to",    "name": "http.request.method", "extradata": " " },
+    { "type": "literal",    "text": " " },
+    { "type": "char-sep",   "name": "url.original", "extradata": " \"" }
 ]%
 
 type=@req:%{
     "type": "alternative",
     "parser": [
         { "type": "literal", "name": "url.original", "text": "<BADREQ>", "priority": 100 },
-        { "type": "@req_proper", "name": ".", "priority": 200 }
+        { "type": "@req_proper", "name": ".", "priority": 200 },
+        { "type": "@req_truncated", "name": ".", "priority": 900 }
     ]
 }%
 
@@ -182,18 +192,17 @@ rule=type.http,fmt.http:%[
     { "type": "literal",    "text": "\"" }
 ]%
 
-rule=type.http,fmt.http_truncated:%[
-    { "type": "@_http",     "name": "." },
-    { "type": "char-to",    "name": "http.request.method", "extradata": " " },
-    { "type": "literal",    "text": " " },
-    { "type": "string",     "name": "url.original", "quoting.mode": "none", "quoting.escape.mode": "none" }
-]%
-
 rule=type.http,fmt.http_kv:%[
     { "type": "@_http",     "name": "." },
     { "type": "@req",       "name": "." },
     { "type": "literal",    "text": "\" " },
-    { "type": "rest",       "name": "haproxy.others" }
+    { "type": "rest",       "name": "haproxy.others", "priority": 60000 }
+]%
+
+rule=type.http,fmt.http_truncated:%[
+    { "type": "@_http",     "name": "." },
+    { "type": "@req",       "name": "." },
+    { "type": "rest",       "name": "haproxy.log.truncated", "priority": 60000 }
 ]%
 
 rule=type.http,fmt.https:%[
@@ -293,7 +302,7 @@ rule=type.tcp,fmt.tcp_kv:%[
 
 # Default log format
 
-rule=type.default,fmt.default:%[
+type=@_default:%[
     { "type": "literal",    "text": "Connect from " },
     { "type": "@ip",        "name": "source.ip" },
     { "type": "literal",    "text": ":" },
@@ -307,6 +316,18 @@ rule=type.default,fmt.default:%[
     { "type": "literal",    "text": "/" },
     { "type": "char-to",    "name": "haproxy.mode", "extradata": ")" },
     { "type": "literal",    "text": ")" }
+]%
+
+rule=type.default,fmt.default:%[
+    { "type": "@_default",  "name": "." }
+]%
+
+# Default logs cannot be customized, but this handle trailing spaces seen
+# in logs on ALOHA.
+rule=type.default,fmt.default_kv:%[
+    { "type": "@_default",  "name": "." },
+    { "type": "literal",    "text": " " },
+    { "type": "rest",       "name": "haproxy.others" }
 ]%
 
 # Error log format
@@ -366,7 +387,5 @@ annotate=type.http:+haproxy.log.kind="traffic"
 annotate=type.tcp:+haproxy.log.kind="traffic"
 annotate=type.default:+haproxy.log.kind="traffic"
 annotate=type.error:+haproxy.log.kind="traffic"
-
-annotate=fmt.http_truncated:+haproxy.log.truncated="1"
 
 # Workaround EOF after ']%' or '}%'
