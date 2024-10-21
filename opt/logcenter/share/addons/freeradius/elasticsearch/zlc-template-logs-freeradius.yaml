@@ -1,0 +1,27 @@
+version: 1
+index_patterns:
+  - logs-freeradius-zlc
+  - logs-freeradius-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-freeradius-dynamic
+  - zlc-component-logs-freeradius-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-freeradius@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-freeradius-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-freeradius@custom
+data_stream: {}
+template:
+
+  mappings:
+    properties:
+
+        event.action: { type: zlc_alias, target: { path: freeradius.action, type: keyword } }
+        event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }

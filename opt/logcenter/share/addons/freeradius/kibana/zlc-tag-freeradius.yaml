@@ -1,0 +1,19 @@
+attributes:
+  color: '#d0db42'
+  description: ""
+  name: freeradius
+coreMigrationVersion: 8.8.0
+created_at: "2024-10-20T22:57:09.283Z"
+id: e89d1068-dafb-4e46-8687-1cd23964bd38
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2024-10-20T22:57:09.283Z"
+version: WzExMjU4Nyw0NV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

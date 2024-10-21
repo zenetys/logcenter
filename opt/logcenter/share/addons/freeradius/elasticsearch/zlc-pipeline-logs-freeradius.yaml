@@ -1,0 +1,154 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'freeradius.* fields expected'
+      if: (ctx.freeradius instanceof Map) == false
+
+# Huawei-IPHost-Addr = "10.109.21.93 00:ab:cd:9f:01:23"
+# Huawei-IPHost-Addr = "255.255.255.255 01:23:45:67:89:0a"
+# Huawei-Startup-Stamp = 1618710184
+# Called-Station-Id = "E8-13-12-34-AB-CD:WIFI_GUEST"
+# Huawei-Loopback-Address = "E810-8AB3-4142"
+# Calling-Station-Id = "8cab-cdb9-1234"
+# NAS-IP-Address = 10.212.45.231
+# Framed-MTU = 1500
+# Framed-IP-Address = 10.109.21.45
+# User-Name = "ACME\\Zaroti"
+# User-Name = "zaia.aroti@acme.com"
+# User-Name = "host/WKSP-3AB4.cg60.fr"
+# User-Name = "zaroti"
+# Huawei-User-Mac = "\000\000\000\001"
+
+  - kv:
+      if: ctx.freeradius.request?.pairs != null
+      field: freeradius.request.pairs
+      target_field: freeradius.request
+      field_split: '(?:((\s+)?$|, (?=[\w_.-]+ = )))'
+      value_split: ' = '
+      strip_brackets: true
+      ignore_missing: true
+  - remove:
+      if: ctx.freeradius.request?.pairs != null &&
+          ctx.freeradius.request.size() > 1
+      field: freeradius.request.pairs
+
+  - date:
+      if: ctx.freeradius.request['Event-Timestamp'] != null
+      field: freeradius.request.Event-Timestamp
+      target_field: freeradius.request.Event-Timestamp
+      timezone: '{{{ _.tz }}}'
+      formats:
+        - MMM  d yyyy HH:mm:ss zz
+        - MMM dd yyyy HH:mm:ss zz
+      output_format: "yyyy-MM-dd'T'HH:mm:ssXX"
+      on_failure:
+        - rename:
+            field: freeradius.request.Event-Timestamp
+            target_field: freeradius.request.Event-Timestamp_raw
+
+  - set:
+      if: ctx.freeradius.request != null &&
+          ctx.freeradius.request['Framed-IP-Address'] != null
+      field: client.ip
+      copy_from: freeradius.request.Framed-IP-Address
+
+  - set:
+      if: ctx.freeradius.request != null &&
+          ctx.freeradius.request['NAS-IP-Address'] != null
+      field: source.ip
+      copy_from: freeradius.request.NAS-IP-Address
+
+  - gsub:
+      if: ctx.freeradius.request != null &&
+          ctx.freeradius.request['User-Name'] != null
+      field: freeradius.request.User-Name
+      pattern: '\\\\'
+      replacement: '\\'
+  - grok:
+      if: ctx.freeradius.request != null &&
+          ctx.freeradius.request['User-Name'] != null
+      field: freeradius.request.User-Name
+      patterns:
+        - '^%{HOSTNAME:client.user.domain}\\\\%{USERNAME:client.user.name}$'
+        - '^%{HOSTNAME:client.user.domain}\\%{USERNAME:client.user.name}$'
+        - '^%{USERNAME:client.user.name}@%{HOSTNAME:client.user.domain}$'
+        - '^host/%{GREEDYDATA:client.domain}$'
+        - '^%{GREEDYDATA:client.user.name}$'
+  - append:
+      if: ctx.client?.domain != null
+      field: related.hosts
+      value: '{{{ client.domain }}}'
+      allow_duplicates: false
+
+  - script:
+      lang: painless
+      on_failure: [ append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' } ]
+      source: |
+        String normMac(String input) {
+            def output = '';
+            def input_len = input.length();
+            int ipair = 0;
+            for (int i = 0; i < input_len; i++) {
+                char c = input.charAt(i);
+                if (Character.digit(c, 16) > -1) {
+                    if (ipair >= 2) {
+                        output = output + ':';
+                        ipair = 0;
+                    }
+                    output = output + Character.toLowerCase(c);
+                    ipair++;
+                }
+            }
+            if (output.length() != 17)
+                return null;
+            return output;
+        }
+
+        def req = ctx.freeradius.request;
+        if (req != null) {
+            String mac;
+            if (req['Huawei-Loopback-Address'] != null) {
+                mac = normMac(req['Huawei-Loopback-Address']);
+                if (mac != null)
+                    req['Huawei-Loopback-Address'] = mac;
+            }
+            if (req['Calling-Station-Id'] != null) {
+                mac = normMac(req['Calling-Station-Id']);
+                if (mac != null)
+                    req['Calling-Station-Id'] = mac;
+            }
+
+            if (req['Called-Station-Id'] != null) {
+                // huawei may append ssid
+                if (req['Huawei-Connect-ID'] != null) {
+                    Pattern pat_huawei_csi = /^(?i)([0-9a-f]{2}(?:-[0-9a-f]{2}){5})[:]([^ ]+)/;
+                    Matcher matcher_huawei_csi = pat_huawei_csi.matcher(req['Called-Station-Id']);
+                    if (matcher_huawei_csi.matches()) {
+                        req['Called-Station-Id'] = normMac(matcher_huawei_csi.group(1));
+                        req['Called-Station-Id_ssid'] = matcher_huawei_csi.group(2);
+                    }
+                }
+                else {
+                    mac = normMac(req['Called-Station-Id']);
+                    if (mac != null)
+                        req['Called-Station-Id'] = mac;
+                }
+            }
+
+            if (req['Huawei-IPHost-Addr'] != null && ctx.client?.ip == null) {
+                int space_pos = req['Huawei-IPHost-Addr'].indexOf(' ' /* space */);
+                if (space_pos > 0) {
+                    String client_ip = req['Huawei-IPHost-Addr'].substring(0, space_pos);
+                    if (!client_ip.equals('255.255.255.255')) {
+                        if (!(ctx.client instanceof Map))
+                            ctx.client = [:];
+                        ctx.client.ip = client_ip;
+                    }
+                }
+            }
+        }

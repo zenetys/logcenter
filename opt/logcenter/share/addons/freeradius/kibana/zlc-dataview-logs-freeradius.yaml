@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"freeradius.request.NAS-Port":{},"freeradius.request.Framed-MTU":{}}'
+  fieldFormatMap: '{"freeradius.request.NAS-Port":{"id":"number","params":{"pattern":"0"}},"freeradius.request.Framed-MTU":{"id":"number","params":{"pattern":"0"}}}'
+  fields: '[]'
+  name: logs-freeradius-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-freeradius-zlc,logs-freeradius-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2024-10-20T22:55:24.417Z"
+id: 913a59af-4cd8-4268-b7d3-e4447f9f430b
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2024-10-21T12:16:49.335Z"
+version: Wzc0NzksNDFd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

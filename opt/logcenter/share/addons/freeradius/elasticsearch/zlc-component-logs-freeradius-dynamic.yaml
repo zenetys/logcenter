@@ -1,0 +1,43 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - freeradius_date:
+          match_mapping_type: string
+          path_match:
+            - '*.Event-Timestamp'
+          mapping:
+            type: date
+
+      - freeradius_long:
+          match_mapping_type: string
+          path_match:
+            - '*.NAS-Port'
+            - '*-NAS-Port'
+            - '*-MTU'
+          mapping:
+            type: long
+
+      - freeradius_ip:
+          match_mapping_type: string
+          path_match:
+            - '*.FreeRADIUS-Proxied-To'
+            - '*.IP-Address'
+            - '*-IP-Address'
+            - '*-IP-Addr'
+          mapping:
+            type: ip
+
+      - freeradius_keyword_and_text:
+          path_match:
+            - '*.Module-Failure-Message'
+            - '*.User-Name'
+            - '*-User-Name'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
