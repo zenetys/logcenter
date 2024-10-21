@@ -17,6 +17,11 @@ processors:
         if: ctx.source?.user?.name != null
   - append:
         field: related.user
+        value: '{{{ client.user.name }}}'
+        allow_duplicates: false
+        if: ctx.client?.user?.name != null
+  - append:
+        field: related.user
         value: '{{{ destination.user.name }}}'
         allow_duplicates: false
         if: ctx.destination?.user?.name != null
