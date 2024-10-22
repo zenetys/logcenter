@@ -125,13 +125,11 @@ processors:
 
             if (req['Called-Station-Id'] != null) {
                 // huawei may append ssid
-                if (req['Huawei-Connect-ID'] != null) {
-                    Pattern pat_huawei_csi = /^(?i)([0-9a-f]{2}(?:-[0-9a-f]{2}){5})[:]([^ ]+)/;
-                    Matcher matcher_huawei_csi = pat_huawei_csi.matcher(req['Called-Station-Id']);
-                    if (matcher_huawei_csi.matches()) {
-                        req['Called-Station-Id'] = normMac(matcher_huawei_csi.group(1));
-                        req['Called-Station-Id_ssid'] = matcher_huawei_csi.group(2);
-                    }
+                Pattern pat_huawei_csi = /^(?i)([0-9a-f]{2}(?:-[0-9a-f]{2}){5})[:]([^ ]+)/;
+                Matcher matcher_huawei_csi = pat_huawei_csi.matcher(req['Called-Station-Id']);
+                if (matcher_huawei_csi.matches()) {
+                    req['Called-Station-Id'] = normMac(matcher_huawei_csi.group(1));
+                    req['Called-Station-Id_ssid'] = matcher_huawei_csi.group(2);
                 }
                 else {
                     mac = normMac(req['Called-Station-Id']);
