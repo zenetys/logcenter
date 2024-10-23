@@ -11,6 +11,7 @@ Split kibana saved objects ndjson exports in single yaml files
 
 Available options:
     -d, --dedup BASE-DIR    Tags only, symlink to existing files
+    -C, --output-dir DIR    Output directory, default is input directory
     -h, --help              Display this help
 "
     exit "$status"
@@ -22,8 +23,11 @@ function info() {
 
 # $1: input file, ndjson
 function do_file() {
-    local dir=${1%/*}
-    [[ $dir == $1 ]] && dir=.
+    local dir=$OUTPUT_DIR
+    if [[ -z $dir ]]; then
+        dir=${1%/*}
+        [[ $dir == $1 ]] && dir=.
+    fi
 
     info "Process $1"
     jq -c . "$1" |while read -r; do
@@ -78,9 +82,12 @@ function do_file() {
     done
 }
 
+DEDUP_BASE_DIR=
+OUTPUT_DIR=
 args=()
 while (( $# > 0 )); do
     case "$1" in
+        -C|--output-dir) OUTPUT_DIR=$2; shift ;;
         -d|--dedup) DEDUP_BASE_DIR=$2; shift ;;
         -h|--help) exit_usage 0 ;;
         --) shift; break ;;
