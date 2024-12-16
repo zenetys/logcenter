@@ -85,6 +85,7 @@ end')
 [[ $last_ts == error ]] && fatal "Failed to query raw index"
 [[ $last_ts == no-index ]] &&  { info "No data, abort"; exit 0; }
 
+last_ts=${last_ts%.*}
 info "Fetched last_ts $last_ts, diff now $((now - last_ts))"
 
 if (( last_ts > 0 && (now - last_ts) > 60*10 )); then
