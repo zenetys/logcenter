@@ -89,7 +89,10 @@ fi
 info "Roles to be assigned: ${ROLE[@]}"
 for r in "${ROLE[@]}"; do
     [[ -z $r ]] && continue
-    out=$(ES_LOCAL_CURL_FAIL= es-curl "/_security/role/$r" -o /dev/null -w '%{http_code}')
+    # disable both curl --fail-with-body (el9) and -f (el8)
+    out=$(ES_LOCAL_CURL_FAIL_WITH_BODY= \
+          ES_LOCAL_CURL_FAIL= \
+        es-curl "/_security/role/$r" -o /dev/null -w '%{http_code}')
     if [[ $out == 404 ]]; then
         # role does not exist, maybe we can add it?
         if [[ -n ${ROLES[$r]} ]]; then

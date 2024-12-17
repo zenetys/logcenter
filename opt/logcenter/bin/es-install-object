@@ -158,7 +158,10 @@ function push_to_es() {
 # $1: URI
 function check_custom_override() {
     [[ $1 == *@custom ]] || { REPLY=; return 0; }
-    REPLY=$(ES_LOCAL_CURL_FAIL= es-curl "$1" -o /dev/null -w '%{http_code}')
+    # disable both curl --fail-with-body (el9) and -f (el8)
+    REPLY=$(ES_LOCAL_CURL_FAIL_WITH_BODY= \
+            ES_LOCAL_CURL_FAIL= \
+        es-curl "$1" -o /dev/null -w '%{http_code}')
     [[ $REPLY == 2?? ]] && { REPLY=200; return 0; }
     [[ $REPLY == 404 ]] && return 0
     REPLY='Failed to check object existence'
