@@ -74,11 +74,14 @@ while read -r; do
     fi
 done < <(
     find "$ZLC_ARCHIVES_DIR/" \
+        -mindepth 3 \
+        -not \( -path "$ZLC_ARCHIVES_DIR/@*" -prune \) \
+        -not \( -path '*/sig' -prune \) \
         -type f \
-        \( -name '????-??-??.log.xz' -o -name '????-??-??.*.log.xz' \) \
+        -name '????-??-??*.log.*z' \
         \( "${findopts[@]}" \) |
             # just for sorting by YYYY-MM-DD then full path
-            sed -re "s,.*/([0-9-]+)\.[^/]+,\1\t\0," |sort -V |awk -F $'\t' '{ print $2 }'
+            sed -re 's,^.*/([^/]+),\1\t\0,' |sort -V |awk -F $'\t' '{ print $2 }'
 )
 
 exit $(( errors > 0 ? 1 : 0 ))

@@ -8,6 +8,7 @@ set -f
 export LC_ALL=C
 umask 0077
 PROGNAME=${0##*/}
+HOURS=
 DAYS=
 QUIET=
 DRY_RUN=
@@ -19,14 +20,18 @@ function exit_usage() {
     local status=${1:-0}
     [[ "$status" != "0" ]] && exec >&2
     echo "\
-Usage: $PROGNAME [-n] [-q] [-d DAYS]
+Usage: $PROGNAME [-n] [-q] [-d DAYS] [-H HOURS]
 Compress log files collected via syslog
 
 Available options:
+  -H, --hours   NUM     Keep n hour(s) of uncompressed files.
   -d, --days    NUM     Keep n day(s) of uncompressed files.
   -q, --quiet           Display errors only.
   -n, --dry-run         Dry-run mode, do not change anything.
-  -h, --help            Display this help."
+  -h, --help            Display this help.
+
+Note: days and hours to keep uncompressed are added, then converted
+in minutes to be passed to find -mmin option."
     exit "$status"
 }
 
@@ -63,6 +68,7 @@ function load_env_or_fatal() {
     [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
     [[ -d $ZLC_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_ARCHIVES_DIR, not a directory'
     [[ -n $ZLC_SIGFILED_SOCKNAME ]] && export ${!ZLC_SIGFILED_*}
+    HOURS=$ZLC_ARCHIVES_UNCOMPRESSED_HOURS # may be overriden by script argument
     DAYS=$ZLC_ARCHIVES_UNCOMPRESSED_DAYS # may be overriden by script argument
     return 0
 }
@@ -74,6 +80,7 @@ load_env_or_fatal
 
 while (( $# > 0 )); do
     case "$1" in
+        -H|--hours) HOURS=$2; shift ;;
         -d|--days) DAYS=$2; shift ;;
         -q|--quiet) QUIET=1 ;;
         -n|--dry-run) DRY_RUN=1 ;;
@@ -83,28 +90,33 @@ while (( $# > 0 )); do
     shift
 done
 
-[[ -n $DAYS && -z ${DAYS//[0-9]} ]] ||
+# None of $DAYS nor $HOURS is required
+[[ -n $DAYS && -n ${DAYS//[0-9]} ]] &&
     fatal 'Invalid uncompressed days, not a number'
+[[ -n $HOURS && -n ${HOURS//[0-9]} ]] &&
+    fatal 'Invalid uncompressed hours, not a number'
 
 acquire_lock_or_fatal
 trap release_lock EXIT
 
-current_log_yyyy_mm_dd=$(date +%Y-%m-%d)
-if [[ -z $current_log_yyyy_mm_dd ]]; then
+# Current date and hour are used to exclude files being currently written.
+# Exclusions are made from it to handle both daily and hourly archive files.
+current_date=( $(date '+%Y-%m-%d %H') ) ||
     fatal "Call to date failed, cannot to get current date, abort"
-fi
 
-find_opts=( -mindepth 3 -maxdepth 3 -type f )
-if (( DAYS == 0 )); then
-    # safeguard, need an mtime of 60 minutes minimum
-    # meaning that task is better scheduled after 1am
-    find_opts+=( -mmin +60 )
-else
-    find_opts+=( -mtime "+$DAYS" )
-fi
+find_mmin=$(( DAYS*24*60 + HOURS*60 ))
+find_mmin=$(( find_mmin == 0 ? 5 : find_mmin ))
+
 find_opts+=(
+    -L
+    "$ZLC_ARCHIVES_DIR/"
+    -mindepth 3
+    -not \( -path "$ZLC_ARCHIVES_DIR/@*" -prune \)
+    -type f
     -name "*$ZLC_SELF_ID_EXT.log"
-    -not -name "${current_log_yyyy_mm_dd}${ZLC_SELF_ID_EXT}.log"
+    -not -name "${current_date[0]}${ZLC_SELF_ID_EXT}.log"
+    -not -name "${current_date[0]}T${current_date[1]}${ZLC_SELF_ID_EXT}.log"
+    -mmin "+$find_mmin"
 )
 
 total=0
@@ -116,7 +128,8 @@ time_main_start=$(date +%s)
 
 info "BEGIN TASK -- ZLC_ARCHIVES_DIR=${ZLC_ARCHIVES_DIR:-<empty>}, \
 ZLC_SELF_ID_EXT=${ZLC_SELF_ID_EXT:-<empty>}, ZLC_XZ_OPTS=${ZLC_XZ_OPTS[*]:-<empty>}, \
-DAYS=${DAYS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, QUIET=${QUIET:-<empty>}"
+DAYS=${DAYS:-<empty>}, HOURS=${HOURS:-<empty>}, DRY_RUN=${DRY_RUN:-<empty>}, \
+QUIET=${QUIET:-<empty>}"
 info "Find options: ${find_opts[*]}"
 
 while read -r; do
@@ -224,7 +237,7 @@ while read -r; do
     fi
 
 done < <(
-    find -L "$ZLC_ARCHIVES_DIR/" "${find_opts[@]}" -printf '%P\n' |sort -V
+    find "${find_opts[@]}" -printf '%P\n' |sort -V
 )
 
 time_main_stop=$(date +%s)

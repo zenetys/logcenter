@@ -1,0 +1,153 @@
+#!/bin/bash
+
+# this is not a procedure!
+# both archivers
+#   disable logcenter archives cron tasks
+#   stop pull-archives service
+#   restart rsyslog
+#   wait for next hour for file rotation
+#   run this migration script
+#   remove signature and old sig dirs
+#   check, cleanup, ex:
+#       find /data/log/ -mindepth 3 -not \( -path '*/sig' -prune \) \
+#           -type f -name '????-??-??*.log*' -exec chmod 0640 {} +
+#       find /data/log/ -mindepth 3 -not \( -path '*/sig' -prune \) \
+#           -type f -name '????-??-??*.log*' -exec chown root:adm {} +
+#   regenerate signatures
+#   change compress-log cron task to every 5 minutes
+#   re-enable cron tasks
+# main archiver
+#   start pull-archives service
+
+function cat_file() {
+    case "${1##*.}" in
+        gz) zcat "$1" ;;
+        xz) xzcat "$1" ;;
+        bz2) bzcat "$1" ;;
+        *) cat "$1" ;;
+    esac
+}
+
+function migrate_file() {
+    local file=$1
+    local basedir=${file%/*}
+    local exten=${file##*/}
+    exten=${exten#*.}
+    [[ $exten == *z ]] && exten=${exten%.*}
+
+    echo "[SPLIT] $file"
+
+    cat_file "$file" |
+        awk -v "input=$file" \
+            -v "basedir=$basedir" \
+            -v "exten=$exten" \
+            -v "xzq=$XZQ" \
+        '
+    function on_begin(file, dir) {
+        if (has_dir[dir] == "") {
+            system("mkdir -p " dir)
+            has_dir[dir] = 1
+        }
+    }
+    function on_end(file, mtime) {
+        close(file)
+        #print "end file "file
+        if (queued[file])
+            return
+
+        system("chown --reference " input " " file " && " \
+            "chmod --reference " input " " file " && " \
+            "touch -d " mtime " " file " && " \
+            "flock " xzq ".lock -c \x27echo " file " >> " xzq "\x27")
+        queued[file] = 1
+    }
+    $0 ~ /^202.-..-..T..:/ {
+        yyyy = substr($0, 1, 4);
+        mm = substr($0, 6, 2);
+        dd = substr($0, 9, 2);
+        hh = substr($0, 12, 2);
+        dir = basedir "/" yyyy "/" mm "/" dd
+        file = dir "/" yyyy "-" mm "-" dd "T" hh "." exten
+
+        if (file != prev_file) {
+            if (prev_file != "") {
+                on_end(prev_file, prev_file_mtime)
+            }
+            on_begin(file, dir)
+        }
+
+        print $0 >> file
+
+        prev_file = file
+        prev_file_mtime = gensub(/\/.*/, "", 1, $0)
+    }
+    END {
+        if (prev_file != "") {
+            on_end(prev_file, prev_file_mtime)
+        }
+    }'
+}
+
+function xz_runner() {
+    local require=15 files
+    trap 'require=0' USR1
+    local IFS=$'\n'
+    while :; do
+        files=($(flock "$XZQ.lock" bash -c '
+            xzq=$1; require=$2;
+            qlen=$(cat "$xzq" 2>/dev/null |wc -l)
+            (( qlen >= require )) || exit 1
+            if (( require == 0 )); then
+                if [[ -e $xzq ]]; then
+                    cat "$xzq"
+                    > "$xzq"
+                fi
+            else
+                (( batchlen = require/2, batchlen > 0 ? batchlen : 1 ))
+                head -n "$batchlen" "$xzq"
+                tail -n "+$((batchlen+1))" "$xzq" | sort -u > "$xzq.tmp"
+                mv "$xzq.tmp" "$xzq"
+            fi
+            exit 0
+        ' -- "$XZQ" "$require"))
+        local ret=$?
+        if [[ -z $files ]]; then
+            (( ret == 0 )) && break
+        else
+            for i in "${files[@]}"; do
+                [[ -e $i ]] || continue
+                echo "[XZ] $i"
+                xz "${ZLC_XZ_OPTS[@]}" "$i"
+            done
+        fi
+        sleep 1
+    done
+}
+
+XZQ=/dev/shm/xzqueue
+conf=/etc/logcenter/logcenter.conf
+source "$conf"
+if [[ -z $ZLC_ARCHIVES_DIR || ! -d $ZLC_ARCHIVES_DIR/. ]]; then
+    echo "Wrong env! ZLC_ARCHIVES_DIR: check $conf"
+    exit 2
+fi
+
+rm -fv $XZQ{,.lock}
+
+xz_runner &
+xz_runner_pid=$!
+
+find -L "$ZLC_ARCHIVES_DIR/" -mindepth 3 -maxdepth 3 -not \( -path "$ZLC_ARCHIVES_DIR/@*" -prune \) -type f -name '*.log*' |
+    sort -V |while read -r file; do
+        while :; do
+            disk_used_perc=$(df -P "$ZLC_ARCHIVES_DIR" |awk 'NR==2{print gensub("%", "", 1, $5)}')
+            (( disk_used_perc < 90 )) && break
+            echo "Disk usage ${disk_used_perc}%, wait..."
+            sleep 1
+        done
+        migrate_file "$file"
+    done
+
+echo 'Wait xz runner to finish'
+kill -0 "$xz_runner_pid" && kill -USR1 "$xz_runner_pid"
+wait
