@@ -64,8 +64,8 @@ while (( $# > 0 )); do
     shift
 done
 
-[[ -n $DAYS && -z ${DAYS//[0-9]} ]] ||
-    fatal 'Invalid retention days, not a number'
+[[ -z $DAYS ]] && fatal 'Invalid retention days, value required'
+[[ -n ${DAYS//[0-9]} ]] && fatal 'Invalid retention days, not a number'
 
 find_opts=(
     -mindepth 3 -maxdepth 3
