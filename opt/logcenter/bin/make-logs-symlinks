@@ -60,6 +60,7 @@ while (( $# > 0 )); do
 done
 
 if [[ -n $DRY_RUN ]]; then
+    function install() { info "EXEC: $FUNCNAME $*"; }
     function ln() { info "EXEC: $FUNCNAME $*"; }
 fi
 
