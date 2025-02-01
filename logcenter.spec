@@ -10,6 +10,7 @@
     rsyslog8z \
     rsync \
     sed \
+    sqlite \
     tar \
     unzip \
     xz \

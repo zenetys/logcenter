@@ -73,6 +73,33 @@ function load_env_or_fatal() {
     return 0
 }
 
+# stats_counters_put database src file lines words bytes ztime zbytes
+function stats_counters_put() {
+    local db=$1; shift
+    local QSTR
+    function qstr() { [[ -z $1 ]] && QSTR=NULL || QSTR="'${1//\'/\'\'}'"; }
+    qstr "$1"; local src=$QSTR
+    qstr "$2"; local file=$QSTR
+    local fdate=NULL fhour=NULL
+    {   if [[ ! -e $db ]]; then
+            { mkdir -p "${db%/*}" && touch "$db"; } || return 1
+            chmod 0640 "$db"
+            [[ -n $ZLC_ARCHIVES_USER || -n $ZLC_ARCHIVES_GROUP ]] &&
+                chown "$ZLC_ARCHIVES_USER:$ZLC_ARCHIVES_GROUP" "$db"
+            echo 'create table if not exists counters (src text,
+file text primary key, fdate date, fhour hour, lines integer,
+words integer, bytes integer, ztime integer, zbytes integer);
+create index idx_src on counters (src);'
+        fi
+        if [[ ${2##*/} =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})(T([0-9]{2}))? ]]; then
+            qstr "${BASH_REMATCH[1]}"; fdate=$QSTR
+            [[ -n ${BASH_REMATCH[3]} ]] && fhour=$(( 10#${BASH_REMATCH[3]} ))
+        fi
+        printf "replace into counters values (%s,%s,%s,%s,%d,%d,%d,%d,%d);\n" \
+            "$src" "$file" "$fdate" "$fhour" "$3" "$4" "$5" "$6" "$7"
+    } |sqlite3 "$db"
+}
+
 [[ $UID == 0 ]] ||
     fatal 'This script must be run as root'
 
@@ -181,6 +208,13 @@ while read -r; do
         CSTRING+="${COUNTERS[2]} bytes, "
         CSTRING+="${COUNTERS[4]} bytes compressed."
         info "Done compressing $REPLY $CSTRING"
+
+        stats_counters_put "${ZLC_ARCHIVES_DIR}/@stats/stats${ZLC_SELF_ID_EXT}.db" \
+            "${REPLY%%/*}" "$REPLY" "${COUNTERS[@]}"
+        if (( $? != 0 )); then
+            (( warning++ ))
+            warning "Stats counters put failed for $REPLY"
+        fi
     else
         (( error++ ))
         error "Call to xz failed, error compressing $REPLY"

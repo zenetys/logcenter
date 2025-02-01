@@ -331,12 +331,12 @@ else
         --no-owner
         --no-group
         --prune-empty-dirs
-        --filter '- /@*'
-        --filter "- *$ZLC_SELF_ID_EXT.log"
-        --filter "- *$ZLC_SELF_ID_EXT.log.xz"
-        --filter "- *$ZLC_SELF_ID_EXT.sig"
         # we assume here that a secondary node won't have files from another
         # secondary node, so we just protect "our" files
+        --filter "- *$ZLC_SELF_ID_EXT.*"
+        --filter '+ /@stats'
+        --filter '+ /@stats/*.db'
+        --filter '- /@*'
         --filter '+ *.log'
         --filter '+ *.log.xz'
         --filter '+ *.sig'
