@@ -11,6 +11,7 @@ Usage: $PROGNAME DIR REGEX-FILE-PATTERN KEEPNUM
 Keep the last n ordered filenames, remove others
 
 Available options:
+    --older-first   Older files first, eg: date-based filenames
     --dry-run       Dry-run mode, do not remove any file
     -v, --verbose   Call rm with -v
     -h, --help      Display this help
@@ -22,11 +23,13 @@ Usage examples:
     exit "$status"
 }
 
+older_first=
 dry_run=
 verbose=
 args=()
 while (( $# > 0 )); do
     case "$1" in
+        --older-first) older_first=1 ;;
         --dry-run) dry_run=1 ;;
         -v|--verbose) verbose=1 ;;
         -h|--help) exit_usage 0 ;;
@@ -48,7 +51,7 @@ xargs_opts=( -- rm ${verbose:+-v} )
 [[ -n $dry_run ]] && xargs_opts=( -n 1 -- echo "**DRY-RUN**" rm ${verbose:+-v} )
 
 find "$dir/" -mindepth 1 -maxdepth 1 -regextype awk -not -type d -regex ".*/$pattern$" -printf '%P\n' |
-    sort -V |
+    sort -V ${older_first:+-r} |
     awk -v "dir=$dir" -v "nkeep=$nkeep" -v "pattern=${pattern//\\/\\\\}$" '
 match($0, pattern, cap) {
     count_by_prefix[cap[1]]++;
