@@ -1,0 +1,36 @@
+policy_module(logcenter, 1.0.0)
+
+## common
+
+# dedicated unconfined domain over standard unconfined_t
+type logcenter_unconfined_t;
+domain_type(logcenter_unconfined_t)
+unconfined_domain(logcenter_unconfined_t)
+role system_r types logcenter_unconfined_t;
+
+## zsync
+
+# domain to label zsync script
+type zsync_exec_t;
+files_type(zsync_exec_t)
+
+# Net-SNMP extend for checking zsync status
+#   NET-SNMP-EXTEND-MIB::nsExtendResult."zsync"
+#   .1.3.6.1.4.1.8072.1.3.2.3.1.4.5.122.115.121.110.99
+# snmpd.conf sample:
+#   extend zsync /opt/zsync/bin/zsync -t
+
+gen_require(`
+    type snmpd_t;
+')
+
+# zsync_exec_t is an entrypoint to logcenter_unconfined_t
+domain_entry_file(logcenter_unconfined_t, zsync_exec_t)
+
+# snmpd_t can transition to domain logcenter_unconfined_t when executing
+# zsync_exec_t files
+domtrans_pattern(snmpd_t, zsync_exec_t, logcenter_unconfined_t)
+
+# Case where zsync script is on nosuid filesystem because domain
+# transitions are normally denied on those
+allow snmpd_t logcenter_unconfined_t:process2 nosuid_transition;
