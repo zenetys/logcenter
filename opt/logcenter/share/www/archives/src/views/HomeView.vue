@@ -153,7 +153,7 @@ const chartConfig = ref({
 
 // Fetching all logs and formatting them
 onBeforeMount(() => {
-  axios.get('/sample.json').then((response) => {
+  axios.get('./api/list-archives').then((response) => {
     rawLogs = response.data
     formattedLogs.value = structuredClone(rawLogs).map((log) => formatLogDate(log))
   })
