@@ -44,6 +44,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import axios from 'axios'
 import {
   getHumanReadableByteSize,
   monthsLabels,
@@ -99,10 +100,10 @@ const onCellClick = (item, header) => {
   if (props.config.viewMode === 'day' && cellContent.logs?.length > 0) {
     downloadDialog.value = true
 
-    watch(downloadIsConfirmed, async (value) => {
+    watch(downloadIsConfirmed, (value) => {
       if (value) {
         const clickedDate = cellContent.logs[0].dateObject.getTime()
-        formatAndDownloadLogs(cellContent.logs, clickedDate, item.name)
+        formatAndDownloadLogs(axios, cellContent.logs, clickedDate, item.name)
         downloadIsConfirmed.value = false
       }
     })

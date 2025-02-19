@@ -21,6 +21,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import axios from 'axios'
 import {
   getHumanReadableByteSize,
   monthsLabels,
@@ -108,7 +109,7 @@ const options = ref({
         watch(downloadIsConfirmed, async (value) => {
           if (value) {
             const clickedDate = selectedTotal.rawLogs[0].dateObject.getTime()
-            formatAndDownloadLogs(selectedTotal.rawLogs, clickedDate)
+            await formatAndDownloadLogs(axios, selectedTotal.rawLogs, clickedDate)
             downloadIsConfirmed.value = false
           }
         })

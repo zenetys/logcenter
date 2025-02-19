@@ -132,18 +132,39 @@ export const monthsLabels = {
  * @param {date} selectedDate The date of the logs to format and download
  * @param {string} hostname The hostname of the logs to format and download
  */
-export const formatAndDownloadLogs = (logs, selectedDate, hostname = null) => {
-  // Create a JSON file containing logs and download it
-  const date = new Date(selectedDate).toISOString()
-  const filename = `logs__${date}` + (hostname ? `__${hostname}` : '')
-  const jsonStr = JSON.stringify(logs, null, 2)
-  const blob = new Blob([jsonStr], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `${filename}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+export const formatAndDownloadLogs = (axios, logs, selectedDate, hostname = null) => {
+    const postData = JSON.stringify(logs);
+    console.log('formatAndDownloadLogs', postData);
+    axios.post(
+      './api/get-archives',
+      postData,
+      {
+        headers: { 'content-type': 'application/json' },
+        responseType: 'blob',
+      }
+    )
+      .then((response) => {
+        // Try to get extract a filename from the content-disposition response
+        // header, fallback to download.dat.
+        let filename = undefined;
+        if (response.headers['content-disposition']) {
+          let cap = /; filename="([^"]+)"/.exec(response.headers['content-disposition']);
+          if (cap)
+            filename = cap[1];
+        }
+        if (!filename)
+          filename = 'download.dat';
+        // Offer to download
+        const url = window.URL.createObjectURL(new Blob([response.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', filename)
+        link.click()
+        window.URL.revokeObjectURL(url)
+      })
+      .catch((error) => {
+        console.error('Failed to download logs:', error)
+      });
 }
 
 /**
