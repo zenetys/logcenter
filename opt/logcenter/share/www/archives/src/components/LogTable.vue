@@ -12,7 +12,7 @@
       </v-card>
     </v-dialog>
     <v-data-table
-      v-show="filteredData"
+      v-if="!props.error"
       :items="filteredData"
       :headers="currentModeHeaders"
       height="45vh"
@@ -23,10 +23,9 @@
       <template v-slot:item="{ item }">
         <tr class="v-data-table__tr">
           <template v-for="header in currentModeHeaders" :key="header.key">
-            <td
-              :title="item[header.key].title"
-              v-if="header.key !== 'name'"
+            <td v-if="header.key !== 'name'"
               class="v-data-table__td"
+              :title="item[header.key].title"
               :class="cellClasses()"
               @click="onCellClick(item, header)"
             >
@@ -39,6 +38,7 @@
         </tr>
       </template>
     </v-data-table>
+    <div v-else class="error-message">{{ props.error }}</div>
   </div>
 </template>
 
@@ -52,7 +52,7 @@ import {
 } from '@/plugins/utils'
 
 // Props
-const props = defineProps(['config'])
+const props = defineProps(['config', 'error'])
 
 const timeValues = props.config.timeValues
 
@@ -309,5 +309,17 @@ tbody > :nth-child(odd) {
 
 #v-menu-11 * {
   font-size: 12px !important;
+}
+
+.error-message {
+  color: red;
+  text-align: center;
+  background-color: rgb(var(--v-theme-primary-super-light));
+  border: 1px solid rgb(var(--v-theme-primary));
+  border-radius: 10px;
+  padding: 30px 0;
+  margin: 0 auto;
+  font-size: 18px;
+  width: 500px;
 }
 </style>
