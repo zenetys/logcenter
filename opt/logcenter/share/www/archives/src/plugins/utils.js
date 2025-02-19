@@ -99,7 +99,7 @@ export const getHumanReadableByteSize = (bytes, decimals = 0) => {
 
   return {
     value: bytes,
-    unit: unit,
+    unit: ' ' + unit,
     toString: () => {
       return `${bytes}${unit}`
     }
