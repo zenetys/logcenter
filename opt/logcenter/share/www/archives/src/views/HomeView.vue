@@ -78,6 +78,7 @@
     <LogTable
       class="z__log-table"
       :config="tableConfig"
+      :error="error"
       @change-date="changeDate"
       @change-mode="changeMode"
     />
@@ -96,6 +97,7 @@ import axios from 'axios'
 const viewMode = ref('day')
 
 let rawLogs = null
+const error = ref(null)
 const formattedLogs = ref([])
 const selectedDate = ref(null)
 /**
@@ -154,8 +156,16 @@ const chartConfig = ref({
 // Fetching all logs and formatting them
 onBeforeMount(() => {
   axios.get('./api/list-archives').then((response) => {
-    rawLogs = response.data
-    formattedLogs.value = structuredClone(rawLogs).map((log) => formatLogDate(log))
+    try {
+      rawLogs = response.data
+      formattedLogs.value = structuredClone(rawLogs).map((log) => formatLogDate(log))
+    } catch (err) {
+      error.value = 'Failed to fetch logs'
+      console.error('Failed to fetch logs:', err)
+    }
+  }).catch((err) => {
+    error.value = 'Failed to fetch logs'
+    console.error('Failed to fetch logs:', err)
   })
 })
 
