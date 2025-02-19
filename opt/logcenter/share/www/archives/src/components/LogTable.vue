@@ -18,6 +18,7 @@
       height="45vh"
       fixed-header
       :loading="loading"
+      :items-per-page="25"
     >
       <template v-slot:item="{ item }">
         <tr class="v-data-table__tr">
