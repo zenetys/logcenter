@@ -231,7 +231,8 @@ watch(
 }
 
 .v-data-table__th {
-  padding: 0 4px !important;
+  padding: 0 0 0 8px !important;
+  height: 32px !important;
   box-shadow: inset 0 -2px 0 rgb(var(--v-theme-primary)) !important;
   white-space: nowrap;
 
@@ -252,6 +253,7 @@ watch(
     font-size: 11px;
   }
   padding: 0 4px !important;
+  height: 32px !important;
   white-space: nowrap;
   border: none !important;
 
@@ -261,7 +263,8 @@ watch(
   }
 
   &:nth-child(1) {
-    max-width: 80px;
+    width: 150px;
+    padding: 0 0 0 8px !important;
     background: transparent;
     overflow-x: hidden;
     text-overflow: ellipsis;

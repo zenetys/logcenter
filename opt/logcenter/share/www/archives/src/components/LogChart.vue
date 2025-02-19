@@ -215,5 +215,6 @@ watch(props.config, (newConfig) => {
 <style lang="scss">
 .z__bar-chart-container {
   height: 30vh;
+  padding-left: 44px;
 }
 </style>

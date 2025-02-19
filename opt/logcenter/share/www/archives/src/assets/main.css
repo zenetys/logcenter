@@ -12,9 +12,9 @@ body {
 }
 
 #app {
-  max-width: 1080px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0;
   font-weight: normal;
 }
 
@@ -23,6 +23,6 @@ body {
   scrollbar-width: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
+::-webkit-scrollbar {
   display: none;
 }
