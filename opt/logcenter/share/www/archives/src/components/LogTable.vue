@@ -68,10 +68,8 @@ const emit = defineEmits(['change-date', 'change-mode'])
  */
 const filteredData = computed(() => {
   return tableData.value.filter((item) => {
-    if (!props.config.search || props.config.search.length === 0) return item
-    else {
-      return props.config.search.includes(item.name.raw)
-    }
+    if (!props.config.search || props.config.search.length === 0) return true
+    return props.config.search.some((host) => item.name.includes(host))
   })
 })
 

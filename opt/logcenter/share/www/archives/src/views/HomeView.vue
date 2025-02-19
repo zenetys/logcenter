@@ -382,6 +382,10 @@ watch(selectedDate, () => {
   setCurrentTimeLimits(viewMode.value)
   generateHostsVolumeByPeriod()
 })
+
+watch(search, () => {
+  generateHostsVolumeByPeriod()
+})
 </script>
 
 <style lang="scss">
