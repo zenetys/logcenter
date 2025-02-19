@@ -1,5 +1,6 @@
 <template>
   <div class="mt-3 z__bar-chart-container container mb-5">
+    <!--
     <v-dialog max-width="500" v-model="downloadDialog">
       <v-card title="Téléchargement">
         <v-card-text>
@@ -13,6 +14,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    -->
     <Bar id="z__bar-chart" v-if="chartIsLoaded" :data="chartData" :options="options" />
   </div>
 </template>
