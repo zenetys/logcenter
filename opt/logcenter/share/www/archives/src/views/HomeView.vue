@@ -12,9 +12,9 @@
             <v-btn
               v-bind="props"
               color="primary"
-              icon="mdi-cancel"
+              icon="mdi-arrow-u-left-top"
               size="x-small"
-              class="ml-2 reset-date-button"
+              class="ml-5 reset-date-button"
               @click="selectedDate = mostRecentLogDate"
             ></v-btn>
           </template>
@@ -431,7 +431,7 @@ watch(search, () => {
     max-height: 40px;
 
     .v-field-label {
-      font-size: 10px !important;
+      font-size: 14px !important;
     }
 
     .v-autocomplete__selection-text,
@@ -466,7 +466,8 @@ watch(search, () => {
 }
 
 .reset-date-button {
-  width: 25px !important;
-  height: 25px !important;
+  width: 50px !important;
+  height: 20px !important;
+  border-radius: 100rem !important;
 }
 </style>
