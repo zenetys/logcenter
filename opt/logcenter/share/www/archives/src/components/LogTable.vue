@@ -33,7 +33,7 @@
               {{ item[header.key].value }}{{ item[header.key].unit }}
             </td>
             <td v-else class="v-data-table__td" :title="item[header.key].raw">
-              {{ item[header.key] }}
+              <span :title="item.name">{{ item[header.key] }}</span>
             </td>
           </template>
         </tr>
