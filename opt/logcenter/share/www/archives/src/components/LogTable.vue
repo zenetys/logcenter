@@ -112,11 +112,11 @@ const onCellClick = (item, header) => {
     emit('change-date', adjustedDate)
     emit('change-mode', 'month')
   } else if (props.config.viewMode === 'month') {
-    date.setUTCDate(header.key)
+    date.setDate(header.key)
     emit('change-date', date.getTime())
     emit('change-mode', 'day')
   } else if (props.config.viewMode === 'year') {
-    date.setUTCMonth(header.key)
+    date.setMonth(header.key)
     emit('change-date', date.getTime())
     emit('change-mode', 'month')
   }

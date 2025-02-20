@@ -59,10 +59,10 @@ export const getWeekNumberFromDate = (d) => {
   const dateTime = d.getTime()
   const date = new Date(dateTime)
 
-  const dayNum = date.getUTCDay() || 7
+  const dayNum = date.getDay() || 7
   // Here, the "day + 4" is because the first ISO week of a year is the week of the first Thursday of the year (ISO 8601 rule)
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  date.setDate(date.getDate() + 4 - dayNum)
+  const yearStart = new Date(date.getFullYear(), 0, 1)
   return Math.ceil(((date - yearStart) / 86400000 + 1) / 7)
 }
 
@@ -177,17 +177,17 @@ export const formatAndDownloadLogs = (axios, logs, selectedDate, hostname = null
 export const changeDateFromWeekNumber = (currentDate, weekNumber) => {
   // Deep cloning current date
   const d = new Date(currentDate.getTime())
-  const year = d.getUTCFullYear()
-  const simple = new Date(Date.UTC(year, 0, 1 + (weekNumber - 1) * 7))
-  const dayOfWeek = simple.getUTCDay()
+  const year = d.getFullYear()
+  const simple = new Date(year, 0, 1 + (weekNumber - 1) * 7)
+  const dayOfWeek = simple.getDay()
   const isoWeekStart = simple
 
   // Get the Monday past, and add a week if the day was
   // Friday, Saturday or Sunday.
-  isoWeekStart.setUTCDate(simple.getUTCDate() - dayOfWeek + 1)
+  isoWeekStart.setDate(simple.getDate() - dayOfWeek + 1)
 
   if (dayOfWeek > 4) {
-    isoWeekStart.setUTCDate(isoWeekStart.getUTCDate() + 7)
+    isoWeekStart.setDate(isoWeekStart.getDate() + 7)
   }
   return isoWeekStart.getTime()
 }

@@ -206,7 +206,7 @@ const generateHostsVolumeByPeriod = () => {
     if (viewMode.value === 'day') {
       hoursValues.forEach((hour) => {
         // All logs from host per hour
-        const logsInHour = logsInPeriod.filter((log) => log.dateObject?.getUTCHours() === hour)
+        const logsInHour = logsInPeriod.filter((log) => log.dateObject?.getHours() === hour)
         // Sum of all logs sizes to get the hourly volume
         hostData[hour] = {
           data: logsInHour.reduce((acc, log) => acc + log.size, 0),
@@ -215,7 +215,7 @@ const generateHostsVolumeByPeriod = () => {
       })
     } else if (viewMode.value === 'month') {
       daysValues.value.forEach((day) => {
-        const logsInDay = logsInPeriod.filter((log) => log.dateObject?.getUTCDate() === day)
+        const logsInDay = logsInPeriod.filter((log) => log.dateObject?.getDate() === day)
         hostData[day] = logsInDay.reduce((acc, log) => acc + log.size, 0)
       })
     } else if (viewMode.value === 'quarter') {
@@ -227,7 +227,7 @@ const generateHostsVolumeByPeriod = () => {
       })
     } else if (viewMode.value === 'year') {
       monthsValues.forEach((month) => {
-        const logsInMonth = logsInPeriod.filter((log) => log.dateObject?.getUTCMonth() === month)
+        const logsInMonth = logsInPeriod.filter((log) => log.dateObject?.getMonth() === month)
         hostData[month] = logsInMonth.reduce((acc, log) => acc + log.size, 0)
       })
     }
@@ -302,8 +302,8 @@ const formatLogDate = (log) => {
 const setCurrentTimeLimits = (mode) => {
   const startObject = new Date(selectedDate.value)
   const endObject = new Date(selectedDate.value)
-  startObject.setUTCHours(0, 0, 0, 0)
-  endObject.setUTCHours(23, 59, 59, 999)
+  startObject.setHours(0, 0, 0, 0)
+  endObject.setHours(23, 59, 59, 999)
 
   if (mode === 'day') {
     // Simply set start of day and end of day as time limits
@@ -311,30 +311,30 @@ const setCurrentTimeLimits = (mode) => {
     currentTimeLimits.value.end = endObject.getTime()
   } else if (mode === 'year') {
     // Set start of reference year and end of reference year as time limits
-    currentTimeLimits.value.start = startObject.setUTCMonth(0, 1)
-    currentTimeLimits.value.end = endObject.setUTCMonth(11, 31)
+    currentTimeLimits.value.start = startObject.setMonth(0, 1)
+    currentTimeLimits.value.end = endObject.setMonth(11, 31)
   } else if (mode === 'quarter') {
     // For quarter mode, we first need to know in which quarter the reference date is :
-    const currentMonth = new Date(selectedDate.value).getUTCMonth()
+    const currentMonth = new Date(selectedDate.value).getMonth()
     // Set time limits depending on quarter of the reference month
     if ([0, 1, 2].includes(currentMonth)) {
-      currentTimeLimits.value.start = startObject.setUTCMonth(0, 1)
-      currentTimeLimits.value.end = endObject.setUTCMonth(2, 31)
+      currentTimeLimits.value.start = startObject.setMonth(0, 1)
+      currentTimeLimits.value.end = endObject.setMonth(2, 31)
       quarterWeeksValues.value = q1weeks
       currentQuarter.value = 1
     } else if ([3, 4, 5].includes(currentMonth)) {
-      currentTimeLimits.value.start = startObject.setUTCMonth(3, 1)
-      currentTimeLimits.value.end = endObject.setUTCMonth(5, 31)
+      currentTimeLimits.value.start = startObject.setMonth(3, 1)
+      currentTimeLimits.value.end = endObject.setMonth(5, 31)
       quarterWeeksValues.value = q2weeks
       currentQuarter.value = 2
     } else if ([6, 7, 8].includes(currentMonth)) {
-      currentTimeLimits.value.start = startObject.setUTCMonth(6, 1)
-      currentTimeLimits.value.end = endObject.setUTCMonth(8, 31)
+      currentTimeLimits.value.start = startObject.setMonth(6, 1)
+      currentTimeLimits.value.end = endObject.setMonth(8, 31)
       quarterWeeksValues.value = q3weeks
       currentQuarter.value = 3
     } else if ([9, 10, 11].includes(currentMonth)) {
-      currentTimeLimits.value.start = startObject.setUTCMonth(9, 1)
-      currentTimeLimits.value.end = endObject.setUTCMonth(11, 31)
+      currentTimeLimits.value.start = startObject.setMonth(9, 1)
+      currentTimeLimits.value.end = endObject.setMonth(11, 31)
       quarterWeeksValues.value = q4weeks
       currentQuarter.value = 4
     }
@@ -349,14 +349,14 @@ const setCurrentTimeLimits = (mode) => {
 
     const selectedDateObject = new Date(selectedDate.value)
     const numberOfDays = numDays(
-      selectedDateObject.getUTCFullYear(),
-      selectedDateObject.getUTCMonth() + 1
+      selectedDateObject.getFullYear(),
+      selectedDateObject.getMonth() + 1
     )
     // Update the array of days with the correct number of days
     daysValues.value = [...Array(numberOfDays).keys()].map((key) => Number(key) + 1)
     // Finally, set the current time limits
-    currentTimeLimits.value.start = startObject.setUTCDate(1)
-    currentTimeLimits.value.end = endObject.setUTCDate(numberOfDays)
+    currentTimeLimits.value.start = startObject.setDate(1)
+    currentTimeLimits.value.end = endObject.setDate(numberOfDays)
   }
 }
 

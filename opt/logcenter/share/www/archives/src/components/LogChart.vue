@@ -179,15 +179,15 @@ const buildChartData = (totals) => {
     })
   } else if (config.viewMode === 'year') {
     labels = labels.map((month) => monthsLabels[month])
-    const labelDate = dateObject.getUTCFullYear()
+    const labelDate = dateObject.getFullYear()
     label.value = `Total par mois - Année ${labelDate}`
     data = Object.values(totals)
   } else if (config.viewMode === 'month') {
-    const labelDate = `${monthsLabels[dateObject.getUTCMonth()]} ${dateObject.getUTCFullYear()}`
+    const labelDate = `${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`
     label.value = 'Total par jour - ' + labelDate
     data = Object.values(totals)
   } else if (config.viewMode === 'quarter') {
-    const labelDate = `Trimestre ${config.currentQuarter}, ${dateObject.getUTCFullYear()}`
+    const labelDate = `Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`
     labels = labels.map((week) => `Sem ${week}`)
     label.value = 'Total par semaine - ' + labelDate
     data = Object.values(totals)
