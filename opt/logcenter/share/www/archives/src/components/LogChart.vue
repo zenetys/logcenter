@@ -26,7 +26,7 @@ import axios from 'axios'
 import {
   getHumanReadableByteSize,
   monthsLabels,
-  formatAndDownloadLogs,
+  downloadLogs,
   changeDateFromWeekNumber
 } from '@/plugins/utils'
 import { Bar } from 'vue-chartjs'
@@ -107,13 +107,7 @@ const options = ref({
       if (props.config.viewMode === 'day' && selectedTotal.rawLogs && selectedTotal.rawLogs[0]) {
         // Download raw logs for the clicked hour
         downloadDialog.value = true
-        watch(downloadIsConfirmed, async (value) => {
-          if (value) {
-            const clickedDate = selectedTotal.rawLogs[0].dateObject.getTime()
-            await formatAndDownloadLogs(axios, selectedTotal.rawLogs, clickedDate)
-            downloadIsConfirmed.value = false
-          }
-        })
+        downloadPendingData.value = selectedTotal.rawLogs;
       } else if (props.config.viewMode === 'quarter') {
         // change date to first day of the selected ISO week and drill down to month view
         const clickedWeek = Number(Object.keys(props.config.totals)[clickedItem.index])
@@ -141,7 +135,7 @@ const props = defineProps(['config'])
 // Data
 const config = props.config
 const downloadDialog = ref(false)
-const downloadIsConfirmed = ref(false)
+const downloadPendingData = ref(null);
 const label = ref('Total par heure')
 
 // Component Events
@@ -152,7 +146,10 @@ const emit = defineEmits(['change-date', 'change-mode'])
  * Triggered by the dialog
  */
 const confirmDownload = () => {
-  downloadIsConfirmed.value = true
+  if (downloadPendingData.value) {
+    downloadLogs(axios, downloadPendingData.value)
+    downloadPendingData.value = null;
+  }
   downloadDialog.value = false
 }
 

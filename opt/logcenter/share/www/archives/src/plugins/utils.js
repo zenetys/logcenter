@@ -128,13 +128,11 @@ export const monthsLabels = {
 
 /**
  * Format an array of logs as a JSON file and download it
- * @param {array} logs The list of logs to format and download
- * @param {date} selectedDate The date of the logs to format and download
- * @param {string} hostname The hostname of the logs to format and download
+ * @param {array} logs The list of logs to download
  */
-export const formatAndDownloadLogs = (axios, logs, selectedDate, hostname = null) => {
+export const downloadLogs = (axios, logs) => {
     const postData = JSON.stringify(logs);
-    console.log('formatAndDownloadLogs', postData);
+    console.log('downloadLogs', postData);
     axios.post(
       './api/get-archives',
       postData,

@@ -48,7 +48,7 @@ import axios from 'axios'
 import {
   getHumanReadableByteSize,
   monthsLabels,
-  formatAndDownloadLogs,
+  downloadLogs,
   changeDateFromWeekNumber
 } from '@/plugins/utils'
 
@@ -60,7 +60,7 @@ const timeValues = props.config.timeValues
 // Data
 const tableData = ref([])
 const downloadDialog = ref(false)
-const downloadIsConfirmed = ref(false)
+const downloadPendingData = ref(null);
 
 // Component Events
 const emit = defineEmits(['change-date', 'change-mode'])
@@ -99,14 +99,7 @@ const onCellClick = (item, header) => {
 
   if (props.config.viewMode === 'day' && cellContent.logs?.length > 0) {
     downloadDialog.value = true
-
-    watch(downloadIsConfirmed, (value) => {
-      if (value) {
-        const clickedDate = cellContent.logs[0].dateObject.getTime()
-        formatAndDownloadLogs(axios, cellContent.logs, clickedDate, item.name)
-        downloadIsConfirmed.value = false
-      }
-    })
+    downloadPendingData.value = cellContent.logs;
   } else if (props.config.viewMode === 'quarter') {
     const adjustedDate = changeDateFromWeekNumber(date, Number(header.key))
     emit('change-date', adjustedDate)
@@ -127,7 +120,10 @@ const onCellClick = (item, header) => {
  * Triggered by the dialog
  */
 const confirmDownload = () => {
-  downloadIsConfirmed.value = true
+  if (downloadPendingData.value) {
+    downloadLogs(axios, downloadPendingData.value)
+    downloadPendingData.value = null;
+  }
   downloadDialog.value = false
 }
 
