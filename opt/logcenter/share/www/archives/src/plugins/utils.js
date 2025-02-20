@@ -119,11 +119,11 @@ export const monthsLabels = {
   4: 'Mai',
   5: 'Juin',
   6: 'Juil',
-  7: 'Aou',
-  8: 'Sept',
+  7: 'Aoû',
+  8: 'Sep',
   9: 'Oct',
   10: 'Nov',
-  11: 'Dec'
+  11: 'Déc'
 }
 
 /**
