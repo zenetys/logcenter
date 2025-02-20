@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="table-container">
     <v-dialog max-width="500" v-model="downloadDialog">
       <v-card title="Téléchargement">
         <v-card-text> Voulez-vous télécharger ces logs ? </v-card-text>
@@ -15,7 +15,7 @@
       v-if="!props.error"
       :items="filteredData"
       :headers="currentModeHeaders"
-      height="45vh"
+      height="100%"
       fixed-header
       :loading="loading"
       :items-per-page="25"
@@ -38,7 +38,7 @@
         </tr>
       </template>
     </v-data-table>
-    <div v-else class="error-message">{{ props.error }}</div>
+    <div v-else class="z__error-message">{{ props.error }}</div>
   </div>
 </template>
 
@@ -154,7 +154,7 @@ const generateHeaders = () => {
   } else if (props.config.viewMode === 'quarter') {
     headers.push(
       ...timeValues.quarterWeeks.map((week) => ({
-        title: `S${week}`,
+        title: `Sem ${week}`,
         key: String(week),
         sortable: false
       }))
@@ -218,6 +218,8 @@ watch(
   border-radius: 4px !important;
   font-size: 12px !important;
   width: 100% !important;
+  min-height: 400px;
+  max-height: 450px;
 
   .v-table__wrapper {
     // Hide the scrollbar
@@ -312,7 +314,7 @@ tbody > :nth-child(odd) {
   font-size: 12px !important;
 }
 
-.error-message {
+.z__error-message {
   color: red;
   text-align: center;
   background-color: rgb(var(--v-theme-primary-super-light));

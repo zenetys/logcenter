@@ -1,26 +1,12 @@
 <template>
   <main>
-    <div class="z__toolbar-container mt-2" v-show="selectedDate">
-      <div class="z__current-date mt-3">
+    <div class="z__toolbar-container mt-8" v-show="selectedDate">
+      <div class="z__current-date">
         <strong>Date sélectionnée : {{ selectedFullDate }}</strong>
-        <v-tooltip
-          location="bottom"
-          text="Réinitialiser à la date la plus récente"
-          transition="fade-transition"
-        >
-          <template v-slot:activator="{ props }">
-            <v-btn
-              v-bind="props"
-              color="primary"
-              icon="mdi-arrow-u-left-top"
-              size="x-small"
-              class="ml-5 reset-date-button"
-              @click="selectedDate = mostRecentLogDate"
-            ></v-btn>
-          </template>
-        </v-tooltip>
       </div>
-      <div class="z__searchbar pl-4 pr-4">
+    </div>
+    <div class="z__toolbar-container mt-2">
+      <div class="z__searchbar">
         <v-autocomplete
           label="Rechercher un hôte"
           density="compact"
@@ -34,54 +20,70 @@
           @update:modelValue="handleSearch"
         ></v-autocomplete>
       </div>
-      <div class="z__mode-selector-container mt-3">
+      <div class="z__mode-selector-container">
         <v-btn
           color="primary"
-          class="ml-2 mr-2"
-          size="x-small"
+          class="ml-4"
+          size="small"
           :active="viewMode === 'day'"
           @click="viewMode = 'day'"
           >Jour</v-btn
         >
         <v-btn
           color="primary"
-          class="ml-2 mr-2"
-          size="x-small"
+          class="ml-4"
+          size="small"
           :active="viewMode === 'month'"
           @click="viewMode = 'month'"
           >Mois</v-btn
         >
         <v-btn
           color="primary"
-          class="ml-2 mr-2"
-          size="x-small"
+          class="ml-4"
+          size="small"
           :active="viewMode === 'quarter'"
           @click="viewMode = 'quarter'"
           >Trimestre</v-btn
         >
         <v-btn
           color="primary"
-          class="ml-2 mr-2"
-          size="x-small"
+          class="ml-4"
+          size="small"
           :active="viewMode === 'year'"
           @click="viewMode = 'year'"
           >Année</v-btn
         >
+        <v-tooltip
+          location="bottom"
+          text="Réinitialiser à la date la plus récente"
+          transition="fade-transition"
+        >
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              color="primary"
+              class="ml-4 z__reset-date-button"
+              size="small"
+              icon="mdi-arrow-u-left-top"
+              @click="selectedDate = mostRecentLogDate"
+            ></v-btn>
+          </template>
+        </v-tooltip>
       </div>
     </div>
-    <LogChart
-      class="z__log-chart"
-      :config="chartConfig"
-      @change-date="changeDate"
-      @change-mode="changeMode"
-    />
-    <LogTable
-      class="z__log-table"
-      :config="tableConfig"
-      :error="error"
-      @change-date="changeDate"
-      @change-mode="changeMode"
-    />
+    <div class="z__chart-table-container">
+      <LogChart
+        :config="chartConfig"
+        @change-date="changeDate"
+        @change-mode="changeMode"
+      />
+      <LogTable
+        :config="tableConfig"
+        :error="error"
+        @change-date="changeDate"
+        @change-mode="changeMode"
+      />
+    </div>
   </main>
 </template>
 
@@ -399,67 +401,10 @@ watch(search, () => {
 </script>
 
 <style lang="scss">
-.z__log-table {
-  width: 100%;
-}
-
-.z__toolbar-container {
+.z__chart-table-container {
   display: flex;
-  width: 100%;
-
-  .z__mode-selector-container {
-    height: 100%;
-    width: 30%;
-    justify-content: center;
-    display: flex;
-    flex-direction: row;
-
-    .v-btn--active {
-      background: transparent !important;
-      border: 1px solid #17b8ce !important;
-      box-shadow: 0px 0px 5px #17b8ce;
-
-      .v-btn__content {
-        color: #17b8ce !important;
-      }
-    }
-  }
-
-  .z__current-date {
-    width: 40%;
-    font-size: 12px;
-    text-align: center;
-    vertical-align: middle;
-
-    strong {
-      vertical-align: middle;
-    }
-  }
-
-  .z__searchbar {
-    width: 70%;
-    max-height: 40px;
-
-    .v-field-label {
-      font-size: 14px !important;
-    }
-
-    .v-autocomplete__selection-text,
-    #input-0 {
-      font-size: 12px !important;
-    }
-
-    .v-field__input {
-      overflow: auto;
-      flex-wrap: nowrap;
-      scrollbar-width: none;
-      -ms-overflow-style: none; /* IE and Edge */
-
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-    }
-  }
+  flex-direction: column;
+  margin-top: 20px;
 }
 
 #v-menu-2 {
@@ -475,9 +420,53 @@ watch(search, () => {
   }
 }
 
-.reset-date-button {
+.z__toolbar-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+
+  .z__mode-selector-container {
+    display: flex;
+    flex-direction: row;
+
+    .v-btn--active {
+      background: transparent !important;
+      border: 1px solid #17b8ce !important;
+      box-shadow: 0px 0px 5px #17b8ce;
+
+      .v-btn__content {
+        color: #17b8ce !important;
+      }
+    }
+  }
+
+  .z__current-date {
+    vertical-align: middle;
+
+    strong {
+      vertical-align: middle;
+    }
+  }
+}
+
+.z__searchbar {
+  width: 100%;
+  max-height: 40px;
+
+  .v-field-label {
+    font-size: 14px !important;
+  }
+
+  .v-autocomplete__selection-text,
+  #input-0 {
+    font-size: 12px !important;
+  }
+}
+
+.z__reset-date-button {
   width: 50px !important;
-  height: 20px !important;
-  border-radius: 100rem !important;
+  height: 28px !important;
+  border-radius: 5px !important;
 }
 </style>

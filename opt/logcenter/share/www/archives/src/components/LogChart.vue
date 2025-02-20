@@ -1,5 +1,6 @@
 <template>
-  <div class="mt-3 z__bar-chart-container container mb-5">
+  <div class="z__bar-chart-container">
+  <!-- <div class="mt-3 z__bar-chart-container container mb-5"> -->
     <!--
     <v-dialog max-width="500" v-model="downloadDialog">
       <v-card title="Téléchargement">
@@ -218,6 +219,7 @@ watch(props.config, (newConfig) => {
 <style lang="scss">
 .z__bar-chart-container {
   height: 30vh;
-  padding-left: 44px;
+  width: calc(100% + 4px);
+  padding: 0 1px 0 73px;
 }
 </style>
