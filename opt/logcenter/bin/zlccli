@@ -1,0 +1,144 @@
+#!/bin/bash
+
+if [[ $(id -un) != zlccli ]]; then
+    exec sudo -u zlccli -n "$0" "$@"
+    # unreachable
+fi
+
+set -f
+export LC_ALL=C
+umask 0027
+PROGNAME=${0##*/}
+PID=$$
+OIFS=$IFS
+ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
+
+function exit_usage() {
+    printf 'Usage: %s COMMAND [ARG...]\n' "$PROGNAME"
+    printf 'Helper for logcenter operations\n\n'
+    printf 'Available commands:\n\n'
+    sed -nre 's/^#: ?(.*)/\1/p' "${BASH_SOURCE[0]}"
+    exit 0
+}
+
+exec 3>&2
+exec 2> >(while read -r; do
+    echo "$REPLY" >&2
+    logger -t "$PROGNAME[$PID]" -p notice -- "$REPLY"
+done)
+LOGGER_PID=$!
+trap 'exec 2>&3 3>&-; wait $LOGGER_PID' EXIT
+
+function _log() {
+    local now=$(date +%Y-%m-%dT%H:%M:%S.%3N%:z)
+    local STDOUT_LABEL=${STDOUT_LABEL:-INFO}
+    echo "$now $STDOUT_LABEL H=${HOSTNAME%%.*}\
+${REDIRECTED_FROM:+ R=${REDIRECTED_FROM%%.*}} $PROGNAME: $*" >&2
+}
+function info() { STDOUT_LABEL=INFO _log "$@"; }
+function fatal() { STDOUT_LABEL=FATAL _log "$@"; exit 2; }
+
+function load_env_or_fatal() {
+    # proper $PATH may be needed for sigfiled
+    [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
+    source "$ZLC_ENV" || fatal "Failed to load env"
+    return 0
+}
+
+# $1: target host
+function reexec_by_ssh() {
+    [[ -n $REDIRECTED_FROM ]] && fatal "Maximum redirect reached"
+    local host=$1; shift
+    # assume this script is the user shell
+    local args=( -R "$HOSTNAME" "${ARGS[@]}" )
+    info "reexec_by_ssh $host -- ${args[*]@Q}"
+    exec ssh -i "$ZLC_CLI_SSH_IDENTITY" -o PreferredAuthentications=publickey \
+        -o StrictHostKeyChecking=yes -o PreferredAuthentications=publickey \
+        -o ConnectTimeout=5 "$host" -- "${args[*]@Q}"
+}
+
+#: help
+#:     Display this help
+#:
+function do_help() {
+    exit_usage 0
+}
+
+#: list-archives [SQL-WHERE]
+#:     List archive files with a query to the stats counters
+#:     database. Return TSV ouput with header line.
+#:
+function do_list_archives() {
+    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    local where=${1:-1}
+    sqlite3 -tabs -header :memory: "
+        pragma query_only = ON;
+        attach '/data/log/@stats/stats.arc01.db' as a1;
+        attach '/data/log/@stats/stats.arc02.db' as a2;
+        select * from (
+            select 'a1' as db, * from a1.counters union
+            select 'a2' as db, * from a2.counters
+        )
+        where $where
+        order by fdate desc, fhour desc, src asc;
+    "
+}
+
+#: get-archive [--proto] SRC,YYYY-MM-DD,H...
+#:     Stream an archive file, with optional proto header
+#:
+function do_get_archive() {
+    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
+    local proto=; [[ $1 == --proto ]] && { proto=1; shift; }
+    local IFS=,; set -- $1; IFS=$OIFS
+    local src=$1 fdate=$2 fhour=$3
+    local file=$(sqlite3 :memory: "
+        pragma query_only = ON;
+        attach '/data/log/@stats/stats.arc01.db' as a1;
+        attach '/data/log/@stats/stats.arc02.db' as a2;
+        select file from (
+            select 'a1' as db, * from a1.counters union
+            select 'a2' as db, * from a2.counters
+        )
+        where src=\"${src//\"/\"\"}\" and
+            fdate=\"${fdate//\"/\"\"}\" and
+            fhour=\"${fhour//\"/\"\"}\"
+        order by db asc limit 1;")
+    [[ -z $file ]] && fatal 'No match!'
+    local suffix fsfile
+    for suffix in .xz ''; do
+        fsfile="$ZLC_ARCHIVES_DIR/${file}${suffix}"
+        [[ -f $fsfile ]] || continue
+        [[ -n $proto ]] && printf '\x16\x17\x18%s\x16%s\n' \
+            "${src}_${fsfile##*/}" $(stat -c %s "$fsfile")
+        exec cat "$fsfile"
+    done
+    fatal 'Not found!'
+}
+
+load_env_or_fatal
+
+if [[ $1 == -c ]]; then
+    # user shell
+    declare -ga "ARGS=( $2 )"
+else
+    # classic exec
+    ARGS=( "$@" )
+fi
+set --
+
+for (( i=0; i<${#ARGS[@]}; i++ )); do
+    case "${ARGS[i]}" in
+        -R|--redirected-from) REDIRECTED_FROM=${ARGS[i++ +1]} ;;
+        -h|--help) exit_usage 0 ;;
+        --) ((i++)); break ;;
+        *) break ;;
+    esac
+done
+ARGS=( "${ARGS[i]}" "${ARGS[@]:i+1}" )
+info "ARGS: ${ARGS[*]@Q}"
+
+fn="do_${ARGS[0]//[^[:alnum:]]/_}"
+declare -f -F "$fn" >/dev/null || fatal 'Bad command!'
+"$fn" "${ARGS[@]:1}"
