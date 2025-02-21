@@ -116,7 +116,7 @@ function check_sum_partial_fullz() {
 # Pull archives via rsync+ssh from each secondary node
 function do_primary() {
     clean_temp_dir_if_exists
-    install -d -D -m 0750 -o "${ZLC_ARCHIVES_USER:-root}" -g "${ZLC_ARCHIVES_GROUP:-adm}" \
+    install -d -D -m 0750 -o "$ZLC_ARCHIVES_USER" -g "$ZLC_ARCHIVES_GROUP" \
         "$ZLC_PULL_ARCHIVES_TEMP_DIR"
     (( $? == 0 )) || { error "Could not create tempdir $ZLC_PULL_ARCHIVES_TEMP_DIR"; return 1; }
 
@@ -284,6 +284,8 @@ source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
 [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment, ZLC_ARCHIVES_DIR not set'
 [[ -d $ZLC_ARCHIVES_DIR/. ]] || fatal 'Invalid ZLC_ARCHIVES_DIR, not a directory'
 [[ -z $ZLC_PULL_ARCHIVES_PRIMARY ]] && fatal 'Bad environment, ZLC_PULL_ARCHIVES_PRIMARY not set'
+[[ -z $ZLC_ARCHIVES_USER ]] && fatal 'Bad environment, ZLC_ARCHIVES_USER not set'
+[[ -z $ZLC_ARCHIVES_GROUP ]] && fatal 'Bad environment, ZLC_ARCHIVES_GROUP not set'
 
 if is_primary; then
     [[ -z $ZLC_PULL_ARCHIVES_TEMP_DIR ]] && fatal 'Bad environment, ZLC_PULL_ARCHIVES_TEMP_DIR not set'
@@ -328,8 +330,9 @@ else
         --one-file-system
         --omit-dir-times
         --no-perms
-        --no-owner
-        --no-group
+        --owner
+        --group
+        --chown "$ZLC_ARCHIVES_USER:$ZLC_ARCHIVES_GROUP"
         --prune-empty-dirs
         # we assume here that a secondary node won't have files from another
         # secondary node, so we just protect "our" files
