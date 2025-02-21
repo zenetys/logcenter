@@ -13,6 +13,7 @@
     sqlite \
     tar \
     unzip \
+    util-linux-core \
     xz \
     yq \
 
