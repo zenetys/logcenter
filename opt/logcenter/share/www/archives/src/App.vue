@@ -30,7 +30,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { fetchConfig, getConfig } from './plugins/config.js'
 
 const router = useRouter()
 const user = ref('')
@@ -42,18 +42,13 @@ const navigateTo = (path, tab = null) => {
   else router.push(path)
 }
 
-const fetchConfig = async () => {
-  try {
-    const response = await axios.get('./config.json')
-    user.value = response.data.user_id
-    hasKibana.value = response.data.has_kibana
-  } catch (error) {
-    console.error('Failed to fetch config:', error)
+onMounted(async () => {
+  await fetchConfig()
+  const config = getConfig()
+  if (config) {
+    user.value = config.user_id
+    hasKibana.value = config.has_kibana
   }
-}
-
-onMounted(() => {
-  fetchConfig()
 })
 </script>
 

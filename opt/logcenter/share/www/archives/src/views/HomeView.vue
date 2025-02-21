@@ -2,7 +2,7 @@
   <main>
     <div class="z__toolbar-container mt-8" v-show="selectedDate">
       <div class="z__current-date">
-        <strong>Date sélectionnée : {{ selectedFullDate }}</strong>
+        <strong>Date sélectionnée : {{ selectedFullDate }} {{ timezone }}</strong>
       </div>
     </div>
     <div class="z__toolbar-container mt-2">
@@ -91,6 +91,7 @@
 import LogTable from '../components/LogTable.vue'
 import LogChart from '../components/LogChart.vue'
 import * as utils from '../plugins/utils.js'
+import { fetchConfig, getConfig } from '../plugins/config.js'
 
 import { onBeforeMount, ref, watch, computed } from 'vue'
 import axios from 'axios'
@@ -100,6 +101,7 @@ const viewMode = ref('day')
 
 let rawLogs = null
 const error = ref(null)
+const timezone = ref('')
 const formattedLogs = ref([])
 const selectedDate = ref(null)
 /**
@@ -156,7 +158,7 @@ const chartConfig = ref({
 })
 
 // Fetching all logs and formatting them
-onBeforeMount(() => {
+onBeforeMount(async () => {
   axios.get('./api/list-archives').then((response) => {
     try {
       rawLogs = response.data
@@ -169,6 +171,10 @@ onBeforeMount(() => {
     error.value = 'Failed to fetch logs'
     console.error('Failed to fetch logs:', err)
   })
+
+  await fetchConfig()
+  const config = getConfig()
+  if (config) timezone.value = config.timezone
 })
 
 /**
