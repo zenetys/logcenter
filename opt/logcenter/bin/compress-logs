@@ -6,7 +6,7 @@
 
 set -f
 export LC_ALL=C
-umask 0077
+umask 0027
 PROGNAME=${0##*/}
 HOURS=
 DAYS=
@@ -83,9 +83,6 @@ function stats_counters_put() {
     local fdate=NULL fhour=NULL
     {   if [[ ! -e $db ]]; then
             { mkdir -p "${db%/*}" && touch "$db"; } || return 1
-            chmod 0640 "$db"
-            [[ -n $ZLC_ARCHIVES_USER || -n $ZLC_ARCHIVES_GROUP ]] &&
-                chown "$ZLC_ARCHIVES_USER:$ZLC_ARCHIVES_GROUP" "$db"
             echo 'create table if not exists counters (src text,
 file text primary key, fdate date, fhour hour, lines integer,
 words integer, bytes integer, ztime integer, zbytes integer);
@@ -176,7 +173,7 @@ while read -r; do
         SECONDS=0
         sigdir="${REPLY%/*}/sig"
         sigfname="${REPLY##*/}${ZLC_SELF_ID_EXT}.sig"
-        if mkdir -p -m 0700 "$ZLC_ARCHIVES_DIR/$sigdir" &&
+        if mkdir -p "$ZLC_ARCHIVES_DIR/$sigdir" &&
            sigout=$(sigfiled sign "$ZLC_ARCHIVES_DIR/$REPLY" "$ZLC_ARCHIVES_DIR/$sigdir/$sigfname"); then
 
             info "Signing $REPLY done in ${SECONDS}s${sigout:+, $sigout}"
