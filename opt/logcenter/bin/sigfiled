@@ -437,8 +437,8 @@ HANDLERS = {
     'unlock': { 'func': cmd_handler__unlock, 'args': { 'min': 0, 'max': 1, 'hide': True } },
 }
 
-# create signature files with mode 400
-os.umask(0o0277)
+# create signature files with mode 440
+os.umask(0o0227)
 
 try:
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
