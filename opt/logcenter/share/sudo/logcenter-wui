@@ -1,0 +1,5 @@
+Cmnd_Alias CMD_ZLCCLI = \
+    /opt/logcenter/bin/zlccli list-archives, \
+    /opt/logcenter/bin/zlccli get-archive *
+Defaults!CMD_ZLCCLI !requiretty
+lighttpd ALL=(zlccli) NOPASSWD: CMD_ZLCCLI
