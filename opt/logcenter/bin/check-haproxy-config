@@ -1,0 +1,36 @@
+#!/bin/bash
+set -f
+set -a
+source <(systemctl show haproxy |awk '
+    /^Environment=/ {
+        while (match($0, /([A-Z_]+)=([^ ]*)/, cap)) {
+            print cap[1]"="cap[2];
+            $0 = substr($0, RSTART+RLENGTH);
+        }
+    }')
+if (( $? != 0 )); then
+    echo 'CONFIG UNKNOWN, failed to source systemd unit envrironment'
+    exit 9
+fi
+if [[ -f /etc/sysconfig/haproxy ]]; then
+    source /etc/sysconfig/haproxy
+    if (( $? != 0 )); then
+        echo 'CONFIG UNKNOWN, failed to source sysconfig file'
+        exit 9
+    fi
+fi
+set +a
+
+bin=$(systemctl show haproxy |sed -nre 's,^ExecStart=.* argv\[\]=([^ ]+).*,\1,p')
+if [[ -z $bin ]]; then
+    echo 'CONFIG UNKNOWN, failed to parse systemd unit ExecStart'
+    exit 9
+fi
+
+"$bin" -c -f $CONFIG; retval=$?
+if (( retval == 0 )); then
+    echo 'CONFIG OK'
+else
+    echo 'CONFIG ERROR'
+fi
+exit $retval
