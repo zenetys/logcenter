@@ -6,11 +6,12 @@ CONFIG=
 TMPDIR=/dev/shm
 DESTDIR=/var/lib/geoip
 SOURCEDIR=
-KEY=
+MAXMIND_KEY=
 DATABASE=GeoLite2-Country,GeoLite2-City,GeoLite2-ASN
 POSTCMD=
 TTL=$((86400/2))
 PROXY=
+MODE=elastic
 
 function exit_usage() {
     local status=${1:-0}
@@ -21,6 +22,7 @@ Update Maxmind geoip databases
 
 Available options:
   -c, --config  Configuration file
+  -m, --mode    Download mode; maxmind (need key) or elastic
   -p, --pre     Pre command to run at start, exit != 0 to abort
   -P, --post    Post command to run after install
   -k, --key     Maxmind key
@@ -53,14 +55,37 @@ function exec_quiet() {(
     "$@"
 )}
 
-# $1: database name
+function mycurl() {
+    curl ${PROXY:+-x "$PROXY"} -fsS --connect-timeout 10 -L "$@"
+}
+
+# $1: database
 function getdb() {
-    if [[ -z $SOURCEDIR ]]; then
-        local url="https://download.maxmind.com/app/geoip_download?suffix=tar.gz&edition_id=$1&license_key=$KEY"
-        curl ${PROXY:+-x "$PROXY"} -o "$1.tar.gz" -fsS --connect-timeout 10 -m 30 -L "$url"
-    else
+    if [[ -n $SOURCEDIR ]]; then
         cp -a "$SOURCEDIR/$1.tar.gz" ./
+    else
+        local fn="getdb_$MODE"
+        declare -F -f "$fn" >/dev/null || return 1
+        "$fn" "$1"
     fi
+}
+
+# $1: database name
+function getdb_maxmind() {
+    mycurl -o "$1.tar.gz" -m 300 \
+        "https://download.maxmind.com/app/geoip_download?suffix=tar.gz&edition_id=$1&license_key=$MAXMIND_KEY"
+}
+
+# $1: database name
+ELASTIC_MANIFEST=
+function getdb_elastic() {
+    if [[ -z $ELASTIC_MANIFEST ]]; then
+        ELASTIC_MANIFEST=$(mycurl -m 30 "https://geoip.elastic.co/v1/database?elastic_geoip_service_tos=agree" |jq .)
+        [[ -z $ELASTIC_MANIFEST ]] && fatal 'Failed to download elastic geoip manifest'
+    fi
+    local url=$(echo "$ELASTIC_MANIFEST" |jq -r --arg db "$1" '.[] |select(.name==$db+".tgz") |.url')
+    [[ -z $url ]] && { error "Cannot get an URL for database $1"; return 1; }
+    mycurl -o "$1.tar.gz" -m 300 "$url"
 }
 
 function on_exit() {
@@ -74,9 +99,10 @@ QUIET=${QUIET:-}
 while (( $# > 0 )); do
     case "$1" in
         -c|--config) CONFIG=$2; shift ;;
+        -m|--mode) MODE=$2; shift ;;
         -p|--pre) PRECMD=$2; shift ;;
         -P|--post) POSTCMD=$2; shift ;;
-        -k|--key) KEY=$2; shift ;;
+        -k|--key) MAXMIND_KEY=$2; shift ;;
         -d|--db) DATABASE=$2; shift ;;
         -D|--dir) DESTDIR=$2; shift ;;
         -S|--srcdir) SOURCEDIR=$2; shift ;;
@@ -90,10 +116,10 @@ done
 
 if [[ -n $CONFIG ]]; then
     source "$CONFIG" || fatal 'Failed to source config file'
-    # if working with a config file and no key is defined,
+    # with mode maxmind, if working with a config file and no key is defined,
     # assume that feature is disabled and exit quietly
-    [[ -z $KEY ]] && exit 0
-elif [[ -z $KEY ]]; then
+    [[ $MODE == maxmind && -z $MAXMIND_KEY ]] && exit 0
+elif [[ $MODE == maxmind && -z $MAXMIND_KEY ]]; then
     fatal 'Maxmind key required, check usage'
 fi
 
