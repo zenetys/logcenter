@@ -42,6 +42,12 @@ Source0: %zenetys_git_source logcenter
 
 BuildArch: noarch
 
+# standard
+BuildRequires: nodejs >= 1:18
+BuildRequires: tar
+# yarn is available in epel
+BuildRequires: yarnpkg
+
 %description
 Logcenter integration
 
@@ -50,12 +56,29 @@ Logcenter integration
 mkdir logcenter
 tar xvzf %{SOURCE0} --strip-components 1 -C logcenter
 
+%build
+cd logcenter
+
+# archives wui
+cd opt/logcenter/share/www/archives
+node_modules_sig=$(md5sum package.json |cut -d ' ' -f 1)
+if [ -f "%{_sourcedir}/archives_wui_node_modules_${node_modules_sig}_%{_arch}.tar.xz" ]; then
+    tar xJf "%{_sourcedir}/archives_wui_node_modules_${node_modules_sig}_%{_arch}.tar.xz"
+else
+    yarn
+    tar cJf "%{_sourcedir}/archives_wui_node_modules_${node_modules_sig}_%{_arch}.tar.xz" \
+        node_modules yarn.lock
+fi
+yarn build
+
 %install
 cd logcenter
 mkdir -p -m 755 %{buildroot}/etc/logcenter
 mkdir -p -m 755 %{buildroot}/opt/logcenter
+mkdir -p -m 755 %{buildroot}/opt/logcenter/share/www/archives
 mkdir -p -m 755 %{buildroot}/var/log/logcenter
-cp -RT --preserve=timestamp ./opt/logcenter/ %{buildroot}/opt/logcenter/
+tar c -C opt/logcenter/ --exclude share/www/archives . |tar x -C %{buildroot}/opt/logcenter/
+cp -RT --preserve=timestamp ./opt/logcenter/share/www/archives/dist/ %{buildroot}/opt/logcenter/share/www/archives/
 cd ..
 
 unforced_deps=( %{unforced_deps} )
