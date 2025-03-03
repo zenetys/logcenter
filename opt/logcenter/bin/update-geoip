@@ -8,7 +8,10 @@ DESTDIR=/var/lib/geoip
 SOURCEDIR=
 MAXMIND_KEY=
 DATABASE=GeoLite2-Country,GeoLite2-City,GeoLite2-ASN
+PRECMD=
 POSTCMD=
+SKIP_PRECMD=
+SKIP_POSTCMD=
 TTL=$((86400/2))
 PROXY=
 MODE=elastic
@@ -25,6 +28,8 @@ Available options:
   -m, --mode    Download mode; maxmind (need key) or elastic
   -p, --pre     Pre command to run at start, exit != 0 to abort
   -P, --post    Post command to run after install
+  --skip-pre    Skip pre command
+  --skip-post   Skip post command
   -k, --key     Maxmind key
   -d, --db      Maxmind database(s), comma separated, eg: GeoLite2-Country
   -D, --dir     Target directory
@@ -109,6 +114,8 @@ while (( $# > 0 )); do
         -m|--mode) MODE=$2; shift ;;
         -p|--pre) PRECMD=$2; shift ;;
         -P|--post) POSTCMD=$2; shift ;;
+        --skip-pre) SKIP_PRECMD=1 ;;
+        --skip-post) SKIP_POSTCMD=1 ;;
         -k|--key) MAXMIND_KEY=$2; shift ;;
         -d|--db) DATABASE=$2; shift ;;
         -D|--dir) DESTDIR=$2; shift ;;
@@ -144,7 +151,7 @@ fi
 
 [[ -w $DESTDIR ]] || fatal 'Target directory not writable'
 
-if [[ -n $PRECMD ]]; then
+if [[ -n $PRECMD && -z $SKIP_PRECMD ]]; then
     info 'Run pre command'
     if ! REPLY=$(DATABASE="$DATABASE" SOURCEDIR="$SOURCEDIR" \
                     DESTDIR="$DESTDIR" "$PRECMD"); then
@@ -179,7 +186,7 @@ info 'Install databases'
 find ./ -name '*.mmdb' -exec cp -a {} "$DESTDIR/" \; ||
     fatal 'Failed to install databases'
 
-if [[ -n $POSTCMD ]]; then
+if [[ -n $POSTCMD && -z $SKIP_POSTCMD ]]; then
     info 'Run post command'
     DATABASE="$DATABASE" DESTDIR="$DESTDIR" "$POSTCMD" ||
         fatal 'Post comand failed'
