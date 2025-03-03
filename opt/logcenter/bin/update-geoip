@@ -62,7 +62,14 @@ function mycurl() {
 # $1: database
 function getdb() {
     if [[ -n $SOURCEDIR ]]; then
-        cp -a "$SOURCEDIR/$1.tar.gz" ./
+        if [[ -f $SOURCEDIR/$1.tar.gz ]]; then
+            cp -a "$SOURCEDIR/$1.tar.gz" ./
+        elif [[ -f $SOURCEDIR/$1.mmdb ]]; then
+            tar czf "./$1.tar.gz" -C "$SOURCEDIR" "$1.mmdb"
+        else
+            error "No source found for database $1"
+            return 1
+        fi
     else
         local fn="getdb_$MODE"
         declare -F -f "$fn" >/dev/null || return 1
