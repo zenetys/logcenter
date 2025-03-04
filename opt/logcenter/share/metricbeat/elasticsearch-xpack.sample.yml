@@ -1,0 +1,7 @@
+- module: elasticsearch
+  xpack.enabled: true
+  period: 10s
+  hosts: #hosts
+  ssl.certificate_authorities: /etc/logcenter/certs/ca.crt
+  ssl.verification_mode: certificate
+  api_key: #api_key
