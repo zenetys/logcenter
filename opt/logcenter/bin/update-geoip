@@ -141,7 +141,9 @@ fi
 [[ -n $SOURCEDIR && $SOURCEDIR != /* ]] && SOURCEDIR="$PWD/$SOURCEDIR"
 
 if [[ -d $DESTDIR/. ]]; then
-    if (( ($(date +%s) - $(stat -Lc %Y "$DESTDIR")) < TTL )); then
+    # ignore TTL if DESTDIR is empty
+    if ! find "$DESTDIR/" -maxdepth 0 -empty -print -quit |grep -q / &&
+            (( ($(date +%s) - $(stat -Lc %Y "$DESTDIR")) < TTL )); then
         info 'Abort due to target directory mtime not old enought'
         exit 0
     fi
