@@ -10,7 +10,7 @@ function exit_usage() {
 function mode_listing() {
     es-curl "_cat/indices/${ALL:+*,.*}?s=i" |
         if [[ -z $WATCHING ]]; then
-            cat
+            cat |grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
         else
             # watch mode, print only indices attached to aliases or datastreams
             grep -F -f <({
@@ -19,6 +19,7 @@ function mode_listing() {
                 es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
                     jq -r '.data_streams |map(.indices |last |.index_name)[]'
             }) |
+            grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v} |
             column -t -o ' '
         fi
 }
@@ -65,6 +66,7 @@ END {
         <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
             jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
         <(es-curl "_cat/indices/${ALL:+*,.*}?s=i&bytes=b") |
+    grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v} |
     column -t -o ' ' -R 2,3
 }
 
@@ -75,6 +77,8 @@ ALL=${ALL:-}
 WATCH=
 WATCH_INTERVAL=5
 WATCHING=${WATCHING:-}
+POST_FILTER=${POST_FILTER:-^}
+POST_FILTER_INVERT=${POST_FILTER_INVERT:-}
 shopt -s extglob
 while (( $# > 0 )); do
     case "$1" in
@@ -84,8 +88,10 @@ while (( $# > 0 )); do
         -n|--size-asc) SIZE_SORT=@val_num_asc ;;
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
         -a|--all) ALL=1 ;;
+        -E|--grep) POST_FILTER=$2; shift ;;
+        -v|--invert-match) POST_FILTER_INVERT=1 ;;
         -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
-        -+([srnNawh]))
+        -+([srnNavwh]))
             for (( i = 1; i < ${#1}; i++ )); do
                 case "${1:i:1}" in
                     s) SIZE=1 ;;
@@ -93,6 +99,7 @@ while (( $# > 0 )); do
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
                     a) ALL=1 ;;
+                    v) POST_FILTER_INVERT=1 ;;
                     w) WATCH=1 ;;
                     h) exit_usage 0 ;;
                 esac
@@ -106,7 +113,7 @@ shopt -u extglob
 
 if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
-    export WATCHING=1 ALL
+    export WATCHING=1 ALL POST_FILTER POST_FILTER_INVERT
     exec watch -n "$WATCH_INTERVAL" "$0"
 elif [[ -n $SIZE ]]; then
     mode_size
