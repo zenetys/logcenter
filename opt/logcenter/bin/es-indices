@@ -8,21 +8,23 @@ function exit_usage() {
 }
 
 function mode_listing() {
-    es-curl _cat/indices?s=i |
+    es-curl "_cat/indices/${ALL:+*,.*}?s=i" |
         if [[ -z $WATCHING ]]; then
             cat
         else
+            # watch mode, print only indices attached to aliases or datastreams
             grep -F -f <({
-                es-curl '_cat/aliases/*,-.*,-ilm-history*?s=a' |awk '$(NF)=="true"{print $2}';
-                es-curl '_data_stream/*,-.*,.monitoring-es-*'  |jq -r '.data_streams |map(.indices |last |.index_name)[]'
+                es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a" |
+                    awk '$(NF)=="true"{print $2}';
+                es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+                    jq -r '.data_streams |map(.indices |last |.index_name)[]'
             }) |
             column -t -o ' '
         fi
 }
 
 function mode_size() {
-    awk -v "SIZE_VERBOSITY=$SIZE_VERBOSITY" \
-        -v "SIZE_RAW=$SIZE_RAW" \
+    awk -v "SIZE_RAW=$SIZE_RAW" \
         -v "SIZE_SORT=$SIZE_SORT" \
     '
 function human(input, mult, sep, _sym) {
@@ -52,8 +54,6 @@ END {
     ordered_groups_len = asorti(store_size_by_group, ordered_groups, SIZE_SORT)
     for (i = 1; i <= ordered_groups_len; i++) {
         group = ordered_groups[i];
-        if (SIZE_VERBOSITY < 2 && substr(group, 1, 1) == ".")
-            continue;
         store_size = store_size_by_group[group];
         pri_store_size = pri_store_size_by_group[group];
         printf("%s %s %s\n", group,
@@ -61,15 +61,17 @@ END {
             SIZE_RAW ? pri_store_size : (human(pri_store_size, 1024) "B"));
     }
 }
-    '   <(es-curl _cat/aliases?s=a) \
-        <(es-curl _data_stream |jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
-        <(es-curl '_cat/indices?s=i&bytes=b') |
+    '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
+        <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+            jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
+        <(es-curl "_cat/indices/${ALL:+*,.*}?s=i&bytes=b") |
     column -t -o ' ' -R 2,3
 }
 
-SIZE_VERBOSITY=
+SIZE=
 SIZE_RAW=
 SIZE_SORT=@ind_str_asc
+ALL=${ALL:-}
 WATCH=
 WATCH_INTERVAL=5
 WATCHING=${WATCHING:-}
@@ -77,18 +79,20 @@ shopt -s extglob
 while (( $# > 0 )); do
     case "$1" in
         -h|--help) exit_usage 0 ;;
-        -s|--size) (( SIZE_VERBOSITY++ )) ;;
+        -s|--size) SIZE=1 ;;
         -r|--size-raw) SIZE_RAW=1 ;;
         -n|--size-asc) SIZE_SORT=@val_num_asc ;;
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
+        -a|--all) ALL=1 ;;
         -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
-        -+([srnNwh]))
+        -+([srnNawh]))
             for (( i = 1; i < ${#1}; i++ )); do
                 case "${1:i:1}" in
-                    s) (( SIZE_VERBOSITY++ )) ;;
+                    s) SIZE=1 ;;
                     r) SIZE_RAW=1 ;;
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
+                    a) ALL=1 ;;
                     w) WATCH=1 ;;
                     h) exit_usage 0 ;;
                 esac
@@ -102,9 +106,9 @@ shopt -u extglob
 
 if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
-    export WATCHING=1
+    export WATCHING=1 ALL
     exec watch -n "$WATCH_INTERVAL" "$0"
-elif [[ -n $SIZE_VERBOSITY ]]; then
+elif [[ -n $SIZE ]]; then
     mode_size
 else
     mode_listing
