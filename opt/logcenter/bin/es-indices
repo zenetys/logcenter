@@ -3,7 +3,23 @@
 function exit_usage() {
     local status=${1:-0}
     [[ $status != 0 ]] && exec >&2
-    echo "Usage: ${0#*/} [-w [WATCH-SECONDS]]"
+    cat << EOF
+Usage: ${0#*/} [OPTION...]
+List elasticsearch indices or print disk usage by alias or datastream
+
+Available options:
+  -w, --watch [SEC]     Listing in watch mode, ie. with periodic refresh; it
+                        prints the last indices of each alias or datastream
+  -s, --size            Size mode, grouped by alias or datastream
+  -r, --size-raw        Output sizes in bytes, for size mode
+  -n, --size-asc        Sort by size ascending, for size mode
+  -N, --size-desc       Sort by size descending for size mode
+  -a, --all             Force to include all system hidden indices, aliases
+                        or datastreams using an '*,.*' filter in API calls
+
+  -E, --grep            Post filter passed to grep -E before pretty columns
+  -v, --invert-match    Pass -v to post filter grep
+EOF
     exit "$status"
 }
 
