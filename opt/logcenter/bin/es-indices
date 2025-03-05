@@ -70,7 +70,9 @@ END {
 SIZE_VERBOSITY=
 SIZE_RAW=
 SIZE_SORT=@ind_str_asc
-WATCH_INTERVAL=
+WATCH=
+WATCH_INTERVAL=5
+WATCHING=${WATCHING:-}
 shopt -s extglob
 while (( $# > 0 )); do
     case "$1" in
@@ -79,14 +81,15 @@ while (( $# > 0 )); do
         -r|--size-raw) SIZE_RAW=1 ;;
         -n|--size-asc) SIZE_SORT=@val_num_asc ;;
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
-        -w|--watch) WATCH_INTERVAL=${2:-5}; shift ;;
-        -+([srnNh]))
+        -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
+        -+([srnNwh]))
             for (( i = 1; i < ${#1}; i++ )); do
                 case "${1:i:1}" in
                     s) (( SIZE_VERBOSITY++ )) ;;
                     r) SIZE_RAW=1 ;;
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
+                    w) WATCH=1 ;;
                     h) exit_usage 0 ;;
                 esac
             done
@@ -97,7 +100,7 @@ while (( $# > 0 )); do
 done
 shopt -u extglob
 
-if [[ -n $WATCH_INTERVAL ]]; then
+if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
     export WATCHING=1
     exec watch -n "$WATCH_INTERVAL" "$0"
