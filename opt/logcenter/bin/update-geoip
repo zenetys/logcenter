@@ -70,7 +70,7 @@ function getdb() {
         if [[ -f $SOURCEDIR/$1.tar.gz ]]; then
             cp -a "$SOURCEDIR/$1.tar.gz" ./
         elif [[ -f $SOURCEDIR/$1.mmdb ]]; then
-            tar czf "./$1.tar.gz" -C "$SOURCEDIR" "$1.mmdb"
+            cp -a "$SOURCEDIR/$1.mmdb" ./
         else
             error "No source found for database $1"
             return 1
@@ -169,15 +169,18 @@ cd "$TMPDIR/$PROGNAME" || fatal 'Failed to cd in temporary directory'
 success=0
 
 for db in ${DATABASE//,/ }; do
-    info "Download $db archive"
+    info "Download $db"
     if ! getdb "$db"; then
-        error "Failed to retrieve database $db archive"
+        error "Failed to retrieve database $db"
         continue
     fi
-    info "Extract $db archive"
-    if ! tar xzf "$db.tar.gz"; then
-        error "Failed to extract database $db archive"
-        continue
+    # assume we have either .tar.gz or .mmdb
+    if [[ -f $db.tar.gz ]]; then
+        info "Extract $db archive"
+        if ! tar xzf "$db.tar.gz"; then
+            error "Failed to extract database $db archive"
+            continue
+        fi
     fi
     (( success++ ))
 done
