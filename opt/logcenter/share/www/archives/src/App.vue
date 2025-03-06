@@ -1,7 +1,10 @@
 <template>
   <header>
     <div class="wrapper mt-2">
-      <img src="/logo.png" class="logo mr-4" alt="ZENETYS" />
+      <picture>
+        <source srcset="/zenetys-light.png" media="(prefers-color-scheme: dark)" />
+        <img src="/zenetys.png" class="logo mr-4" alt="ZENETYS" />
+      </picture>
       <nav>
         <RouterLink to="/"></RouterLink>
       </nav>
