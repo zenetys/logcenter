@@ -2,7 +2,6 @@
 
 set -f
 PROGNAME=${0##*/}
-CONFIG=
 TMPDIR=/dev/shm
 DESTDIR=/var/lib/geoip
 SOURCEDIR=
@@ -120,7 +119,7 @@ QUIET=${QUIET:-}
 
 while (( $# > 0 )); do
     case "$1" in
-        -c|--config) CONFIG=$2; shift ;;
+        -c|--config) source "$2" || fatal 'Failed to source config file'; shift ;;
         -m|--mode) MODE=$2; shift ;;
         -p|--pre) PRECMD=$2; shift ;;
         -P|--post) POSTCMD=$2; shift ;;
@@ -138,16 +137,9 @@ while (( $# > 0 )); do
     shift
 done
 
-if [[ -n $CONFIG ]]; then
-    source "$CONFIG" || fatal 'Failed to source config file'
-    # with mode maxmind, if working with a config file and no key is defined,
-    # assume that feature is disabled and exit quietly
-    [[ $MODE == maxmind && -z $MAXMIND_KEY ]] && exit 0
-elif [[ $MODE == maxmind && -z $MAXMIND_KEY ]]; then
+if [[ $MODE == maxmind && -z $MAXMIND_KEY ]]; then
     fatal 'Maxmind key required, check usage'
-fi
-
-if [[ $MODE == baseurl:* ]]; then
+elif [[ $MODE == baseurl:* ]]; then
     BASEURL=${MODE#*:}
     MODE=baseurl
 fi
