@@ -460,13 +460,12 @@ watch(search, () => {
   width: 100%;
   max-height: 40px;
 
-  .v-field-label {
-    font-size: 14px !important;
+  .v-field {
+    border-radius: 10px;
   }
 
-  .v-autocomplete__selection-text,
-  #input-0 {
-    font-size: 12px !important;
+  .v-field-label, .v-autocomplete__selection-text {
+    font-size: 14px !important;
   }
 }
 
