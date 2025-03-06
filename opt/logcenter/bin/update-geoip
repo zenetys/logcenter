@@ -25,7 +25,7 @@ Update Maxmind geoip databases
 
 Available options:
   -c, --config  Configuration file
-  -m, --mode    Download mode; maxmind (need key) or elastic
+  -m, --mode    Download mode; maxmind (need key), elastic or baseurl:url
   -p, --pre     Pre command to run at start, exit != 0 to abort
   -P, --post    Post command to run after install
   --skip-pre    Skip pre command
@@ -100,6 +100,16 @@ function getdb_elastic() {
     mycurl -o "$1.tar.gz" -m 300 "$url"
 }
 
+# $1: database name
+function getdb_baseurl() {
+    local ext
+    for ext in tar.gz mmdb; do
+        mycurl -I -m 30 "$BASEURL/$1.$ext" &>/dev/null || continue
+        mycurl -o "$1.$ext" -m 300 "$BASEURL/$1.$ext"
+        return $?
+    done
+}
+
 function on_exit() {
     if [[ -d "$TMPDIR/$PROGNAME" ]]; then
         rm -rf "$TMPDIR/$PROGNAME"
@@ -135,6 +145,11 @@ if [[ -n $CONFIG ]]; then
     [[ $MODE == maxmind && -z $MAXMIND_KEY ]] && exit 0
 elif [[ $MODE == maxmind && -z $MAXMIND_KEY ]]; then
     fatal 'Maxmind key required, check usage'
+fi
+
+if [[ $MODE == baseurl:* ]]; then
+    BASEURL=${MODE#*:}
+    MODE=baseurl
 fi
 
 [[ $DESTDIR == /* ]] || DESTDIR="$PWD/$DESTDIR"
