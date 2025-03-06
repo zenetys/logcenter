@@ -4,26 +4,31 @@
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
 
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  --vt-c-black: #1e293b;
+  --vt-c-black-soft: #334155;
+  --vt-c-black-mute: #475569;
 
-  --vt-c-indigo: #2c3e50;
+  --vt-c-snow: #e7f4ff;
+  --vt-c-snow-soft: #cfe2f1;
+  --vt-c-indigo: #16181f;
 
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+  --vt-c-gradient-light: radial-gradient(farthest-corner at 100% 100%, var(--vt-c-snow-soft), var(--vt-c-snow), var(--vt-c-snow-soft));
+  --vt-c-gradient-dark: linear-gradient(105deg, var(--vt-c-black), var(--vt-c-indigo));
+
+  --vt-c-divider-light-1: #3c3c3c4a;
+  --vt-c-divider-light-2: #3c3c3c1f;
+  --vt-c-divider-dark-1: #545454a6;
+  --vt-c-divider-dark-2: #5454547a;
 
   --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
+  --vt-c-text-light-2: #3c3c3ca8;
   --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+  --vt-c-text-dark-2: #cbd5e1;
 }
 
 /* semantic color variables for this project */
 :root {
-  --color-background: var(--vt-c-white);
+  --color-background: var(--vt-c-gradient-light);
   --color-background-soft: var(--vt-c-white-soft);
   --color-background-mute: var(--vt-c-white-mute);
 
@@ -38,7 +43,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: var(--vt-c-black);
+    --color-background: var(--vt-c-gradient-dark);
     --color-background-soft: var(--vt-c-black-soft);
     --color-background-mute: var(--vt-c-black-mute);
 
@@ -58,27 +63,13 @@
 }
 
 body {
-  min-height: 100vh;
+  background: var(--color-background);
   color: var(--color-text);
-  /* background: var(--color-background); */
-  transition:
-    color 0.5s,
-    background-color 0.5s;
-  line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  transition: color 0.5s, background-color 0.5s;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   font-size: 15px;
+  min-height: 100vh;
+  line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
