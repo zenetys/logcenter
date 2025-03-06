@@ -217,6 +217,6 @@ watch(props.config, (newConfig) => {
 .z__bar-chart-container {
   height: 30vh;
   width: calc(100% + 4px);
-  padding: 0 1px 0 73px;
+  padding: 0 1px 0 73.5px;
 }
 </style>
