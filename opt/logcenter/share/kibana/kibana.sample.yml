@@ -1,0 +1,19 @@
+server.port: 5601
+server.host: ${HOSTNAME}
+server.basePath: #server.basePath
+server.rewriteBasePath: #server.rewriteBasePath
+server.publicBaseUrl: #server.publicBaseUrl
+server.ssl.enabled: true
+server.ssl.certificate: /etc/logcenter/certs/node.crt
+server.ssl.key: /etc/logcenter/certs/node.key
+elasticsearch.hosts: #elasticsearch.hosts
+elasticsearch.serviceAccountToken: #elasticsearch.serviceAccountToken
+elasticsearch.ssl.certificateAuthorities: ['/etc/logcenter/certs/ca.crt']
+logging.root.appenders: [ default ]
+pid.file: /run/kibana/kibana.pid
+xpack.encryptedSavedObjects.encryptionKey: #xpack.encryptedSavedObjects.encryptionKey
+xpack.reporting.encryptionKey: #xpack.reporting.encryptionKey
+xpack.security.encryptionKey: #xpack.security.encryptionKey
+telemetry.optIn: false
+telemetry.allowChangingOptInStatus: false
+monitoring.ui.logs.index: logs-elasticsearch-*
