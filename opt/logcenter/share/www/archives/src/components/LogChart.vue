@@ -97,9 +97,8 @@ const options = ref({
     event.native.target.style.cursor = elements && elements.length > 0 ? 'pointer' : 'default'
   },
   onClick: (event, elements) => {
-    if (!elements || elements.length <= 0) {
-      return
-    } else {
+    if (!elements || elements.length <= 0) return
+    else {
       const clickedItem = elements[0]
       const date = new Date(props.config.date)
       const selectedTotal = props.config.totals[clickedItem.index]
@@ -107,7 +106,7 @@ const options = ref({
       if (props.config.viewMode === 'day' && selectedTotal.rawLogs && selectedTotal.rawLogs[0]) {
         // Download raw logs for the clicked hour
         downloadDialog.value = true
-        downloadPendingData.value = selectedTotal.rawLogs;
+        downloadPendingData.value = selectedTotal.rawLogs
       } else if (props.config.viewMode === 'quarter') {
         // change date to first day of the selected ISO week and drill down to month view
         const clickedWeek = Number(Object.keys(props.config.totals)[clickedItem.index])
@@ -135,7 +134,7 @@ const props = defineProps(['config'])
 // Data
 const config = props.config
 const downloadDialog = ref(false)
-const downloadPendingData = ref(null);
+const downloadPendingData = ref(null)
 const label = ref('Total par heure')
 
 // Component Events
@@ -148,7 +147,7 @@ const emit = defineEmits(['change-date', 'change-mode'])
 const confirmDownload = () => {
   if (downloadPendingData.value) {
     downloadLogs(axios, downloadPendingData.value)
-    downloadPendingData.value = null;
+    downloadPendingData.value = null
   }
   downloadDialog.value = false
 }
