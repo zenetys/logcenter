@@ -154,42 +154,61 @@ const confirmDownload = () => {
 }
 
 /**
+ * Filter data based on search
+ * @param labels The provided labels
+ * @param totals The provided totals
+ * @param search The search query
+ *
+ * @returns The filtered data
+ */
+const filterData = (labels, totals, search) => Object.keys(totals).map((key, index) => {
+  const rawLogs = totals[key]?.rawLogs || [];
+  const filteredLogs = search.length > 0 ? rawLogs.filter(log => search.includes(log.hostname)) : rawLogs;
+  const totalSize = filteredLogs.reduce((sum, log) => sum + (log.size || 0), 0);
+  return filteredLogs.length > 0 ? { time: labels[index], data: totalSize || totals[key].data || totals[key], rawLogs: filteredLogs } : null;
+}).filter(item => item !== null);
+
+/**
+ * Set the label based on the view mode
+ * @param labels The labels
+ *
+ * @returns The label
+ */
+const setLabel = (labels) => {
+  const dateObject = new Date(config.date)
+  const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject);
+  if (config.viewMode === 'day') {
+    labels = labels.map(hour => `${hour.padStart(2, '0')}:00`);
+    return `Total par heure - ${labelDate}`;
+  } else if (config.viewMode === 'year') {
+    labels = labels.map(month => monthsLabels[month]);
+    return `Total par mois - Année ${dateObject.getFullYear()}`;
+  } else if (config.viewMode === 'month') {
+    return `Total par jour - ${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`;
+  } else if (config.viewMode === 'quarter') {
+    labels = labels.map(week => `Sem ${week}`);
+    return `Total par semaine - Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`;
+  }
+};
+
+/**
  * Build chart config from provided totals
  * @param totals The provided totals
  */
-const buildChartData = (totals) => {
+const buildChartData = (totals, search) => {
   let labels = Object.keys(totals)
   let data = []
-  const dateObject = new Date(config.date)
 
-  if (config.viewMode === 'day') {
-    const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject)
-    labels = labels.map((hour) => (parseInt(hour) < 10 ? `0${hour}:00` : `${hour}:00`))
-    label.value = `Total par heure - ${labelDate}`
-    // Adding raw logs data & time indexes to chart items
-    data = Object.keys(totals).map((key) => {
-      return {
-        time: labels[key],
-        data: totals[key].data || totals[key],
-        rawLogs: totals[key].rawLogs
-      }
-    })
-  } else if (config.viewMode === 'year') {
-    labels = labels.map((month) => monthsLabels[month])
-    const labelDate = dateObject.getFullYear()
-    label.value = `Total par mois - Année ${labelDate}`
-    data = Object.values(totals)
-  } else if (config.viewMode === 'month') {
-    const labelDate = `${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`
-    label.value = 'Total par jour - ' + labelDate
-    data = Object.values(totals)
-  } else if (config.viewMode === 'quarter') {
-    const labelDate = `Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`
-    labels = labels.map((week) => `Sem ${week}`)
-    label.value = 'Total par semaine - ' + labelDate
-    data = Object.values(totals)
+  if (search?.length) data = filterData(labels, totals, search);
+  else {
+    data = Object.keys(totals).map((key, index) => ({
+      time: labels[index],
+      data: totals[key].data || totals[key],
+      rawLogs: totals[key].rawLogs
+    }));
   }
 
+  label.value = setLabel(labels);
   chartData.value = {
     labels,
     datasets: [
