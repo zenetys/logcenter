@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import {
   getHumanReadableByteSize,
@@ -207,10 +207,12 @@ const buildChartData = (totals) => {
 watch(props.config, (newConfig) => {
   chartIsLoaded.value = false
   if (newConfig?.totals) {
-    buildChartData(newConfig.totals)
-    chartIsLoaded.value = true
+    buildChartData(newConfig.totals, newConfig.search || {})
+    nextTick(() => {
+      chartIsLoaded.value = true
+    })
   }
-})
+}, { deep: true })
 </script>
 
 <style lang="scss">
