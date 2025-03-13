@@ -107,6 +107,11 @@ function do_get_archive() {
             fhour=\"${fhour//\"/\"\"}\"
         order by db asc limit 1;")
     [[ -z $file ]] && fatal 'No match!'
+
+    # FIXME: Only the first matching file is sent. There may be several
+    # files in case of multiple archivers; same to support multiple
+    # SRC,YYYY-MM-DD,H arguments. In such cases, a tarball with all matching
+    # files should be to sent.
     local suffix fsfile
     for suffix in .xz ''; do
         fsfile="$ZLC_ARCHIVES_DIR/${file}${suffix}"
