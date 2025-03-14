@@ -224,7 +224,7 @@ const buildChartData = (totals, search) => {
     labels,
     datasets: [
       {
-        data,
+        data: data.map(item => item.data),
         label: label.value,
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderColor: 'rgba(75, 192, 192, 1)',
