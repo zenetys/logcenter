@@ -198,8 +198,9 @@ const buildChartData = (totals, search) => {
   let labels = Object.keys(totals)
   let data = []
 
-  if (search?.length) data = filterData(labels, totals, search);
-  else {
+  if (search?.length) {
+    data = filterData(labels, totals, search)
+  } else {
     data = Object.keys(totals).map((key, index) => ({
       time: labels[index],
       data: totals[key].data || totals[key],
