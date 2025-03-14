@@ -288,14 +288,7 @@ source "$ZLC_ENV" || fatal "Failed to source $ZLC_ENV"
 [[ -z $ZLC_ARCHIVES_USER ]] && fatal 'Bad environment, ZLC_ARCHIVES_USER not set'
 [[ -z $ZLC_ARCHIVES_GROUP ]] && fatal 'Bad environment, ZLC_ARCHIVES_GROUP not set'
 
-if is_primary; then
-    [[ -z $ZLC_PULL_ARCHIVES_TEMP_DIR ]] && fatal 'Bad environment, ZLC_PULL_ARCHIVES_TEMP_DIR not set'
-    [[ -d $ZLC_PULL_ARCHIVES_TEMP_DIR/. ]] || fatal 'Invalid ZLC_PULL_ARCHIVES_TEMP_DIR, not a directory'
-    [[ $(stat -c %d "$ZLC_ARCHIVES_DIR/.") == $(stat -c %d "$ZLC_PULL_ARCHIVES_TEMP_DIR/.") ]] ||
-        fatal 'ZLC_ARCHIVES_DIR and ZLC_PULL_ARCHIVES_TEMP_DIR must be on the same FS for hardlinks'
-    declare -gr ZLC_PULL_ARCHIVES_TEMP_DIR="$ZLC_PULL_ARCHIVES_TEMP_DIR/$PROGNAME.$$.$RANDOM"
-fi
-
+declare -r ZLC_PULL_ARCHIVES_TEMP_DIR="$ZLC_ARCHIVES_DIR/.$PROGNAME.$$.$RANDOM"
 declare -r SUDO_REMOTE='[ "$UID" = 0 ] && _SUDO= || _SUDO="sudo -n --"; $_SUDO'
 
 trap on_exit EXIT
@@ -335,6 +328,7 @@ else
         --group
         --chown "$ZLC_ARCHIVES_USER:$ZLC_ARCHIVES_GROUP"
         --prune-empty-dirs
+        --filter "- /.$PROGNAME*"
         # we assume here that a secondary node won't have files from another
         # secondary node, so we just protect "our" files
         --filter "- *$ZLC_SELF_ID_EXT.*"
