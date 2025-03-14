@@ -232,6 +232,7 @@ QUIET=${QUIET:-<empty>}"
     local time_main_stop=$(date +%s)
     local message="END TASK -- elapsed: $(( time_main_stop - time_main_start ))s, \
 sync_files: $sync_files, error: $error, warning: $warning"
+    clean_temp_dir_if_exists
     if (( error > 0 )); then error "$message"; return 1
     elif (( warning > 0 )); then warning "$message"; return 0
     else info "$message"; return 0; fi
