@@ -198,8 +198,9 @@ const changeMode = (newMode) => {
  */
 const generateHostsVolumeByPeriod = () => {
   const data = []
+  const filter = search.value.length > 0 ? hosts.value.filter(host => search.value.includes(host)) : hosts.value
 
-  hosts.value?.forEach((host) => {
+  filter?.forEach((host) => {
     // All logs for a given host
     const hostLogs = logsByHost.value[host]
     const hostData = { name: host }
