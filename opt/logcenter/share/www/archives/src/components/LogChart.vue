@@ -160,12 +160,23 @@ const confirmDownload = () => {
  *
  * @returns The filtered data
  */
-const filterData = (labels, totals, search) => Object.keys(totals).map((key, index) => {
-  const rawLogs = totals[key]?.rawLogs || [];
-  const filteredLogs = search.length > 0 ? rawLogs.filter(log => search.includes(log.hostname)) : rawLogs;
-  const totalSize = filteredLogs.reduce((sum, log) => sum + (log.size || 0), 0);
-  return filteredLogs.length > 0 ? { time: labels[index], data: totalSize || totals[key].data || totals[key], rawLogs: filteredLogs } : null;
-}).filter(item => item !== null);
+const filterData = (labels, totals, search) => {
+  return Object.keys(totals).map((key, index) => {
+    const rawLogs = totals[key]?.rawLogs || [];
+    const filteredLogs = search.length > 0 ? rawLogs.filter(log => search.includes(log.hostname)) : rawLogs;
+    const totalSize = filteredLogs.reduce((sum, log) => sum + (log.size || 0), 0);
+
+    if (config.viewMode === 'month') {
+      return { time: monthsLabels[key], data: totalSize || totals[key], rawLogs: filteredLogs };
+    } else if (config.viewMode === 'quarter') {
+      return { time: `Trimestre ${Math.ceil(key / 3)}`, data: totalSize || totals[key], rawLogs: filteredLogs };
+    } else if (config.viewMode === 'year') {
+      return { time: `Année ${key}`, data: totalSize || totals[key], rawLogs: filteredLogs };
+    } else {
+      return filteredLogs.length > 0 ? { time: labels[index], data: totalSize || totals[key].data || totals[key], rawLogs: filteredLogs } : null;
+    }
+  }).filter(item => item !== null);
+};
 
 /**
  * Set the label based on the view mode
