@@ -81,7 +81,7 @@ function dry_run_cmd_wrap() {
     fi
 }
 
-function is_primary() { [[ ${HOSTNAME%%.*} == ${ZLC_PULL_ARCHIVES_PRIMARY%%.*} ]]; }
+function is_primary() { local a=${HOSTNAME%%.*} b=${ZLC_PULL_ARCHIVES_PRIMARY%%.*}; [[ ${a,,} == ${b,,} ]]; }
 function is_secondary() { ! is_primary; }
 function require_primary() { is_primary || fatal 'Not on primary node' >&2; }
 function require_secondary() { is_secondary || fatal 'Not on a secondary node' >&2; }
