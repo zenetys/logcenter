@@ -75,6 +75,7 @@ function archives_db_query() {
         dbid=${dbfile##*/stats.}; dbid=${dbid%.db}; dbids+=( "$dbid" )
         REPLY+="attach '$dbfile' as $dbid;"$'\n'
     done < <(find "$ZLC_ARCHIVES_DIR/@stats/" -mindepth 1 -maxdepth 1 -name 'stats.*.db')
+    [[ -z $dbids ]] && fatal 'Database not found!'
     REPLY+="select ${1:-*} from ("$'\n'
     for (( i = 0; i < ${#dbids[@]}; i++ )); do
         (( i > 0 )) && REPLY+=' union '
