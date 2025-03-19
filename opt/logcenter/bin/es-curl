@@ -56,6 +56,7 @@ function es-curl() {
     curl_opts=(
         -sS --connect-timeout "${ES_CURL_CONNECT_TIMEOUT:-10}"
         ${ES_API_KEY:+-H "Authorization: ApiKey $ES_API_KEY"}
+        ${ES_USER:+-u "${ES_USER}${ES_PASS:+:$ES_PASS}"}
     )
 
     if [[ -z "${ES_CURL_FAIL_WITH_BODY+defined}" || "$ES_CURL_FAIL_WITH_BODY" == '1' ]]; then
