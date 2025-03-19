@@ -8,6 +8,7 @@ fi
 set -f
 export LC_ALL=C
 umask 0027
+cd
 PROGNAME=${0##*/}
 PID=$$
 OIFS=$IFS
