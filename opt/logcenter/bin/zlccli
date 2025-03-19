@@ -65,24 +65,32 @@ function do_help() {
     exit_usage 0
 }
 
+# $1: after select, default '*'
+# $2: after where, default '1'
+function archives_db_query() {
+    REPLY=$'pragma query_only = ON;\n'
+    local dbfile dbid dbids=() i
+    while read -r dbfile; do
+        dbid=${dbfile##*/stats.}; dbid=${dbid%.db}; dbids+=( "$dbid" )
+        REPLY+="attach '$dbfile' as $dbid;"$'\n'
+    done < <(find "$ZLC_ARCHIVES_DIR/@stats/" -mindepth 1 -maxdepth 1 -name 'stats.*.db')
+    REPLY+="select ${1:-*} from ("$'\n'
+    for (( i = 0; i < ${#dbids[@]}; i++ )); do
+        (( i > 0 )) && REPLY+=' union '
+        REPLY+="select '${dbids[i]}' as db, * from ${dbids[i]}.counters"$'\n'
+    done
+    REPLY+=$')\n'" where ${2:-1}"
+}
+
 #: list-archives [SQL-WHERE]
 #:     List archive files with a query to the stats counters
 #:     database. Return TSV ouput with header line.
 #:
 function do_list_archives() {
     [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
-    local where=${1:-1}
-    sqlite3 -tabs -header :memory: "
-        pragma query_only = ON;
-        attach '/data/log/@stats/stats.arc01.db' as a1;
-        attach '/data/log/@stats/stats.arc02.db' as a2;
-        select * from (
-            select 'a1' as db, * from a1.counters union
-            select 'a2' as db, * from a2.counters
-        )
-        where $where
-        order by fdate desc, fhour desc, src asc;
-    "
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
+    archives_db_query '*' "${1:-1} order by fdate desc, fhour desc, src asc"
+    sqlite3 -tabs -header :memory: "$REPLY"
 }
 
 #: get-archive [--proto] SRC,YYYY-MM-DD,H...
@@ -94,18 +102,10 @@ function do_get_archive() {
     local proto=; [[ $1 == --proto ]] && { proto=1; shift; }
     local IFS=,; set -- $1; IFS=$OIFS
     local src=$1 fdate=$2 fhour=$3
-    local file=$(sqlite3 :memory: "
-        pragma query_only = ON;
-        attach '/data/log/@stats/stats.arc01.db' as a1;
-        attach '/data/log/@stats/stats.arc02.db' as a2;
-        select file from (
-            select 'a1' as db, * from a1.counters union
-            select 'a2' as db, * from a2.counters
-        )
-        where src=\"${src//\"/\"\"}\" and
-            fdate=\"${fdate//\"/\"\"}\" and
-            fhour=\"${fhour//\"/\"\"}\"
-        order by db asc limit 1;")
+    local file=$(archives_db_query 'file' "src=\"${src//\"/\"\"}\" and
+        fdate=\"${fdate//\"/\"\"}\" and fhour=\"${fhour//\"/\"\"}\"
+        order by db asc limit 1"
+        sqlite3 :memory: "$REPLY")
     [[ -z $file ]] && fatal 'No match!'
 
     # FIXME: Only the first matching file is sent. There may be several
