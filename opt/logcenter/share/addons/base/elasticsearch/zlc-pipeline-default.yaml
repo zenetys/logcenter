@@ -27,6 +27,7 @@ processors:
   - split: { field: event.category, separator: '[,\s]+', if: 'ctx?.event?.category instanceof String' }
   - split: { field: event.type, separator: '[,\s]+', if: 'ctx?.event?.type instanceof String' }
   - split: { field: tags, separator: '[,\s]+', if: 'ctx?.tags instanceof String' }
+  - split: { field: zlc.relay_path, separator: '/', if: 'ctx?.zlc?.relay_path instanceof String' }
 
   # Hook for a per-datastream pipeline.
   - pipeline:
