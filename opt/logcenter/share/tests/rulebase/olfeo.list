@@ -1,0 +1,9 @@
+fmt3: 10.109.21.45 - dom\user [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - - - - curl/7.64.0 - - range_site3
+fmt3: 10.109.21.45 - dom\\user [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - - - - curl/7.64.0 - - range_site3
+fmt3: 10.109.21.45 - user.name [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - - - - curl/7.64.0 - - range_site3
+fmt3: 10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - - - - curl/7.64.0 - - range_site3
+fmt3: 10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - Eicar-Test-Signature - - curl/7.64.0 - - range_site3
+fmt3: 10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - Eicar-Test-Signature - - - - - range_site3
+fmt3: 10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - - - - - - - -
+fmt2: 10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services - - 1742804815 SQUID-10819272 68 1 81068 - - -
+10.109.21.45 - - [24/03/2025 08:26:55] "CONNECT https://www.haproxy.org:443 HTTP/1.1" 200 - - 1000 Business Services

@@ -62,7 +62,7 @@ rule=:%[
     { "type": "rest", "name": "olfeo.category_label" } ]%
 
 # fmt2 format
-# $ip$ - $Username$ [$date$] "$Method$ $Url$ HTTP/1.1" $Req-Answer-Reason$ - - $Category-Id$ $category$ \
+# fmt2: $ip$ - $Username$ [$date$] "$Method$ $Url$ HTTP/1.1" $Req-Answer-Reason$ - - $Category-Id$ $category$ \
 #   - - $Timestamp$ $Proxy-Id$ $Matched-Policy-Id$ $Req-Status$ $Size$ - - $Virus-Name$
 #
 rule=:%[
@@ -103,3 +103,49 @@ rule=:%[
     { "type": "number", "format": "number", "name": "http.response.body.bytes" },
     { "type": "literal", "text": " - - " },
     { "type": "rest", "name": "olfeo.virus_name" } ]%
+
+# fmt3 format
+# fmt3: $ip$ - $Username$ [$date$] "$Method$ $Url$ HTTP/1.1" $Req-Answer-Reason$ - - $Category-Id$ $category$ \
+#   - - $Timestamp$ $Proxy-Id$ $Matched-Policy-Id$ $Req-Status$ $Size$ - - $Virus-Name$ - - $User-Agent$ - - $Name$
+rule=:%[
+    { "type": "literal", "text": "fmt2: " },
+    { "type": "@ip", "name": "source.ip" },
+    { "type": "whitespace" },
+    { "type": "literal", "text": "-" },
+    { "type": "whitespace" },
+    { "type": "@user", "name": "." },
+    { "type": "whitespace" },
+    { "type": "literal", "text": "[" },
+    { "type": "char-to", "extradata": "]", "name": "olfeo.date_utc" },
+    { "type": "literal", "text": "] \"" },
+    { "type": "char-to", "extradata": " ", "name": "http.request.method" },
+    { "type": "whitespace" },
+    { "type": "char-to", "extradata": " ", "name": "url.original" },
+    { "type": "whitespace" },
+    { "type": "literal", "text": "HTTP/1.1\"" },
+    { "type": "whitespace" },
+    { "type": "number", "format": "number", "name": "olfeo.answer_reason_code" },
+    { "type": "whitespace" },
+    { "type": "literal", "text": "-" },
+    { "type": "whitespace" },
+    { "type": "literal", "text": "-" },
+    { "type": "whitespace" },
+    { "type": "char-to", "extradata": " ", "name": "olfeo.category_id" },
+    { "type": "whitespace" },
+    { "type": "string-to", "extradata": " - - ", "name": "olfeo.category_label" },
+    { "type": "literal", "text": " - - " },
+    { "type": "number", "format": "number", "name": "olfeo.timestamp" },
+    { "type": "whitespace" },
+    { "type": "char-to", "extradata": " ", "name": "olfeo.proxy_id" },
+    { "type": "whitespace" },
+    { "type": "char-to", "extradata": " ", "name": "olfeo.policy_id" },
+    { "type": "whitespace" },
+    { "type": "number", "format": "number", "name": "olfeo.request_status" },
+    { "type": "whitespace" },
+    { "type": "number", "format": "number", "name": "http.response.body.bytes" },
+    { "type": "literal", "text": " - - " },
+    { "type": "string-to", "extradata": " - - ", "name": "olfeo.virus_name" },
+    { "type": "literal", "text": " - - " },
+    { "type": "string-to", "extradata": " - - ", "name": "user_agent.original" },
+    { "type": "literal", "text": " - - " },
+    { "type": "rest", "name": "user.full_name" } ]%
