@@ -5,6 +5,7 @@ PROGNAME=${0##*/}
 
 declare -A TYPES=(
     ['writer']='zlc-role-writer'
+    ['dashboard-reader']='zlc-role-dashboard-reader'
     ['superuser']='superuser'
 )
 
@@ -16,6 +17,23 @@ declare -A ROLES=(
     {
       "names": [ "logs-*", "metrics-*" ],
       "privileges": [ "auto_configure", "create" ]
+    }
+  ]
+}'
+    ['zlc-role-dashboard-reader']='
+{
+  "cluster": [],
+  "indices": [
+    {
+      "names": [ "logs-*-zlc" ],
+      "privileges": [ "read", "view_index_metadata" ]
+    }
+  ],
+  "applications": [
+    {
+      "application": "kibana-.kibana",
+      "privileges": [ "feature_dashboard.read" ],
+      "resources": [ "space:dashboard" ]
     }
   ]
 }'
