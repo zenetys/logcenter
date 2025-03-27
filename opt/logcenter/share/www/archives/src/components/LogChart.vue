@@ -162,21 +162,21 @@ const confirmDownload = () => {
  */
 const filterData = (labels, totals, search) => {
   return Object.keys(totals).map((key, index) => {
-    const rawLogs = totals[key]?.rawLogs || [];
-    const filteredLogs = search.length > 0 ? rawLogs.filter(log => search.includes(log.hostname)) : rawLogs;
-    const totalSize = filteredLogs.reduce((sum, log) => sum + (log.size || 0), 0);
+    const rawLogs = totals[key]?.rawLogs || []
+    const filteredLogs = search.length > 0 ? rawLogs.filter(log => search.includes(log.hostname)) : rawLogs
+    const totalSize = filteredLogs.reduce((sum, log) => sum + (log.size || 0), 0)
 
     if (config.viewMode === 'month') {
-      return { time: monthsLabels[key], data: totalSize || totals[key], rawLogs: filteredLogs };
+      return { time: monthsLabels[key], data: totalSize || totals[key], rawLogs: filteredLogs }
     } else if (config.viewMode === 'quarter') {
-      return { time: `Trimestre ${Math.ceil(key / 3)}`, data: totalSize || totals[key], rawLogs: filteredLogs };
+      return { time: `Trimestre ${Math.ceil(key / 3)}`, data: totalSize || totals[key], rawLogs: filteredLogs }
     } else if (config.viewMode === 'year') {
-      return { time: `Année ${key}`, data: totalSize || totals[key], rawLogs: filteredLogs };
+      return { time: `Année ${key}`, data: totalSize || totals[key], rawLogs: filteredLogs }
     } else {
-      return filteredLogs.length > 0 ? { time: labels[index], data: totalSize || totals[key].data || totals[key], rawLogs: filteredLogs } : null;
+      return filteredLogs.length > 0 ? { time: labels[index], data: totalSize || totals[key].data || totals[key], rawLogs: filteredLogs } : null
     }
-  }).filter(item => item !== null);
-};
+  }).filter(item => item !== null)
+}
 
 /**
  * Set the label based on the view mode
@@ -186,20 +186,21 @@ const filterData = (labels, totals, search) => {
  */
 const setLabel = (labels) => {
   const dateObject = new Date(config.date)
-  const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject);
+  const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject)
+
   if (config.viewMode === 'day') {
-    labels = labels.map(hour => `${hour.padStart(2, '0')}:00`);
-    return `Total par heure - ${labelDate}`;
+    labels = labels.map(hour => `${hour.padStart(2, '0')}:00`)
+    return `Total par heure - ${labelDate}`
   } else if (config.viewMode === 'year') {
-    labels = labels.map(month => monthsLabels[month]);
-    return `Total par mois - Année ${dateObject.getFullYear()}`;
+    labels = labels.map(month => monthsLabels[month])
+    return `Total par mois - Année ${dateObject.getFullYear()}`
   } else if (config.viewMode === 'month') {
-    return `Total par jour - ${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`;
+    return `Total par jour - ${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`
   } else if (config.viewMode === 'quarter') {
-    labels = labels.map(week => `Sem ${week}`);
-    return `Total par semaine - Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`;
+    labels = labels.map(week => `Sem ${week}`)
+    return `Total par semaine - Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`
   }
-};
+}
 
 /**
  * Build chart config from provided totals
@@ -214,12 +215,12 @@ const buildChartData = (totals, search) => {
   } else {
     data = Object.keys(totals).map((key, index) => ({
       time: labels[index],
-    }));
       data: totals[key].data || totals[key] || 0,
       rawLogs: totals[key].rawLogs || []
+    }))
   }
 
-  label.value = setLabel(labels);
+  label.value = setLabel(labels)
   chartData.value = {
     labels,
     datasets: [
