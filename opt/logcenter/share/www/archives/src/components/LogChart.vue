@@ -210,13 +210,13 @@ const buildChartData = (totals, search) => {
   let data = []
 
   if (search?.length) {
-    data = filterData(labels, totals, search)
+    data = filterData(labels, totals, search).map(item => item.data || 0)
   } else {
     data = Object.keys(totals).map((key, index) => ({
       time: labels[index],
-      data: totals[key].data || totals[key],
-      rawLogs: totals[key].rawLogs
     }));
+      data: totals[key].data || totals[key] || 0,
+      rawLogs: totals[key].rawLogs || []
   }
 
   label.value = setLabel(labels);
@@ -224,7 +224,7 @@ const buildChartData = (totals, search) => {
     labels,
     datasets: [
       {
-        data: data.map(item => item.data),
+        data,
         label: label.value,
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderColor: 'rgba(75, 192, 192, 1)',
