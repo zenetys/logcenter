@@ -379,7 +379,7 @@ function process(line)
 
     local sd_zlc = ''
     local src_ip = vars.src_ip or DEFAULT.src_ip
-    local src_host = vars.src_host or DEFAULT.src_host
+    local src_host = vars.src_host or DEFAULT.src_host or hostname
     local received = vars.received or DEFAULT.received
     local rj_id = vars.rj_id or DEFAULT.rj_id
     if src_ip then sd_zlc = sd_zlc..' srcIp="'..src_ip..'"' end
