@@ -1,0 +1,123 @@
+#!/bin/bash
+
+set -f
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] OBJECT... TARGET
+Copy objects to space
+
+Available options:
+
+    --compatibilityMode     Apply various adjustments to the saved objects
+        that are being copied to maintain compatibility between different
+        Kibana versions. Use this option only if you encounter issues with
+        copied saved objects. This option cannot be used with the
+        createNewCopies option.
+
+    --createNewCopies       Create new copies of saved objects, regenerate
+        each object identifier, and reset the origin. When used, potential
+        conflict errors are avoided. This option cannot be used with the
+        overwrite and compatibilityMode options.
+
+    --includeReferences     When set to true, all saved objects related to
+        the specified saved objects will also be copied into the target
+        spaces.
+
+    --overwrite             When set to true, all conflicts are automatically
+        overridden. When a saved object with a matching type and identifier
+        exists in the target space, that version is replaced with the version
+        from the source space. This option cannot be used with the
+        createNewCopies option.
+
+    -d, --debug             Dump raw kibana API output
+    -h, --help              Display this help
+"
+    exit "$status"
+}
+
+args=()
+compatibilityMode=
+createNewCopies=
+includeReferences=
+overwrite=
+debug=
+while (( $# > 0 )); do
+    case "$1" in
+        --compatibilityMode) compatibilityMode=1 ;;
+        --createNewCopies) createNewCopies=1 ;;
+        --includeReferences) includeReferences=1 ;;
+        --overwrite) overwrite=1 ;;
+        -d|--debug) debug=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+args+=( "$@" )
+
+target_space=${args[@]: -1}
+args=( "${args[@]:0:${#args[@]}-1}" )
+[[ -z $target_space ]] && exit_usage 1
+[[ -z $args ]] && exit_usage 1
+
+gret=0
+for o in "${args[@]}"; do
+    echo "Copy $o -> $target_space"
+
+    o=( ${o//:/$IFS} )
+    if (( ${#o[@]} == 2 )); then
+        src_space=default
+        src_type=${o[0]} 
+        src_id=${o[1]} 
+    elif (( ${#o[@]} == 3 )); then
+        src_space=${o[0]}
+        src_type=${o[1]} 
+        src_id=${o[2]} 
+    else
+        echo 'Invalid source object specification'
+        gret=1
+        continue
+    fi
+    
+    output=$(
+        set -o pipefail
+        jq -n \
+            --arg src_type "$src_type" \
+            --arg src_id "$src_id" \
+            --arg target_space "$target_space" \
+            --arg compatibilityMode "$compatibilityMode" \
+            --arg createNewCopies "$createNewCopies" \
+            --arg includeReferences "$includeReferences" \
+            --arg overwrite "$overwrite" \
+            '{
+                objects: [ { type: $src_type, id: $src_id } ],
+                spaces: [ $target_space ],
+                compatibilityMode: ($compatibilityMode!=""),
+                createNewCopies: ($createNewCopies!=""),
+                includeReferences: ($includeReferences!=""),
+                overwrite: ($overwrite!=""),
+            }' |
+        kbn-curl "/s/$src_space/api/spaces/_copy_saved_objects" -d @- |
+        { cat; echo; } |if [[ -n $debug ]]; then tee /dev/stderr; else cat; fi |
+        jq -r --arg target_space "$target_space" \
+        '.[$target_space] as $x |
+            $x |(if .successResults then
+                .successResults |map("OK: \(.destinationId), \(.type), \(.meta.title//.id)")
+            else [] end) as $ok |
+            $x |(if .errors then
+                .errors |map("ERROR: \(.error.type), \(.type), \(.meta.title//.id)")
+            else [] end) as $err |
+            ($ok + $err)[]' |
+        { ret=0; while read -r x; do echo "  > $x"; [[ $x == ERROR:* ]] && ret=1; done
+          (( ret == 0 )); }
+    )
+    (( $? == 0 )) || gret=1
+    echo "$output"
+done
+exit "$gret"
