@@ -2,20 +2,18 @@
 
 set -f
 set -o pipefail
-shopt -s nullglob
-
 PROGNAME=${0##*/}
-OIFS=$IFS
 
 DEFAULT_TYPES=(
-    canvas-workpad
     canvas-element
+    canvas-workpad
     dashboard
     index-pattern
     lens
     map
     query
     search
+    tag
     visualization
 )
 
@@ -41,94 +39,67 @@ Default filtered types:"
 function error() { echo "ERROR: $*" >&2; }
 function fatal() { echo "FATAL: $*" >&2; exit 2; }
 
-function quote() {
-    REPLY=${1//\\/\\\\}
-    REPLY=${REPLY//\"/\\\"}
+# $1: space
+function list_objects() {
+    local space=$1 curlopts=( --get ) t data page=0 stop
+    for t in "${TYPES[@]}"; do
+        curlopts+=( --data-urlencode "type=$t" )
+    done
+    while :; do
+        (( ++page ))
+        data=$(kbn-curl "/s/$space/api/saved_objects/_find?page=$page" "${curlopts[@]}") ||
+            { error "Failed to list objects in space ${space@Q}"; return 1; }
+        echo "$data"
+        stop=$(echo "$data" |jq -r 'try (if .page * .per_page >= .total then 1 else 0 end) catch 1')
+        [[ $stop == 1 ]] && break
+    done |
+        jq -r --arg space "$space" '.saved_objects |
+            map("\($space)\t\(.type)\t\(.id)\t\(.attributes.title//.attributes.name//"")")[]'
 }
 
-# $1: filter space id as comma separated list
-function list_spaces() {
-    local spaces
-    spaces=$(kbn-curl /api/spaces/space)
-    (( $? == 0 )) || return 1
-    local IFS=$'\n'
-    REPLY=($(echo "$spaces" |jq --arg filter "$1" -r '
-        ($filter|split(",")) as $filter |
-        [map(.id)[] |if ($filter|length) > 0 then select(. == ($filter[])) else . end] |
-        sort[]'
-    ))
-}
-
-# $1: space _id (document _id)
-# $2: extra filter query in lucene format
-function list_space_objects() {
-    local query prefix
-    [[ $1 == space:* ]] && set -- "${1#space:}"
-    if [[ $1 == default ]]; then
-        query="(NOT _exists_:namespaces) OR namespaces:default"
-        prefix=default:
+function format_output() {
+    if [[ -n $TSV ]]; then
+        cat
     else
-        quote "$1"
-        printf -v query 'namespaces:"%s"' "$REPLY"
-        prefix="$1:"
-    fi
-    quote "($query) AND ($2)"
-    printf -v query '{"query":{"query_string":{"query":"%s"}}}' "$REPLY"
-    local IFS=$'\n'
-    REPLY=($(es-scroll .kibana_analytics "$query" |jq -r --arg prefix "$prefix" '
-        .hits.hits |
-        map("\($prefix)\(._id)\t\(._source[._source.type]?.title // "")") |
-        sort[]
-    '))
+        local IFS=$'\t'
+        while read -r space type id rest; do
+            printf '%s:%s:%s\t%s\n' "$space" "$type" "$id" "$rest"
+        done |LC_ALL=en_US.UTF-8 column -t -s $'\t'
+    fi |
+        sort -V
 }
 
+SPACES=()
 TYPES=()
 TSV=
-ARGS=()
 while (( $# > 0 )); do
     case "$1" in
-        -s|--space) ARGS+=( "$2" ); shift ;;
+        -s|--space) SPACES+=( "$2" ); shift ;;
         -t|--type) TYPES+=( "$2" ); shift ;;
         --tsv) TSV=1 ;;
         -h|--help) exit_usage 0 ;;
         --) shift; break ;;
         -*) exit_usage 1 ;;
-        *) ARGS+=( "$1" ) ;;
+        *) SPACES+=( "$1" ) ;;
     esac
     shift
 done
-ARGS+=( "$@" )
+SPACES+=( "$@" )
 
-qtype='type:('
-[[ -z $TYPES ]] && TYPES=( "${DEFAULT_TYPES[@]}" )
-for (( i=0; i < ${#TYPES[@]}; i++ )); do
-    (( i > 0 )) && qtype+=' OR '
-    quote "${TYPES[i]}"; qtype+="\"$REPLY\""
-done
-qtype+=')'
-
-printf -v qspaces_filter ',%s' "${ARGS[@]}"
-qspaces_filter=${qspaces_filter:1}
-list_spaces "$qspaces_filter" || fatal 'Failed to list spaces'
-spaces=( "${REPLY[@]}" )
-
-retval=0
-
-for s in "${spaces[@]}"; do
-    if ! list_space_objects "$s" "$qtype"; then
-        retval=1
-        error "Failed to list space objects: $s"
-        continue
-    fi
-
-    for o in "${REPLY[@]}"; do
-        echo "$o"
-    done
-done |
-if [[ -z $TSV ]]; then
-    column -t -s $'\t'
-else
-    cat
+if [[ -z $TYPES ]]; then
+    TYPES=( "${DEFAULT_TYPES[@]}" )
 fi
 
-exit "$retval"
+if [[ -z $SPACES ]]; then
+    SPACES=( $(kbn-curl /api/spaces/space |jq -r 'map(.id) |sort[]') )
+    [[ -z $SPACES ]] && fatal 'Failed to list spaces'
+fi
+
+{   gret=0
+    for space in "${SPACES[@]}"; do
+        list_objects "$space" || gret=1
+    done
+    (( gret == 0 ))
+} |format_output
+
+exit ${PIPESTATUS[0]}
