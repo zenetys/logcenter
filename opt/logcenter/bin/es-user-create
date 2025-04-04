@@ -47,16 +47,18 @@ function exit_usage() {
     local status=${1:-0}
     [[ $status != 0 ]] && exec >&2
     echo "\
-Usage: $PROGNAME -n NAME -t TYPE [OPTION...]
-Script to create Elasticsearch users
+Usage: es-user-create -n NAME [-t TYPE] [-r ROLE] [OPTION...]
+       es-role-create -t TYPE | -r ROLE [OPTION...]
+Script to create Elasticsearch roles and users
 
 Available options:
     -n, --name      User name to create
+    -t, --type      Compute roles based on predefined type
+    -r, --role      Roles to create and/or assign, comma separated list
     -p, --password  Password for the user instead of random
-    -r, --role      Role(s) to assign to the user, comma separated list
-    -t, --type      Assign roles based on predefined type
-    -f, --force     First delete the user if it exists
     -P, --showpass  Print password on stdout if it was generated
+    --recreate-role Delete the role if it exists
+    --recreate-user Delete the user if it exists
     -h, --help      Display this help
 
 Supported types:"
@@ -68,14 +70,16 @@ Supported types:"
 NAME=
 ROLE=()
 TYPE=
-FORCE=
+RECREATE_ROLE=
+RECREATE_USER=
 while (( $# > 0 )); do
     case "$1" in
         -n|--name) NAME=$2; shift ;;
         -p|--pass) PASS=$2; shift ;;
         -r|--role) ROLE+=( ${2//,/ } ); shift ;;
         -t|--type) TYPE=$2; shift ;;
-        -f|--force) FORCE=1 ;;
+        --recreate-role) RECREATE_ROLE=1 ;;
+        --recreate-user) RECREATE_USER=1 ;;
         -P|--showpass) SHOWPASS=1 ;;
         -h|--help) exit_usage 0 ;;
         *) exit_usage 1 ;;
@@ -83,50 +87,74 @@ while (( $# > 0 )); do
     shift
 done
 
-[[ -z $NAME ]] && exit_usage 1
 if [[ -n $TYPE ]]; then
     [[ -z ${TYPES[$TYPE]} ]] && exit_usage 1
     ROLE+=( ${TYPES[$TYPE]//,/ } )
 fi
 [[ -z $ROLE ]] && exit_usage 1
+[[ $PROGNAME == *user* && -z $NAME ]] && exit_usage 1
+
+for r in "${ROLE[@]}"; do
+    [[ -z $r ]] && continue
+    create_role=
+
+    # disable both curl --fail-with-body (el9) and -f (el8)
+    out=$(ES_LOCAL_CURL_FAIL_WITH_BODY= \
+          ES_LOCAL_CURL_FAIL= \
+        es-curl "/_security/role/$r" -o /dev/null -w '%{http_code}')
+    if [[ $out == 200 ]]; then
+        info "Role already exists: $r"
+        if [[ -n $RECREATE_ROLE ]]; then
+            [[ -z ${ROLES[$r]} ]] && fatal "No definition to recreate role, cannot delete: $r"
+            info "Delete existing role: $r"
+            es-curl "/_security/role/$r" -X DELETE >/dev/null
+            (( $? == 0 )) || fatal "Failed to delete existing role: $r"
+            create_role=1
+        fi
+    elif [[ $out == 404 ]]; then
+        create_role=1
+    else
+        fatal "Failed to check role: $r"
+    fi
+    if [[ -n $create_role ]]; then
+        [[ -z ${ROLES[$r]} ]] && fatal "Unsupported role: $r"
+        info "Create role: $r"
+        echo "${ROLES[$r]}" |es-curl "/_security/role/$r" -X POST -d @- >/dev/null
+        (( $? == 0 )) || fatal "Role did not exist and creation failed: $r"
+    fi
+done
+
+[[ -z $NAME ]] && exit 0
+
 if [[ -n $PASS ]]; then
     [[ $PASS == env:* ]] && { v=${PASS#env:}; PASS=${!v}; export -n "$v"; }
     [[ ${#PASS} -lt 6 ]] && fatal 'Given password too short (min 6)'
     SHOWPASS=
 fi
 
-out=$(ES_LOCAL_CURL_FAIL= es-curl "/_security/user/$NAME" -o /dev/null -w '%{http_code}')
+create_user=
+
+# disable both curl --fail-with-body (el9) and -f (el8)
+out=$(ES_LOCAL_CURL_FAIL_WITH_BODY= \
+      ES_LOCAL_CURL_FAIL= \
+    es-curl "/_security/user/$NAME" -o /dev/null -w '%{http_code}')
 if [[ $out == 200 ]]; then
-    if [[ -n $FORCE ]]; then
+    info "User already exists: $NAME"
+    if [[ -n $RECREATE_USER ]]; then
         info "Delete existing user: $NAME"
         es-curl "/_security/user/$NAME" -X DELETE >/dev/null
         (( $? == 0 )) || fatal "Failed to delete existing user: $NAME"
-    else
-        fatal "User already exist: $NAME"
+        create_user=1
     fi
+elif [[ $out == 404 ]]; then
+    create_user=1
+else
+    fatal "Failed to check user: $NAME"
 fi
 
-info "Roles to be assigned: ${ROLE[@]}"
-for r in "${ROLE[@]}"; do
-    [[ -z $r ]] && continue
-    # disable both curl --fail-with-body (el9) and -f (el8)
-    out=$(ES_LOCAL_CURL_FAIL_WITH_BODY= \
-          ES_LOCAL_CURL_FAIL= \
-        es-curl "/_security/role/$r" -o /dev/null -w '%{http_code}')
-    if [[ $out == 404 ]]; then
-        # role does not exist, maybe we can add it?
-        if [[ -n ${ROLES[$r]} ]]; then
-            info "Creating role: $r"
-            echo "${ROLES[$r]}" |es-curl "/_security/role/$r" -X POST -d @- >/dev/null
-            (( $? == 0 )) || fatal "Role did not exist and creation failed: $r"
-        else
-            fatal "Role does not exist: $r"
-        fi
-    fi
-done
-
+[[ -z $create_user ]] && exit 0
 [[ -z $PASS ]] && PASS=$(LC_ALL=C tr -dc 'A-Za-z0-9_@./:=,-' </dev/urandom | head -c 20)
-info "Creating user: $NAME"
+info "Create user: $NAME"
 pass=$PASS jq -n --arg r "${ROLE[*]}" '{ password: $ENV.pass, roles: ($r|split(" ")) }' |
     es-curl "/_security/user/$NAME" -X POST -d @- >/dev/null
 (( $? == 0 )) || fatal "Failed to create user: $NAME"
