@@ -86,7 +86,7 @@ unforced_deps=( %{unforced_deps} )
     > %{buildroot}/opt/logcenter/share/unforced_deps
 
 %posttrans
-ch=$'\x1b[7;91m'; cc=$'\x1b[0;34m'; crst=$'\x1b[0m';
+ch=$'\x1b[7;34m'; cc=$'\x1b[0;34m'; crst=$'\x1b[0m';
 cat <<EOF
 
 ${ch}# %{name}${crst}
