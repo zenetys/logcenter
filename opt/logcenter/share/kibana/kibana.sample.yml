@@ -17,3 +17,6 @@ xpack.security.encryptionKey: #xpack.security.encryptionKey
 telemetry.optIn: false
 telemetry.allowChangingOptInStatus: false
 monitoring.ui.logs.index: logs-elasticsearch-*
+newsfeed.enabled: false
+xpack.fleet.isAirGapped: true
+#xpack.reporting.roles.enabled: false
