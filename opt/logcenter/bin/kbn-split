@@ -23,14 +23,20 @@ function info() {
 
 # $1: input file, ndjson
 function do_file() {
+    local input=$1; shift
     local dir=$OUTPUT_DIR
     if [[ -z $dir ]]; then
-        dir=${1%/*}
-        [[ $dir == $1 ]] && dir=.
+        if [[ $input == - || $input == /dev/stdin ]]; then
+            input=/dev/stdin
+            dir=.
+        else
+            dir=${input%/*}
+            [[ $dir == $input ]] && dir=.
+        fi
     fi
 
-    info "Process $1"
-    jq -c . "$1" |while read -r; do
+    info "Process $input"
+    jq -c . "$input" |while read -r; do
         name=$(echo "$REPLY" |jq -r 'if .exportedCount then "" else "\(.attributes.name//.attributes.title)" end')
         [[ -z $name ]] && continue
 
@@ -91,6 +97,7 @@ while (( $# > 0 )); do
         -d|--dedup) DEDUP_BASE_DIR=$2; shift ;;
         -h|--help) exit_usage 0 ;;
         --) shift; break ;;
+        -) args+=( "$1" ) ;;
         -*) exit_usage 1 ;;
         *) args+=( "$1" ) ;;
     esac
