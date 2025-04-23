@@ -25,6 +25,8 @@ template:
             - 'fortigate.total'
             - 'fortigate.totalsession'
             - 'fortigate.used'
+          path_unmatch:
+            - 'fortigate.time'
           match_mapping_type: string
           mapping:
             type: long

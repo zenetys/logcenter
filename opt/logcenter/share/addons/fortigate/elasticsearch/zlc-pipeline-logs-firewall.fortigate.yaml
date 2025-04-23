@@ -5,6 +5,14 @@ on_failure:
   - set: { field: event.kind, value: pipeline_error }
 
 processors:
+  - script:
+      id: zlc-script-ingest-parse-kv
+      params:
+        field: event.original
+        target_field: fortigate
+        mode: 0
+      if: ctx?.cef == null && ctx?.event?.original != null
+
   - pipeline:
       name: zlc-pipeline-fortigate-cef-norm
       if: ctx?.cef != null
@@ -279,3 +287,8 @@ processors:
           field: related.ip
           value: '{{{ _ingest._value }}}'
           allow_duplicates: false
+
+  # Remove event.original if present.
+  - remove:
+      field: event.original
+      ignore_missing: true
