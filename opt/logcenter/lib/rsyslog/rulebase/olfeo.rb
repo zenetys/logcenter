@@ -108,7 +108,7 @@ rule=:%[
 # fmt3: $ip$ - $Username$ [$date$] "$Method$ $Url$ HTTP/1.1" $Req-Answer-Reason$ - - $Category-Id$ $category$ \
 #   - - $Timestamp$ $Proxy-Id$ $Matched-Policy-Id$ $Req-Status$ $Size$ - - $Virus-Name$ - - $User-Agent$ - - $Name$
 rule=:%[
-    { "type": "literal", "text": "fmt2: " },
+    { "type": "literal", "text": "fmt3: " },
     { "type": "@ip", "name": "source.ip" },
     { "type": "whitespace" },
     { "type": "literal", "text": "-" },
@@ -148,4 +148,4 @@ rule=:%[
     { "type": "literal", "text": " - - " },
     { "type": "string-to", "extradata": " - - ", "name": "user_agent.original" },
     { "type": "literal", "text": " - - " },
-    { "type": "rest", "name": "user.full_name" } ]%
+    { "type": "rest", "name": "olfeo.user_name" } ]%
