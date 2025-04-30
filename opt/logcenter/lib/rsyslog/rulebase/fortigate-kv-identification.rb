@@ -7,12 +7,12 @@ version=2
 
 # Input: $msg ($.msg)
 
-# fields sequence [... d]evname="..." devid="FG..."
+# fields sequence [... d]evname="..." devid="F..."
 type=@forti_kv_devame_devid:%[
     { "type": "string-to", "extradata": "evname=\"" },
     { "type": "literal", "text": "evname=\"" },
     { "type": "char-to", "extradata": "\"" },
-    { "type": "literal", "text": "\" devid=\"FG" },
+    { "type": "literal", "text": "\" devid=\"F" },
     { "type": "char-to", "extradata": "\"" }
 ]%
 
