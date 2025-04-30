@@ -90,8 +90,8 @@ function make_symlink() {
 
 info "Option ZLC_ARCHIVES_FQDN_SRC=${ZLC_ARCHIVES_FQDN_SRC:-<empty>}"
 find "$ZLC_ARCHIVES_DIR/" -mindepth 1 -maxdepth 1 \
-        -not -name "${BY_NAME_DIR##*/}" \
-        -not -name "${BY_IP_DIR##*/}" \
+        -not -name '@*' \
+        -not -name lost+found \
         -printf '%P\n' |
     sort -V |
     while read -r dir; do
