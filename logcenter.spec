@@ -85,6 +85,18 @@ unforced_deps=( %{unforced_deps} )
 (IFS=$'\n'; echo "${unforced_deps[*]}") \
     > %{buildroot}/opt/logcenter/share/unforced_deps
 
+%pre
+# backup modified files if any
+if [ "$1" != 0 ]; then
+    files=$(rpm -V '%{name}' |awk '$1 ~ /^..5/ { print substr($NF, 2) }')
+    if [ -n "$files" ]; then
+        tarball='/var/lib/%{name}/backup/%{name}-before-%{version}-%{release}-%(date +\%s).tar.gz'
+        echo "# Backup modified files to $tarball"
+        mkdir -p "${tarball%/*}"
+        echo "$files" |tar hcvzf "$tarball" -C / -T -
+    fi
+fi
+
 %posttrans
 ch=$'\x1b[7;34m'; cc=$'\x1b[0;34m'; crst=$'\x1b[0m';
 cat <<EOF
