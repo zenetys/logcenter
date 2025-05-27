@@ -248,8 +248,26 @@ watch(props.config, (newConfig) => {
 
 <style lang="scss">
 .z__bar-chart-container {
+  position: relative;
+  overflow: hidden;
   height: 30vh;
-  width: calc(100% + 4px);
-  padding: 0 1px 0 73.5px;
+  width: 100%;
+  padding: 0;
+}
+
+.z__bar-chart-container canvas,
+#z__bar-chart canvas {
+  box-sizing: border-box;
+  position: relative;
+  max-width: calc(100% - 78px);
+  left: 78px;
+}
+
+@media (max-width: 1700px) {
+  .z__bar-chart-container canvas,
+  #z__bar-chart canvas {
+    max-width: calc(100% - 10px);
+    left: 10px;
+  }
 }
 </style>

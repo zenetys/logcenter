@@ -216,16 +216,6 @@ watch(
   width: 100% !important;
   min-height: 400px;
   max-height: 450px;
-
-  .v-table__wrapper {
-    // Hide the scrollbar
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
 }
 
 .v-data-table__th {
@@ -241,6 +231,7 @@ watch(
   &:not(:nth-child(1)) {
     span {
       width: 100%;
+      min-width: 40px;
       text-align: center;
     }
   }
