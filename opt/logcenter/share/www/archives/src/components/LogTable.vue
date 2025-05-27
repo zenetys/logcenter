@@ -257,7 +257,6 @@ watch(
 
   &:not(:nth-child(1)) {
     text-align: center;
-    white-space: normal;
   }
 
   &:nth-child(1) {
