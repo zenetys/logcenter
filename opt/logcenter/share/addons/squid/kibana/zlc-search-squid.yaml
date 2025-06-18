@@ -7,7 +7,6 @@ attributes:
     - squid.request_status
     - http.response.status_code
     - http.request.method
-    - url.domain
     - url.original
     - user.name
     - squid.hierarchy_status
@@ -40,17 +39,17 @@ attributes:
         width: 95
       user.name:
         width: 134
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
-  sort:
-    - - '@timestamp'
-      - desc
+  rowHeight: 1
+  sort: []
   timeRestore: false
   title: Listing squid
 coreMigrationVersion: 8.8.0
-created_at: "2024-09-11T20:10:59.324Z"
+created_at: "2025-06-18T07:56:43.588Z"
 id: 09e19b55-87c3-47d6-9835-029cacdd6824
 managed: false
 references:
@@ -67,9 +66,9 @@ references:
     name: tag-ref-75a48a1e-6863-4fbd-aed4-da4890a70ebb
     type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-09-12T16:32:56.270Z"
-version: WzQ5Niw0XQ==
+typeMigrationVersion: 10.5.0
+updated_at: "2025-06-18T08:38:17.958Z"
+version: WzM1NSwxM10=
 ---
 excludedObjects: []
 excludedObjectsCount: 0
