@@ -21,21 +21,21 @@ version=2
 
 # The standard ipv6 type require that it be followed by whitespace or
 # end-of-string, hence we cannot use use between brackets [<ipv6>].
-#type=@dom_ipv6:%[
-#    { "type": "literal", "text": "[" },
-#    {
-#        "type": "string",
-#        "name": "domain",
-#        "quoting.mode": "none",
-#        "quoting.escape.mode": "none",
-#        "matching.mode": "lazy",
-#        "matching.permitted": [
-#            { "class": "hexdigit" },
-#            { "chars": ":" }
-#        ]
-#    },
-#    { "type": "literal", "text": "]" }
-#]%
+type=@dom_ipv6:%[
+    { "type": "literal", "text": "[" },
+    {
+        "type": "string",
+        "name": "..",
+        "quoting.mode": "none",
+        "quoting.escape.mode": "none",
+        "matching.mode": "lazy",
+        "matching.permitted": [
+            { "class": "hexdigit" },
+            { "chars": ":" }
+        ]
+    },
+    { "type": "literal", "text": "]" }
+]%
 
 # strict rfc3986
 #type=@dom:%{
@@ -47,10 +47,27 @@ version=2
 #        ]
 #}%
 # more tolerant but may produce empty domain variables
+#type=@dom:%{
+#    "type": "char-sep",
+#    "name": "domain",
+#    "extradata": ":/?#"
+#}%
+
 type=@dom:%{
+        "type": "alternative",
+        "parser": [
+{
+    "type": "@dom_ipv6",
+    "name": "domain",
+    "priority": 60010
+},
+{
     "type": "char-sep",
     "name": "domain",
-    "extradata": ":/?#"
+    "extradata": ":/?#",
+    "priority": 65535
+}
+        ]
 }%
 
 type=@port:%{

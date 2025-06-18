@@ -136,3 +136,4 @@
 {"domain":"","originalmsg":"file:///home/user/test.txt","path":"/home/user/test.txt","scheme":"file"}
 {"domain":"","originalmsg":"file:///C:/..","path":"/C:/..","scheme":"file"}
 {"domain":"","originalmsg":"file:///C/..","path":"/C/..","scheme":"file"}
+{"domain":"2602:fca3::d","originalmsg":"[2602:fca3::d]:443","path":"","port":443}
