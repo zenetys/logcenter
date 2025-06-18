@@ -1,0 +1,5 @@
+{"originalmsg":"du-foobar","user.name":"du-foobar"}
+{"originalmsg":"du-foobar_2@acme.local","user.domain":"acme.local","user.name":"du-foobar_2"}
+{"originalmsg":"du-foobar_2@ACME.LOCAL","user.domain":"ACME.LOCAL","user.name":"du-foobar_2"}
+{"originalmsg":"ACME\\du-foobar_2","user.domain":"ACME","user.name":"du-foobar_2"}
+{"originalmsg":"ACME\\\\du-foobar_2","user.domain":"ACME","user.name":"du-foobar_2"}

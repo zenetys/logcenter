@@ -1,0 +1,5 @@
+du-foobar
+du-foobar_2@acme.local
+du-foobar_2@ACME.LOCAL
+ACME\du-foobar_2
+ACME\\du-foobar_2
