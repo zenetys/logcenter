@@ -9,7 +9,8 @@ List elasticsearch indices or print disk usage by alias or datastream
 
 Available options:
   -w, --watch [SEC]     Listing in watch mode, ie. with periodic refresh; it
-                        prints the last indices of each alias or datastream
+                        prints the last indices of each alias or datastream,
+                        and single indices
   -s, --size            Size mode, grouped by alias or datastream
   -r, --size-raw        Output sizes in bytes, for size mode
   -n, --size-asc        Sort by size ascending, for size mode
@@ -28,13 +29,15 @@ function mode_listing() {
         if [[ -z $WATCHING ]]; then
             cat |grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
         else
-            # watch mode, print only indices attached to aliases or datastreams
-            grep -F -f <({
-                es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a" |
-                    awk '$(NF)=="true"{print $2}';
-                es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
-                    jq -r '.data_streams |map(.indices |last |.index_name)[]'
-            }) |
+            # watch mode, print last indice of aliases/datastreams and single indices
+            awk '
+            ARGIND == 1 { if ($(NF) == "true") { keep[$2]=1; } is_aliased[$2]=1; }
+            ARGIND == 2 { keep[$1]=1; }
+            ARGIND == 3 && (keep[$3] || (!is_aliased[$3] && substr($3, 1, 4) != ".ds-")) { print $0; }
+            '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
+                <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+                    jq -r '.data_streams |map(.indices |last |.index_name)[]') \
+                <(cat) |
             grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v} |
             column -t -o ' '
         fi
