@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Typical usage:
+# cat objects.ndjson |es-inject-json - my-index
+# cat objects.ndjson |es-inject-json - logs-my-datastream create
+
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-1}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME JSON-FILE|- INDEX
+       $PROGNAME JSON-FILE|- DATASTREAM create
+Inject JSON data to Elasticsearch
+
+Usage example:
+$ xzcat lotus-202206.json.xz |$PROGNAME - json-lotus
+"
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        *) break ;;
+    esac
+    shift
+done
+
+DATA="${1:-/dev/stdin}"
+INDEX="${2:-}"
+ACTION=${3:-index}
+
+[[ -z $DATA ]] && exit_usage 1
+[[ -z $INDEX ]] && exit_usage 1
+[[ $DATA == - ]] && DATA=/dev/stdin
+
+# POST _bulk batches of 10MB max
+has_read=
+while read -r; do
+    has_read=1
+    {
+        echo "{\"$ACTION\": {}}"
+        echo "$REPLY"
+        bytes=$(( ${#REPLY} + 1 + 9 + ${#ACTION} ))
+        while read -r; do
+            echo "{\"$ACTION\": {}}"
+            echo "$REPLY"
+            (( bytes += (${#REPLY} + 1 + 9 + ${#ACTION}) ))
+            (( bytes > 10*1024*1024 )) && break
+        done
+    } |
+    es-curl "/$INDEX/_bulk" \
+        -X POST -H 'Content-Type: application/x-ndjson' \
+        --data-binary @- |
+        jq -c 'if .errors then .items |to_entries[] |
+            select(.value |to_entries[] |select(.value.error))
+            else halt end'
+done < <(jq -Mc . < "$DATA")
+
+[[ ${PIPESTATUS[0]} != 0 ]] && exit 2
+[[ -z $has_read ]] && exit 2
+
+out=$(es-curl "/$INDEX/_refresh" -X POST) ||
+    echo "$out" 
