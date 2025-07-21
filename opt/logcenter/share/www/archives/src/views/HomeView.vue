@@ -10,7 +10,9 @@
         <v-autocomplete
           label="Rechercher un hôte"
           density="compact"
-          :items="hosts"
+          :items="hostsWithAliases"
+          item-title="title"
+          item-value="value"
           bg-color="primary-super-light"
           base-color="primary-darken-1"
           color="primary-darken-1"
@@ -90,8 +92,8 @@
 <script setup>
 import LogTable from '../components/LogTable.vue'
 import LogChart from '../components/LogChart.vue'
-import * as utils from '../plugins/utils.js'
-import { fetchConfig, getConfig } from '../plugins/config.js'
+import * as utils from '@/plugins/utils'
+import { getAliasForIP, fetchConfig, getConfig } from '@/plugins/config.js'
 
 import { onBeforeMount, ref, watch, computed } from 'vue'
 import axios from 'axios'
@@ -111,6 +113,15 @@ const selectedFullDate = computed(() => {
   return selectedDate.value
     ? new Intl.DateTimeFormat('fr-FR').format(selectedDate.value).replace('"', '')
     : null
+})
+/**
+ * @computed Hosts with their aliases as titles
+ */
+const hostsWithAliases = computed(() => {
+  return hosts.value.map(host => ({
+    title: getAliasForIP(host),
+    value: host
+  }))
 })
 const search = ref([])
 const mostRecentLogDate = ref(null)
@@ -368,7 +379,20 @@ const setCurrentTimeLimits = (mode) => {
 }
 
 const handleSearch = (event) => {
-  search.value = event
+  // Vérifier si les sélections sont des objets ou des chaînes
+  if (event && Array.isArray(event)) {
+    // Convertir les sélections en IPs (valeurs)
+    search.value = event.map(item => {
+      // Si c'est un objet avec une propriété value (sélection d'un item du combobox)
+      if (item && typeof item === 'object' && 'value' in item) {
+        return item.value
+      }
+      // Si c'est une chaîne (saisie manuelle ou sélection directe)
+      return item
+    })
+  } else {
+    search.value = event
+  }
 }
 
 // Watchers

@@ -126,6 +126,85 @@ function do_get_archive() {
     fatal 'Not found!'
 }
 
+#: list-aliases
+#:     Dump aliases
+#:
+function do_list_aliases() {
+    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -z $ZLC_ALIASES_DB ]] && fatal 'Bad environment! ZLC_ALIASES_DB'
+
+    if [[ ! -f "$ZLC_ALIASES_DB" ]]; then
+        sqlite3 "$ZLC_ALIASES_DB" <<"__EOF__"
+            CREATE TABLE IF NOT EXISTS aliases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT NOT NULL UNIQUE,
+                hostname TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_aliases_ip ON aliases(ip);
+__EOF__
+    fi
+
+    # Query the database and format as JSON
+    # Assuming the table structure has 'ip' and 'hostname' columns
+    sqlite3 -tabs -header "$ZLC_ALIASES_DB" "SELECT ip, hostname FROM aliases;"
+}
+
+#: set-alias
+#:     Set or delete an alias for an IP address
+#:     Usage: set-alias IP [ALIAS]
+#:     If ALIAS is empty or not provided, the alias for IP will be deleted
+#:
+function do_set_alias() {
+    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -z $ZLC_ALIASES_DB ]] && fatal 'Bad environment! ZLC_ALIASES_DB'
+
+    if [[ ! -f "$ZLC_ALIASES_DB" ]]; then
+        # initialize database
+        do_list_aliases > /dev/null
+    fi
+
+    local ipaddr=$1; shift
+    local alias=${1:-}; shift
+    local db=$ZLC_ALIASES_DB
+
+    # IP address is always valid at this point
+    # Check if this IP already exists in the database
+    existing_hostname=$(sqlite3 "$db" "SELECT hostname FROM aliases WHERE ip='$ipaddr' LIMIT 1")
+
+    # If alias is empty or not provided, delete the entry
+    if [[ -z "$alias" ]]; then
+        if [[ -n "$existing_hostname" ]]; then
+            result=$(sqlite3 "$db" "DELETE FROM aliases WHERE ip='$ipaddr'")
+            info "Deleted alias: $ipaddr ($existing_hostname)"
+        else
+            info "No alias found for IP: $ipaddr"
+        fi
+        return
+    fi
+
+    if [[ -n "$existing_hostname" ]]; then
+        # IP exists, just update the hostname
+        result=$(sqlite3 "$db" "UPDATE aliases SET hostname='$alias' WHERE ip='$ipaddr'")
+        info "Updated alias: $ipaddr ($existing_hostname) → $alias"
+    else
+        # IP doesn't exist, we need to insert
+        # But first check if the new hostname is already used for another IP
+        existing_ip=$(sqlite3 "$db" "SELECT ip FROM aliases WHERE hostname='$alias' LIMIT 1")
+
+        if [[ -n "$existing_ip" ]]; then
+            # This hostname is already assigned to another IP, update that record
+            result=$(sqlite3 "$db" "UPDATE aliases SET ip='$ipaddr' WHERE hostname='$alias'")
+            info "Reassigned hostname $alias from $existing_ip to $ipaddr"
+        else
+            # New hostname isn't used, safe to insert
+            result=$(sqlite3 "$db" "INSERT INTO aliases (ip, hostname) VALUES ('$ipaddr', '$alias')")
+            info "Added new alias: $ipaddr → $alias"
+        fi
+    fi
+}
+
 load_env_or_fatal
 
 if [[ $1 == -c ]]; then

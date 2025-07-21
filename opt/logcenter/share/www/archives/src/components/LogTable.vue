@@ -32,7 +32,41 @@
               {{ item[header.key].value }}{{ item[header.key].unit }}
             </td>
             <td v-else class="v-data-table__td" :title="item[header.key].raw">
-              <span :title="item.name">{{ item[header.key] }}</span>
+              <!-- Edit / display mode -->
+              <div v-if="editingHostname === item.name" class="hostname-edit-container">
+                <div class="hostname-input-wrapper">
+                  <input
+                    v-model="editingAlias"
+                    :disabled="isUpdatingAlias"
+                    @keydown="handleKeyPress"
+                    @blur="saveAlias"
+                    placeholder="Alias (Enter/Esc)"
+                    class="hostname-edit-field"
+                    :class="{ 'error': showAliasError }"
+                  />
+                  <button 
+                    type="button"
+                    class="hostname-delete-button"
+                    title="Supprimer l'alias"
+                    @mousedown.prevent="deleteAliasAction"
+                    :disabled="isUpdatingAlias"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div v-if="showAliasError" class="hostname-error-message">
+                  {{ aliasError }}
+                </div>
+              </div>
+              <!-- Display mode -->
+              <span 
+                v-else
+                :title="getHostnameTooltip(item.name) + ' (Double-click to edit)'"
+                @dblclick="(event) => startEditing(item.name, event)"
+                class="hostname-display"
+              >
+                {{ getDisplayName(item.name) }}
+              </span>
             </td>
           </template>
         </tr>
@@ -51,6 +85,7 @@ import {
   downloadLogs,
   changeDateFromWeekNumber
 } from '@/plugins/utils'
+import { getAliasForIP, updateAlias, deleteAlias } from '@/plugins/config.js'
 
 // Props
 const props = defineProps(['config', 'error'])
@@ -60,7 +95,14 @@ const timeValues = props.config.timeValues
 // Data
 const tableData = ref([])
 const downloadDialog = ref(false)
-const downloadPendingData = ref(null);
+const downloadPendingData = ref(null)
+
+// States for alias editing
+const editingHostname = ref(null)
+const editingAlias = ref('')
+const isUpdatingAlias = ref(false)
+const aliasError = ref('')
+const showAliasError = ref(false)
 
 // Component Events
 const emit = defineEmits(['change-date', 'change-mode'])
@@ -77,6 +119,168 @@ const filteredData = computed(() => {
 
 const currentModeHeaders = ref(null)
 const loading = ref(true)
+
+/**
+ * Obtient le nom d'affichage pour un hostname (alias si disponible)
+ * @param {string} hostname - Le hostname original (IP)
+ * @returns {string} L'alias si disponible, sinon le hostname original
+ */
+const getDisplayName = (hostname) => {
+  return getAliasForIP(hostname)
+}
+
+/**
+ * Obtient le tooltip pour un hostname (IP originale si alias utilisé)
+ * @param {string} hostname - Le hostname original (IP)
+ * @returns {string} L'IP originale si un alias est utilisé, sinon le hostname
+ */
+const getHostnameTooltip = (hostname) => {
+  const alias = getAliasForIP(hostname)
+  return alias !== hostname ? `IP: ${hostname}` : hostname
+}
+
+/**
+ * Start editing an alias
+ * @param {string} hostname - The original hostname (IP)
+ * @param {Event} event - The double-click event
+ */
+const startEditing = (hostname, event) => {
+  // Set the current hostname and alias being edited
+  editingHostname.value = hostname
+  editingAlias.value = getAliasForIP(hostname)
+  
+  // Focus is handled automatically by Vue in the next render cycle
+  setTimeout(() => {
+    const input = document.querySelector('.hostname-edit-field')
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  }, 20)
+}
+
+/**
+ * Cancel current editing
+ */
+const cancelEditing = () => {
+  editingHostname.value = null
+  editingAlias.value = ''
+  aliasError.value = ''
+  showAliasError.value = false
+}
+
+/**
+ * Check if an alias is valid
+ * @param {string} alias - The alias to check
+ * @returns {boolean} - True if the alias is valid
+ */
+const isAliasValid = (alias) => {
+  // An empty alias is valid (used for deletion)
+  if (!alias || alias.trim() === '') return true
+  // Check if the alias contains only valid characters
+  // Alphanumeric, hyphens, underscores, periods
+  return /^[a-zA-Z0-9\-_\.]+$/.test(alias)
+}
+
+/**
+ * Delete the current alias
+ */
+const deleteAliasAction = async () => {
+  if (!editingHostname.value || isUpdatingAlias.value) return
+  
+  try {
+    isUpdatingAlias.value = true
+    aliasError.value = ''
+    showAliasError.value = false
+    
+    // Appel explicite à la fonction de suppression d'alias
+    await deleteAlias(editingHostname.value)
+    
+    // Mise à jour de l'interface
+    editingAlias.value = ''
+    cancelEditing()
+  } catch (error) {
+    console.error('Error deleting alias:', error)
+    aliasError.value = 'Delete error'
+    showAliasError.value = true
+    
+    // Display error for a moment then hide it
+    setTimeout(() => {
+      showAliasError.value = false
+    }, 3000)
+  } finally {
+    isUpdatingAlias.value = false
+  }
+}
+
+/**
+ * Save the edited alias
+ */
+const saveAlias = async () => {
+  // Check if editing is active
+  if (!editingHostname.value || isUpdatingAlias.value) return
+  
+  // Check if the value has changed
+  const currentAlias = getAliasForIP(editingHostname.value)
+  if (currentAlias === editingAlias.value) {
+    cancelEditing()
+    return
+  }
+  
+  // Check if the alias is valid
+  if (!isAliasValid(editingAlias.value)) {
+    aliasError.value = 'Invalid name. Use only letters, numbers, - _ .'
+    showAliasError.value = true
+    
+    // Display error for a moment then hide it
+    setTimeout(() => {
+      showAliasError.value = false
+    }, 3000)
+    
+    return
+  }
+  
+  // If the alias is empty, show a confirmation message
+  if (editingAlias.value.trim() === '') {
+    // Trim the alias to ensure it's truly empty
+    editingAlias.value = ''
+  }
+  
+  try {
+    aliasError.value = ''
+    showAliasError.value = false
+    isUpdatingAlias.value = true
+    await updateAlias(editingHostname.value, editingAlias.value)
+    cancelEditing()
+  } catch (error) {
+    console.error('Error updating alias:', error)
+    aliasError.value = 'Save error'
+    showAliasError.value = true
+    
+    // Display error for a moment then hide it
+    setTimeout(() => {
+      showAliasError.value = false
+    }, 3000)
+  } finally {
+    isUpdatingAlias.value = false
+  }
+}
+
+/**
+ * Handle special keys
+ * @param {KeyboardEvent} event 
+ */
+const handleKeyPress = (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    saveAlias()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelEditing()
+  }
+}
+
+
 /**
  * Get classes for a given cell
  * @param value The value of the cell
@@ -320,5 +524,123 @@ tbody > :nth-child(odd) {
   margin: 0 auto;
   font-size: 18px;
   width: 500px;
+}
+
+/* Styles pour l'édition des hostnames */
+.hostname-display {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.hostname-display:hover {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+/* Container for editing with error message */
+.hostname-edit-container {
+  position: relative;
+  display: inline-block;
+}
+
+.hostname-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Simple style for hostname edit field */
+.hostname-edit-field {
+  /* Dimensions and spacing */
+  width: 100%;
+  max-width: 150px;
+  height: 24px;
+  padding: 0 4px;
+  margin: 0;
+  box-sizing: border-box;
+  padding-right: 24px; /* Make room for the delete button */
+  
+  /* Appearance */
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+/* Delete button style */
+.hostname-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hostname-edit-field {
+  width: 100%;
+  padding-right: 24px; /* Espace pour le bouton de suppression */
+}
+
+.hostname-delete-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 24px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hostname-delete-button:hover {
+  color: #f44336;
+}
+
+.hostname-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus state */
+.hostname-edit-field:focus {
+  outline: none;
+  border-color: #888;
+}
+
+/* Error state */
+.hostname-edit-field.error {
+  border-color: #f44336;
+}
+
+/* Placeholder */
+.hostname-edit-field::placeholder {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Error message */
+.hostname-error-message {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: auto;
+  min-width: 150px;
+  max-width: 250px;
+  padding: 4px 8px;
+  margin-top: 2px;
+  background-color: #f44336;
+  color: white;
+  font-size: 11px;
+  border-radius: 2px;
+  z-index: 100;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 </style>
