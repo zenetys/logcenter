@@ -157,7 +157,7 @@ const props = defineProps(['config'])
 const config = props.config
 const downloadDialog = ref(false)
 const downloadPendingData = ref(null)
-const label = ref('Total par heure')
+const label = ref('Volume reçu par heure')
 
 // Component Events
 const emit = defineEmits(['change-date', 'change-mode'])
@@ -212,15 +212,15 @@ const setLabel = (labels) => {
 
   if (config.viewMode === 'day') {
     labels = labels.map(hour => `${hour.padStart(2, '0')}:00`)
-    return `Total par heure - ${labelDate}`
+    return `Volume reçu par heure - ${labelDate}`
   } else if (config.viewMode === 'year') {
     labels = labels.map(month => monthsLabels[month])
-    return `Total par mois - Année ${dateObject.getFullYear()}`
+    return `Volume reçu par mois - Année ${dateObject.getFullYear()}`
   } else if (config.viewMode === 'month') {
-    return `Total par jour - ${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`
+    return `Volume reçu par jour - ${monthsLabels[dateObject.getMonth()]} ${dateObject.getFullYear()}`
   } else if (config.viewMode === 'quarter') {
     labels = labels.map(week => `Sem ${week}`)
-    return `Total par semaine - Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`
+    return `Volume reçu par semaine - Trimestre ${config.currentQuarter}, ${dateObject.getFullYear()}`
   }
 }
 
