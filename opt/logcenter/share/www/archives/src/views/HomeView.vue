@@ -412,6 +412,7 @@ watch(search, () => {
   display: flex;
   flex-direction: column;
   margin-top: 20px;
+  gap: 0; /* Eliminates the space between flex elements */
 }
 
 #v-menu-2 {

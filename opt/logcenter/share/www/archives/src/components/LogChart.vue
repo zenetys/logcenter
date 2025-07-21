@@ -46,7 +46,29 @@ const chartData = ref({ labels: [], datasets: [] })
 const chartIsLoaded = ref(false)
 const options = ref({
   maintainAspectRatio: false,
+  responsive: true,
+  layout: {
+    padding: {
+      bottom: 0,
+      top: 5 // Keep a bit of padding on top
+    }
+  },
   scales: {
+    x: {
+      ticks: {
+        display: false // Hide labels on X axis
+      },
+      grid: {
+        drawTicks: false
+      },
+      border: {
+        display: false
+      },
+      afterFit: (scaleInstance) => {
+        // Reduce the height of X axis to minimum
+        scaleInstance.height = 1;
+      }
+    },
     y: {
       afterFit: (scaleInstance) => {
         scaleInstance.width = 80 // sets the width to 80px
@@ -62,7 +84,7 @@ const options = ref({
         })
       },
       ticks: {
-        padding: 25
+        padding: 5
       }
     }
   },
