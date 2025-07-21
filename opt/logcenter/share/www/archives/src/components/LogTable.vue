@@ -252,6 +252,7 @@ watch(
 
   &:nth-child(1) {
     width: 150px;
+    min-width: 150px;
     padding: 0 0 0 8px !important;
     background: transparent;
     overflow-x: hidden;
@@ -260,8 +261,8 @@ watch(
   }
 
   &.mode__day {
-    max-width: 38px;
-    min-width: 38px;
+    max-width: 39px;
+    min-width: 39px;
   }
 
   &.mode__month {
@@ -282,6 +283,15 @@ watch(
   &.cell__hover:hover {
     cursor: pointer;
   }
+}
+
+@media (max-width: 1400px) {
+.v-data-table__tr td {
+  &:nth-child(1) {
+    width: 100px;
+    min-width: 100px;
+  }
+}
 }
 
 .v-data-table-footer .v-select__selection-text {

@@ -30,7 +30,7 @@ body::-webkit-scrollbar {
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1600px) {
   #app {
     max-width: 95%;
   }

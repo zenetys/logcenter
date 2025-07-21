@@ -282,14 +282,16 @@ watch(props.config, (newConfig) => {
   box-sizing: border-box;
   position: relative;
   max-width: calc(100% - 78px);
+  min-width: 1227px;
   left: 78px;
 }
 
-@media (max-width: 1700px) {
+@media (max-width: 1400px) {
   .z__bar-chart-container canvas,
   #z__bar-chart canvas {
-    max-width: calc(100% - 10px);
-    left: 10px;
+    max-width: calc(100% - 28px);
+    width: calc(100% - 28px);
+    left: 28px;
   }
 }
 </style>
