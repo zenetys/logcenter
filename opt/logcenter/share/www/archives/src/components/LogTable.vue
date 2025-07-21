@@ -231,7 +231,7 @@ watch(
   &:not(:nth-child(1)) {
     span {
       width: 100%;
-      min-width: 40px;
+      min-width: 32px;
       text-align: center;
     }
   }
@@ -266,8 +266,8 @@ watch(
   }
 
   &.mode__month {
-    min-width: 30px;
-    max-width: 30px;
+    min-width: 32px;
+    max-width: 32px;
   }
 
   &.mode__quarter {
