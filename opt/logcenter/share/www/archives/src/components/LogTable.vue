@@ -209,7 +209,7 @@ watch(
 )
 </script>
 
-<style lang="scss">
+<style>
 .v-table {
   border-radius: 4px !important;
   font-size: 12px !important;

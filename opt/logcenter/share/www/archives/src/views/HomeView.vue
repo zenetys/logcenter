@@ -407,7 +407,7 @@ watch(search, () => {
 })
 </script>
 
-<style lang="scss">
+<style>
 .z__chart-table-container {
   display: flex;
   flex-direction: column;

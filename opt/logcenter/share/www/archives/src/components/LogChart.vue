@@ -268,7 +268,7 @@ watch(props.config, (newConfig) => {
 }, { deep: true })
 </script>
 
-<style lang="scss">
+<style>
 .z__bar-chart-container {
   position: relative;
   overflow: hidden;

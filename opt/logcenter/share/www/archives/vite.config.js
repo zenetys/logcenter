@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import * as sass from 'sass-embedded'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +15,16 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Use sass-embedded instead of legacy API
+      }
+    },
+    devSourcemap: true,
+    // Specify the Sass implementation to use
+    preprocessor: 'sass-embedded'
   },
   base: './',
   server: {
