@@ -1,47 +1,140 @@
 #!/bin/bash
 
+PROGNAME=${0##*/}
+set -o pipefail
+for i in /etc/profile.d/logcenter-{path,es}.sh; do
+    [[ -r $i ]] || continue
+    source "$i" || { echo "Source failed: $i"; exit 1; }
+done
+
 function exit_usage() {
     local status=${1:-0}
     [[ $status != 0 ]] && exec >&2
-    echo "Usage: ${0##*/} status|begin-rolling|end-rolling|begin-node|end-node"
+    echo "\
+Usage: $PROGNAME [OPTION...] action
+Helper for maintenance operations of an Elasticsearch cluster
+
+Available options:
+    -E, --es-host       Set ES_HOST environement variable
+    -h, --help          Display this help
+
+Supported actions:
+$(declare -f -F |sed -nre '/^declare -f action_/{ s,^[^ ]+ -f action_,    - ,; s,_,-,g; p; }')
+"
     exit "$status"
 }
 
-op=
-while (( $# > 0 )); do
-    case "$1" in
-        -h|--help) exit_usage 0 ;;
-        status|begin-rolling|end-rolling|begin-node|end-node) op=$1 ;;
-        *) exit_usage 1 ;;
-    esac
-    shift
-done
+function jfmt() {
+    jq -c
+}
 
-[[ -z $op ]] && exit_usage 1
+# wait-until [-m max-wait-sec] command...
+function wait-until() {
+    local explain="$FUNCNAME ${*@Q}" try=0 max=0
+    [[ $1 == -m ]] && { max=$2; shift 2; }
+    while :; do
+        (( try++ ))
+        echo "[$try/${max:-0}] $explain"
+        "$@" && return 0
+        (( max > 0 && try >= max )) && return 1
+        sleep 1
+    done
+}
 
-if [[ $op == status ]]; then
-    es-curl _cluster/settings
+# $1: name to lookup, default $HOSTNAME
+# domain part is ignored
+function is-node-present() {
+    declare -a nodes
+    local lookup=${1:-$HOSTNAME}
+    lookup=${lookup,,}
+    lookup=${lookup%%.*}
+    nodes=( $(es-curl _cat/nodes?h=n) ) || return 1
+    nodes=( "${nodes[@]%%.*}" )
+    nodes=( "${nodes[@],,}" )
+    local n
+    for n in "${nodes[@]}"; do
+        [[ $n == $lookup ]] && return 0
+    done
+    return 1
+}
 
-elif [[ $op == begin-rolling ]]; then
+function is-cluster-green() {
+    local status
+    status=$(es-curl _cat/health?h=st) || return 1
+    [[ $status == green ]] && return 0
+    return 1
+}
+
+function action_status() {
+    es-curl _cluster/settings |jfmt
+}
+
+function action_begin_rolling() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.rebalance.enable": "none",
             "cluster.routing.allocation.node_concurrent_recoveries": "6",
             "indices.recovery.max_bytes_per_sec": "125mb"
-        }}'
-elif [[ $op == end-rolling ]]; then
+        }}' |jfmt
+}
+
+function action_end_rolling() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.rebalance.enable": null,
             "cluster.routing.allocation.node_concurrent_recoveries": null,
             "indices.recovery.max_bytes_per_sec": null
-        }}'
+        }}' |jfmt
+}
 
-elif [[ $op == begin-node ]]; then
+function action_begin_node() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.allocation.enable": "primaries"
-        }}'
+        }}' |jfmt
+}
 
-elif [[ $op == end-node ]]; then
+function action_end_node() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.allocation.enable": null
-        }}'
-fi |jq -c
+        }}' |jfmt
+}
+
+# es-maintenance wait-node [-n $HOSTNAME] [-m 300]
+function action_wait_node() {
+    local name= max=
+    while (( $# > 0 )); do
+        case "$1" in
+            -n|--name) name=$2; shift ;;
+            -m|--max) max=$2; shift ;;
+            *) return 1 ;;
+        esac
+        shift
+    done
+    wait-until -m "$max" is-node-present "${name:-$HOSTNAME}"
+}
+
+# es-maintenance wait-green [-m 300]
+function action_wait_green() {
+    local max=
+    while (( $# > 0 )); do
+        case "$1" in
+            -m|--max) max=$2; shift ;;
+            *) return 1 ;;
+        esac
+        shift
+    done
+    wait-until -m "$max" is-cluster-green
+}
+
+args=()
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -E|--es-host) export ES_HOST=$2; shift ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+
+[[ -z $args ]] && exit_usage 1
+action_fn=action_${args//[^[:alnum:]]/_}
+declare -f -F "$action_fn" > /dev/null || exit_usage 1
+"$action_fn" "${args[@]:1}"
