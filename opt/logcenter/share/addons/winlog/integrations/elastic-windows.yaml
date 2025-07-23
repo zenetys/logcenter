@@ -17,9 +17,14 @@ pick:
   #  target_name: zlc-pipeline-ep-windows-forwarded-powershell
   #  modifiers:
   #    - [ meta ]
-  - file: data_stream/forwarded/elasticsearch/ingest_pipeline/security.yml
-    target_name: zlc-pipeline-ep-windows-forwarded-security
+  - file: data_stream/forwarded/elasticsearch/ingest_pipeline/security_standard.yml
+    target_name: zlc-pipeline-ep-windows-forwarded-security_standard
     modifiers:
+      - [ meta ]
+  - file: data_stream/forwarded/elasticsearch/ingest_pipeline/security_default.yml
+    target_name: zlc-pipeline-ep-windows-forwarded-security_default
+    modifiers:
+      - [ gsub, '\{+\s*IngestPipeline\W+(\w+)[^}]*\}+', 'zlc-pipeline-ep-windows-forwarded-\1' ]
       - [ meta ]
   #- file: data_stream/forwarded/elasticsearch/ingest_pipeline/sysmon_operational.yml
   #  target_name: zlc-pipeline-ep-windows-forwarded-sysmon_operational

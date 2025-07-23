@@ -52,5 +52,5 @@ processors:
   # poulated, and apparently no user data fields at all. It seems to work okay
   # for security events.
   - pipeline:
-      name: zlc-pipeline-ep-windows-forwarded-security
+      name: zlc-pipeline-ep-windows-forwarded-security_default
       if: ctx.event?.module == 'security'
