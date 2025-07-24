@@ -89,6 +89,10 @@ const options = ref({
     }
   },
   plugins: {
+    // Disable chart title since it's redundant with the app title
+    title: {
+      display: false
+    },
     tooltip: {
       callbacks: {
         label: (context) => {
