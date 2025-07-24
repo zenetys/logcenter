@@ -94,23 +94,27 @@
       
       <!-- Right: Machine Filter -->
       <div class="z__searchbar">
-        <v-combobox
-          label="Filtrer par machine"
-          density="compact"
-          :items="hostsWithAliases"
-          item-title="title"
-          item-value="value"
-          bg-color="grey-lighten-4"
-          color="primary"
-          variant="outlined"
-          clearable
-          multiple
-          hide-details
-          chips
-          closable-chips
-          @update:modelValue="handleSearch"
-          prepend-icon="mdi-server"
-        ></v-combobox>
+        <div class="host-selector-container">
+          <v-combobox
+            label="Filtrer par machine"
+            density="compact"
+            :items="hostsWithAliases"
+            item-title="title"
+            item-value="value"
+            bg-color="transparent"
+            color="primary"
+            variant="plain"
+            clearable
+            multiple
+            hide-details
+            chips
+            closable-chips
+            @update:modelValue="handleSearch"
+            prepend-icon="mdi-server"
+            :menu-props="{ maxHeight: '400px' }"
+            class="host-selector"
+          ></v-combobox>
+        </div>
       </div>
     </div>
     <div class="z__chart-table-container">
@@ -192,15 +196,26 @@ const showTrimestre = computed(() => {
  * @computed Hosts with their aliases as titles
  */
 const hostsWithAliases = computed(() => {
-  return hosts.value.map(host => ({
-    title: getAliasForIP(host),
-    value: host
-  }))
+  // Trier par ordre alphabétique des alias
+  return hosts.value
+    .slice() // Créer une copie pour ne pas modifier l'original
+    .sort((a, b) => {
+      const aliasA = getAliasForIP(a).toLowerCase()
+      const aliasB = getAliasForIP(b).toLowerCase()
+      return aliasA.localeCompare(aliasB)
+    })
+    .map(host => ({
+      title: getAliasForIP(host),
+      value: host
+    }))
 })
+
+
 const search = ref([])
 const mostRecentLogDate = ref(null)
 const hosts = ref([])
 const logsByHost = ref({})
+
 const currentTimeLimits = ref({ start: null, end: null })
 /** Log volumes ordered by host and by time period */
 const hostsVolumeByPeriod = ref([])
@@ -491,6 +506,10 @@ const setCurrentTimeLimits = (mode) => {
   }
 }
 
+/**
+ * Gère la mise à jour des sélections dans le combobox
+ * @param {Array|null} event - Les éléments sélectionnés
+ */
 const handleSearch = (event) => {
   // Vérifier si les sélections sont des objets ou des chaînes
   if (event && Array.isArray(event)) {
@@ -544,7 +563,124 @@ watch(search, () => {
 })
 </script>
 
-<style>
+<style scoped>
+.z__main-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+
+.z__app-title-container {
+  display: flex;
+  align-items: center;
+}
+
+.z__app-title {
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.title-icon {
+  margin-right: 8px;
+}
+
+.z__period-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-parts {
+  display: flex;
+  align-items: center;
+  margin: 0 4px;
+}
+
+.date-part {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.date-part:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.date-part-active {
+  font-weight: 600;
+  color: var(--v-theme-primary);
+}
+
+.date-separator {
+  margin: 0 2px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.date-part-quarter {
+  margin-left: 4px;
+  font-size: 0.9em;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.z__searchbar {
+  width: 300px;
+  position: relative;
+}
+
+/* Styles pour le sélecteur de host */
+.host-selector :deep(.v-field__input) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.host-selector :deep(.v-chip) {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+/* Styles pour les boutons d'action */
+.host-selector-actions {
+  position: absolute;
+  right: -40px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.action-btn:hover {
+  opacity: 1;
+}
+
+.z__chart-table-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px);
+}
+
+.nav-arrow {
+  margin: 0 2px;
+}
+
+.z__error-message {
+  color: #f44336;
+  padding: 16px;
+  text-align: center;
+  font-weight: 500;
+}
+
 .z__chart-table-container {
   display: flex;
   flex-direction: column;
@@ -680,6 +816,24 @@ watch(search, () => {
   flex: 1;
   max-width: 400px;
   max-height: 40px;
+  
+  .host-selector-container {
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 2px 4px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+  
+  .host-selector {
+    width: 100%;
+    
+    .v-field__field {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
 
   .v-field {
     border-radius: 6px;
@@ -691,6 +845,12 @@ watch(search, () => {
   
   .v-chip {
     height: 20px;
+    background-color: rgba(23, 184, 206, 0.1);
+    border: 1px solid rgba(23, 184, 206, 0.2);
+    
+    &:hover {
+      background-color: rgba(23, 184, 206, 0.2);
+    }
   }
 }
 
