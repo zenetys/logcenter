@@ -24,8 +24,10 @@ processors:
 
   # Those fields should be arrays. As it is tough to build JSON arrays from
   # rsyslog, we make comma-separated strings, so split them.
+  - split: { field: dns.resolved_ip, separator: '[,\s]+', if: 'ctx?.dns?.resolved_ip instanceof String' }
   - split: { field: event.category, separator: '[,\s]+', if: 'ctx?.event?.category instanceof String' }
   - split: { field: event.type, separator: '[,\s]+', if: 'ctx?.event?.type instanceof String' }
+  - split: { field: observer.ip, separator: '[,\s]+', if: 'ctx?.observer?.ip instanceof String' }
   - split: { field: tags, separator: '[,\s]+', if: 'ctx?.tags instanceof String' }
   - split: { field: zlc.relay_path, separator: '/', if: 'ctx?.zlc?.relay_path instanceof String' }
 

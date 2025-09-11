@@ -1,0 +1,51 @@
+version: 2
+template:
+  mappings:
+    dynamic_templates:
+      - forcepoint_date:
+          path_match:
+            - 'forcepoint.Timestamp'
+            - 'forcepoint.*Time'
+          mapping:
+            ignore_malformed: true
+            type: date
+
+      - forcepoint_long:
+          path_match:
+            - 'forcepoint.*Sport'
+            - 'forcepoint.*Dport'
+            - 'forcepoint.*Bytes'
+            - 'forcepoint.*Elapsed'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - forcepoint_ip:
+          path_match:
+            - 'forcepoint.Src'
+            - 'forcepoint.Dst'
+            - 'forcepoint.NatSrc'
+            - 'forcepoint.NatDst'
+            - 'forcepoint.DnsAddr'
+            - 'forcepoint.NodeId'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - forcepoint_text:
+          path_match:
+            - 'forcepoint.InfoMsg'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - forcepoint_keyword_and_text:
+          path_match:
+            - 'forcepoint.SitCategory'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text

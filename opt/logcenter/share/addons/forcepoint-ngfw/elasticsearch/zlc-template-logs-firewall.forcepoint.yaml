@@ -1,0 +1,59 @@
+version: 1
+index_patterns:
+  - logs-firewall.forcepoint-zlc
+  - logs-firewall.forcepoint-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-firewall.forcepoint-dynamic
+  - zlc-component-logs-firewall.forcepoint-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.forcepoint@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-firewall.forcepoint-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.forcepoint@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+
+      # Some forcepoint.* fields were renamed to ECS because ZLC default
+      # pipelines uses standard fields (eg: geoip). Restore original
+      # forcepoint.* fields with aliases.
+      forcepoint.Dst: { type: zlc_alias, target: { path: destination.ip, type: ip }}
+      forcepoint.NatDst: { type: zlc_alias, target: { path: destination.nat.ip, type: ip }}
+      forcepoint.NatSrc: { type: zlc_alias, target: { path: source.nat.ip, type: ip }}
+      forcepoint.Src: { type: zlc_alias, target: { path: source.ip, type: ip }}
+      forcepoint.Username: { type: zlc_alias, target: { path: user.name, type: [ keyword, text ] }}
+
+      destination.bytes: { type: zlc_alias, target: { path: forcepoint.AccRxBytes, type: long }}
+      destination.nat.port: { type: zlc_alias, target: { path: forcepoint.NatDport, type: long }}
+      destination.port: { type: zlc_alias, target: { path: forcepoint.Dport, type: long }}
+      event.action: { type: zlc_alias, target: { path: forcepoint.Action, type: keyword }}
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+      message: { type: zlc_alias, target: { path: forcepoint.InfoMsg, type: match_only_text }}
+      network.application: { type: zlc_alias, target: { path: forcepoint.IpsAppid, type: keyword }}
+      network.iana_number: { type: zlc_alias, target: { path: forcepoint.Protocol, type: keyword }}
+      network.protocol: { type: zlc_alias, target: { path: forcepoint.Service, type: keyword }}
+      network.transport: { type: zlc_alias, target: { path: forcepoint.ProtocolName, type: keyword }}
+      network.vlan.id: { type: zlc_alias, target: { path: forcepoint.SrcVlan, type: keyword }}
+      observer.egress.interface.id: { type: zlc_alias, target: { path: forcepoint.Dstif, type: keyword }}
+      observer.egress.vlan.id: { type: zlc_alias, target: { path: forcepoint.DstVlan, type: keyword }}
+      observer.ingress.interface.id: { type: zlc_alias, target: { path: forcepoint.Srcif, type: keyword }}
+      observer.ingress.vlan.id: { type: zlc_alias, target: { path: forcepoint.SrcVlan, type: keyword }}
+      observer.ip: { type: zlc_alias, target: { path: forcepoint.NodeId, type: ip }}
+      observer.name: { type: zlc_alias, target: { path: forcepoint.CompId, type: [ keyword, text ] }}
+      observer.type: { type: zlc_alias, target: { path: forcepoint.SenderType, type: keyword }}
+      rule.uuid: { type: zlc_alias, target: { path: forcepoint.RuleId, type: keyword }}
+      source.bytes: { type: zlc_alias, target: { path: forcepoint.AccTxBytes, type: long }}
+      source.nat.port: { type: zlc_alias, target: { path: forcepoint.NatSport, type: long }}
+      source.port: { type: zlc_alias, target: { path: forcepoint.Sport, type: long }}
+      source.user.domain: { type: zlc_alias, target: { path: forcepoint.UserDomain, type: keyword }}
+      source.user.name: { type: zlc_alias, target: { path: user.name, type: [ keyword, text ] }}
+      user.domain: { type: zlc_alias, target: { path: forcepoint.UserDomain, type: keyword }}
+      vulnerability.id: { type: zlc_alias, target: { path: forcepoint.VulnerabilityReferences, type: keyword }}

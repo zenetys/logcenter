@@ -1,0 +1,20 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  # Sample forcepoint.VulnerabilityReferences
+  # BID-67899;CVE-2014-0224;OSVDB-107729
+  - split:
+      field: forcepoint.VulnerabilityReferences
+      separator: ';'
+      if: 'ctx?.forcepoint?.VulnerabilityReferences instanceof String'
+
+  # Try to isolate the registered domain of url.domain
+  - registered_domain:
+      field: url.domain
+      target_field: url
+      ignore_missing: true
+      ignore_failure: true
