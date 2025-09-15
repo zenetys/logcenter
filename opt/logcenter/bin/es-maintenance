@@ -72,7 +72,6 @@ function action_status() {
 function action_begin_rolling() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.rebalance.enable": "none",
-            "cluster.routing.allocation.node_concurrent_recoveries": "6",
             "indices.recovery.max_bytes_per_sec": "125mb"
         }}' |jfmt
 }
@@ -80,7 +79,6 @@ function action_begin_rolling() {
 function action_end_rolling() {
     es-curl _cluster/settings -X PUT -d '{ "persistent": {
             "cluster.routing.rebalance.enable": null,
-            "cluster.routing.allocation.node_concurrent_recoveries": null,
             "indices.recovery.max_bytes_per_sec": null
         }}' |jfmt
 }
