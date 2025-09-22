@@ -44,7 +44,7 @@ awk -v x=Dstif,DST_VLAN,SIT_CATEGORY,SERVICE,IPS_APPID,DNS_QCLASS,DNS_QTYPE,DNS_
   > $INSTALL_DIR/data/fields/syslog_templates/custom_syslog_conf.xml
 ```
 
-Edit `$INSTALL_DIR/LogServerConfiguration.txt` to instruct the log server to use the custom template and to write timestamp in RFC3339 format with milliseconds :
+Edit `$INSTALL_DIR/LogServerConfiguration.txt` to instruct the log server to use the custom template, write timestamps in RFC3339 format with milliseconds and try to reconnect to the syslog forever without delay after a network issue:
 
 ```sh
 cat >> $INSTALL_DIR/LogServerConfiguration.txt <<EOF
@@ -52,6 +52,7 @@ cat >> $INSTALL_DIR/LogServerConfiguration.txt <<EOF
 # custom
 SYSLOG_CONF_FILE=$INSTALL_DIR/data/fields/syslog_templates/custom_syslog_conf.xml
 JSON_EXPORT_DATE_FORMAT=yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+SYSLOG_START_NEXT_RETRY_SECONDS=0
 EOF
 ```
 
