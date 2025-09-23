@@ -1,0 +1,19 @@
+attributes:
+  color: '#efd0f4'
+  description: ""
+  name: forcepoint
+coreMigrationVersion: 8.8.0
+created_at: "2025-08-29T20:31:34.272Z"
+id: db0e9055-5176-49c6-a536-48a52aa7d1b5
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2025-08-29T20:31:34.272Z"
+version: WzI3MDEsNl0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
