@@ -9,6 +9,7 @@ ExecStart=/opt/logcenter/bin/logcenter-env /opt/logcenter/bin/sigfiled -s -q
 KillSignal=SIGINT
 Restart=always
 SyslogIdentifier=sigfiled
+Nice=19
 
 [Install]
 WantedBy=multi-user.target
