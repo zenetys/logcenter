@@ -1,0 +1,77 @@
+attributes:
+  columns:
+    - fortigate.devname
+    - fortigate.level
+    - fortigate.action
+    - fortigate.reason
+    - fortigate.user
+    - fortigate.group
+    - fortigate.remip
+    - fortigate.tunnelip
+    - fortigate.rcvdbyte
+    - fortigate.sentbyte
+    - fortigate.duration
+  description: ""
+  grid:
+    columns:
+      fortigate.action:
+        width: 115
+      fortigate.devname:
+        width: 117
+      fortigate.duration:
+        width: 76
+      fortigate.group:
+        width: 140
+      fortigate.level:
+        width: 108
+      fortigate.rcvdbyte:
+        width: 76
+      fortigate.reason: {}
+      fortigate.remip:
+        width: 126
+      fortigate.sentbyte:
+        width: 74
+      fortigate.tunnelip:
+        width: 112
+      fortigate.user: {}
+  headerRowHeight: 1
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"Event vpn logs (DO NOT EDIT)","disabled":false,"negate":false,"params":[{"meta":{"disabled":false,"field":"fortigate.type","index":"1a8c7205-6b0d-4693-9160-557e92f4fc45","key":"fortigate.type","negate":false,"params":{"query":"event"},"type":"phrase"},"query":{"match_phrase":{"fortigate.type":"event"}}},{"meta":{"disabled":false,"field":"fortigate.subtype","index":"1a8c7205-6b0d-4693-9160-557e92f4fc45","key":"fortigate.subtype","negate":false,"params":{"query":"vpn"},"type":"phrase"},"query":{"match_phrase":{"fortigate.subtype":"vpn"}}}],"relation":"AND","type":"combined","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 1
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing fortigate event vpn
+coreMigrationVersion: 8.8.0
+created_at: "2025-09-26T12:23:55.501Z"
+id: 1ba945eb-cf0d-4405-ab38-4a95eec0d317
+managed: false
+references:
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: 1a8c7205-6b0d-4693-9160-557e92f4fc45
+    name: kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index
+    type: index-pattern
+  - id: 57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    name: tag-ref-57b3b4b2-d00d-4a2c-a197-94d99edb7300
+    type: tag
+  - id: aba62814-ea35-4608-86d0-c44980c810d9
+    name: tag-ref-aba62814-ea35-4608-86d0-c44980c810d9
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2025-09-29T10:06:11.080Z"
+version: WzEwMzEsMThd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
