@@ -33,6 +33,14 @@ processors:
         if (ctx.fortigate.subtype == 'vpn') {
             ctx.event.category.add('network');
             ctx.event.type.add('connection');
+
+            // Normally fortigate.srcip does not exist in event logs, this field
+            // is populated in traffic logs. VPN clients source IP is given in
+            // fortigate.remip, which we copy to fortigate.srcip in order to get
+            // source.geo and source.as fields set from the main pipeline.
+            if (ctx.fortigate.remip != null && ctx.fortigate.srcip == null) {
+                ctx.fortigate.srcip = ctx.fortigate.remip;
+            }
         }
         else if (ctx.fortigate.subtype == 'update') {
             ctx.event.category.add('host');
