@@ -279,6 +279,16 @@ processors:
         value: '{{{ fortigate.ip }}}'
         allow_duplicates: false
         if: ctx.fortigate.ip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.remip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate.remip != null
+  - append:
+        field: related.ip
+        value: '{{{ fortigate.tunnelip }}}'
+        allow_duplicates: false
+        if: ctx.fortigate.tunnelip != null
   - foreach:
       field: dns.resolved_ip
       if: ctx.dns?.resolved_ip != null && ctx.dns.resolved_ip instanceof List
