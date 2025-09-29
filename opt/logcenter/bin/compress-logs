@@ -184,7 +184,7 @@ while read -r; do
     fi
 
     # File counters
-    COUNTERS=( $(wc < "$ZLC_ARCHIVES_DIR/$REPLY") )
+    COUNTERS=( $(nice -n 19 wc < "$ZLC_ARCHIVES_DIR/$REPLY") )
 
     # Compress the file.
     SECONDS=0
