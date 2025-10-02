@@ -376,7 +376,7 @@ else
 fi
 
 info "Purge old"
-find "$DESTDIR/" -mindepth 1 -maxdepth 1 -type f -name 'es-backup-*.tar.xz' |
+find "$DESTDIR/" -mindepth 1 -maxdepth 1 -type f -name "$PROGNAME-*.tar.xz" |
     sort |
     head -n "-$KEEPCOUNT" |
     xargs --no-run-if-empty rm -f
