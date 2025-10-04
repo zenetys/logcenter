@@ -18,6 +18,7 @@ Inject JSON data to Elasticsearch
 Options:
   -r, --refresh            Post /_refresh on the index before exit
   -d, --datastream NAME    Set op_type create instead of index
+  -rt, --read-timeout SEC  Break read wait to send batch, for continuous input
   -mb, --max-bytes BYTES   Max POST _bulk size, default 10MB
   -h, --help               Display this help
 
@@ -31,11 +32,13 @@ REFRESH=
 DATA=
 INDEX=
 ACTION=
+READ_TIMEOUT=
 MAX_BYTES=$(( 10*1024*1024 ))
 while (( $# > 0 )); do
     case "$1" in
         -r|--refesh) REFRESH=1 ;;
         -d|--datastream) ACTION=create ;;
+        -rt|--read-timeout) READ_TIMEOUT=$2; shift ;;
         -mb|--max-bytes) MAX_BYTES=$2; shift ;;
         -h|--help) exit_usage 0 ;;
         -?*) exit_usage 1 ;;
@@ -49,6 +52,7 @@ INDEX=$2
 ACTION=${ACTION:-${3:-index}}
 [[ $DATA == - ]] && DATA=/dev/stdin
 [[ -z $INDEX ]] && exit_usage 1
+[[ -n "$READ_TIMEOUT" && -n ${READ_TIMEOUT//[0-9]} ]] && exit_usage 1
 [[ -z $MAX_BYTES || -n ${MAX_BYTES//[0-9]} ]] && exit_usage 1
 
 has_read=
@@ -58,7 +62,7 @@ while read -r; do
         echo "{\"$ACTION\": {}}"
         echo "$REPLY"
         bytes=$(( ${#REPLY} + 1 + 9 + ${#ACTION} ))
-        while read -r; do
+        while read -r ${READ_TIMEOUT:+-t "$READ_TIMEOUT"}; do
             echo "{\"$ACTION\": {}}"
             echo "$REPLY"
             (( bytes += (${#REPLY} + 1 + 9 + ${#ACTION}) ))
