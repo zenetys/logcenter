@@ -10,9 +10,14 @@ function exit_usage() {
     local status=${1:-1}
     [[ $status != 0 ]] && exec >&2
     echo "\
-Usage: $PROGNAME JSON-FILE|- INDEX
-       $PROGNAME JSON-FILE|- DATASTREAM create
+Usage: $PROGNAME [OPTION...]    JSON-FILE|- INDEX
+       $PROGNAME [OPTION...] -d JSON-FILE|- DATASTREAM
+       $PROGNAME [OPTION...]    JSON-FILE|- DATASTREAM create
 Inject JSON data to Elasticsearch
+
+Options:
+  -d, --datastream NAME    Set op_type create instead of index
+  -h, --help               Display this help
 
 Usage example:
 $ xzcat lotus-202206.json.xz |$PROGNAME - json-lotus
@@ -20,21 +25,24 @@ $ xzcat lotus-202206.json.xz |$PROGNAME - json-lotus
     exit "$status"
 }
 
+DATA=
+INDEX=
+ACTION=
 while (( $# > 0 )); do
     case "$1" in
+        -d|--datastream) ACTION=create ;;
         -h|--help) exit_usage 0 ;;
+        -?*) exit_usage 1 ;;
         *) break ;;
     esac
     shift
 done
 
-DATA="${1:-/dev/stdin}"
-INDEX="${2:-}"
-ACTION=${3:-index}
-
-[[ -z $DATA ]] && exit_usage 1
-[[ -z $INDEX ]] && exit_usage 1
+DATA=${1:-/dev/stdin}
+INDEX=$2
+ACTION=${ACTION:-${3:-index}}
 [[ $DATA == - ]] && DATA=/dev/stdin
+[[ -z $INDEX ]] && exit_usage 1
 
 # POST _bulk batches of 10MB max
 has_read=
