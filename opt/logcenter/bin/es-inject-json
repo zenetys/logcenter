@@ -18,6 +18,7 @@ Inject JSON data to Elasticsearch
 Options:
   -r, --refresh            Post /_refresh on the index before exit
   -d, --datastream NAME    Set op_type create instead of index
+  -mb, --max-bytes BYTES   Max POST _bulk size, default 10MB
   -h, --help               Display this help
 
 Usage example:
@@ -30,10 +31,12 @@ REFRESH=
 DATA=
 INDEX=
 ACTION=
+MAX_BYTES=$(( 10*1024*1024 ))
 while (( $# > 0 )); do
     case "$1" in
         -r|--refesh) REFRESH=1 ;;
         -d|--datastream) ACTION=create ;;
+        -mb|--max-bytes) MAX_BYTES=$2; shift ;;
         -h|--help) exit_usage 0 ;;
         -?*) exit_usage 1 ;;
         *) break ;;
@@ -46,8 +49,8 @@ INDEX=$2
 ACTION=${ACTION:-${3:-index}}
 [[ $DATA == - ]] && DATA=/dev/stdin
 [[ -z $INDEX ]] && exit_usage 1
+[[ -z $MAX_BYTES || -n ${MAX_BYTES//[0-9]} ]] && exit_usage 1
 
-# POST _bulk batches of 10MB max
 has_read=
 while read -r; do
     has_read=1
@@ -59,7 +62,7 @@ while read -r; do
             echo "{\"$ACTION\": {}}"
             echo "$REPLY"
             (( bytes += (${#REPLY} + 1 + 9 + ${#ACTION}) ))
-            (( bytes > 10*1024*1024 )) && break
+            (( bytes > MAX_BYTES )) && break
         done
     } |
     es-curl "/$INDEX/_bulk" \
