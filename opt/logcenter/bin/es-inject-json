@@ -56,6 +56,8 @@ ACTION=${ACTION:-${3:-index}}
 [[ -z $MAX_BYTES || -n ${MAX_BYTES//[0-9]} ]] && exit_usage 1
 
 has_read=
+has_error=
+
 while read -r; do
     has_read=1
     {
@@ -75,10 +77,13 @@ while read -r; do
         jq -c 'if .errors then .items |to_entries[] |
             select(.value |to_entries[] |select(.value.error))
             else halt end'
+
+    ps=${PIPESTATUS[*]}
+    [[ -z ${ps//[0 ]} ]] || has_error=1
 done < <(jq -Mc . < "$DATA")
 
-[[ ${PIPESTATUS[0]} != 0 ]] && exit 2
 [[ -z $has_read ]] && exit 2
+[[ -n $has_error ]] && exit 3
 
 if [[ -n $REFRESH ]]; then
     out=$(es-curl "/$INDEX/_refresh" -X POST) ||
