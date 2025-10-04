@@ -16,6 +16,7 @@ Usage: $PROGNAME [OPTION...]    JSON-FILE|- INDEX
 Inject JSON data to Elasticsearch
 
 Options:
+  -r, --refresh            Post /_refresh on the index before exit
   -d, --datastream NAME    Set op_type create instead of index
   -h, --help               Display this help
 
@@ -25,11 +26,13 @@ $ xzcat lotus-202206.json.xz |$PROGNAME - json-lotus
     exit "$status"
 }
 
+REFRESH=
 DATA=
 INDEX=
 ACTION=
 while (( $# > 0 )); do
     case "$1" in
+        -r|--refesh) REFRESH=1 ;;
         -d|--datastream) ACTION=create ;;
         -h|--help) exit_usage 0 ;;
         -?*) exit_usage 1 ;;
@@ -70,5 +73,7 @@ done < <(jq -Mc . < "$DATA")
 [[ ${PIPESTATUS[0]} != 0 ]] && exit 2
 [[ -z $has_read ]] && exit 2
 
-out=$(es-curl "/$INDEX/_refresh" -X POST) ||
-    echo "$out" 
+if [[ -n $REFRESH ]]; then
+    out=$(es-curl "/$INDEX/_refresh" -X POST) ||
+        echo "$out" >&2
+fi
