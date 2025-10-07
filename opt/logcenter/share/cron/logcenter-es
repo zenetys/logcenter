@@ -1,1 +1,2 @@
 40 1 * * 0 root /opt/logcenter/bin/update-geoip -c /etc/logcenter/update-geoip.conf -q
+#*/30 * * * * root /opt/logcenter/bin/es-auto-clean -M -t 92\% -r '.monitoring-es-*,,1' -r '*,1G,' -r '*,2G,5' -r '*,,3' --yes-do-it
