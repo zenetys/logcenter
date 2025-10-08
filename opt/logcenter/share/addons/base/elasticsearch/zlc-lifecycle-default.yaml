@@ -9,7 +9,7 @@ policy:
           priority: 100
         rollover:
           max_age: 7d
-          max_primary_shard_size: 10gb
+          max_primary_shard_size: 5gb
     warm:
       min_age: 30d
       actions:
