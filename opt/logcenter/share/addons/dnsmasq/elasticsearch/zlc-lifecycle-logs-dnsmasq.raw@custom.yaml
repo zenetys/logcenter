@@ -1,1 +1,27 @@
-../../base/elasticsearch/zlc-lifecycle-default.yaml
+policy:
+  _meta:
+    version: 1
+  phases:
+    hot:
+      min_age: 0ms
+      actions:
+        set_priority:
+          priority: 100
+        rollover:
+          max_age: 1d
+          max_primary_shard_size: 5gb
+    warm:
+      min_age: 0ms
+      actions:
+        set_priority:
+          priority: 50
+    cold:
+      min_age: 1d
+      actions:
+        set_priority:
+          priority: 0
+    delete:
+      min_age: 2d
+      actions:
+        delete:
+          delete_searchable_snapshot: true
