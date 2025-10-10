@@ -318,6 +318,7 @@ function do_rsync() {
 peers=()
 includes=()
 excludes=()
+use_rsync_update=
 ARGV=( "$@" )
 XDEBUG=
 DIFF=
