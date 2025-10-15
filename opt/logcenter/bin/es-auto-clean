@@ -16,6 +16,7 @@ MASTER_ONLY=
 THRESHOLD=
 RULES=()
 DEBUG=
+SHOW=
 DRY_RUN=1
 
 function exit_usage() {
@@ -29,6 +30,8 @@ Options:
   -t, --threshold USED%     Disk usage threshold percent used
   -M, --master-only         Run only on master
   -r, --rule RULE           Add rule, see format below
+  -sd, --show-disk          Show per-node disk usage, do nothing else
+  -si, --show-indices       Show per-indice (DS) stats, do nothing else
   -d, --debug               Enable debug
   -y, --yes-do-it           Dry-run is enabled by default, disable it
   -h, --help                Display this help
@@ -119,8 +122,10 @@ function get_data_nodes_stats() {
         map("\(.name),\(.used_pct),\(.free_bytes)")[]') )
     (( $? == 0 )) || fatal 'Failed to get data nodes stats'
 
-    [[ -z $DEBUG ]] || (IFS=$'\n'; echo 'name,used_pct,free_bytes';
-        echo "${REPLY[*]}") |LOG_STDIN=1 debug 'Node#%l '
+    if [[ -n $DEBUG || -n $SHOW ]]; then
+        { echo 'name,used_pct,free_bytes'; (IFS=$'\n'; echo "${REPLY[*]}"); } |
+            if [[ -n $DEBUG ]]; then LOG_STDIN=1 debug 'Node#%l '; else column -t -s ,; fi
+    fi
 }
 
 function get_indices_stats() {
@@ -152,8 +157,10 @@ function get_indices_stats() {
             tac) )
     (( $? == 0 )) || fatal 'Failed to get data nodes stats'
 
-    [[ -z $DEBUG ]] || (IFS=$'\n'; echo 'ds-name,ds-order,index,max-date,size,ds-size';
-        echo "${REPLY[*]}") |LOG_STDIN=1 debug 'Indice#%l '
+    if [[ -n $DEBUG || -n $SHOW ]]; then
+        { echo 'ds-name,ds-order,index,max-date,size,ds-size'; (IFS=$'\n'; echo "${REPLY[*]}"); } |
+            if [[ -n $DEBUG ]]; then LOG_STDIN=1 debug 'Indice#%l '; else column -t -s ,; fi
+    fi
 }
 
 while (( $# > 0 )); do
@@ -161,6 +168,8 @@ while (( $# > 0 )); do
         -t|--threshold) THRESHOLD=${2%\%}; shift ;;
         -M|--master-only) MASTER_ONLY=1 ;;
         -r|--rule) RULES+=( "$2" ); shift ;;
+        -sd|--show-disk) DEBUG= SHOW=1 DRY_RUN= get_data_nodes_stats; exit 0 ;;
+        -si|--show-indices) DEBUG= SHOW=1 DRY_RUN= get_indices_stats; exit 0 ;;
         -d|--debug) DEBUG=1 ;;
         -y|--yes-do-it) DRY_RUN= ;;
         -h|--help) exit_usage ;;
