@@ -1,0 +1,9 @@
+#!/bin/bash
+
+es-curl _ilm/policy |
+    jq -r '
+to_entries[] |
+select(.key |test("^")) |
+"\(.key) hot:\(.value.policy.phases.hot.min_age),\(.value.policy.phases.hot.actions.rollover.max_age),\(.value.policy.phases.hot.actions.rollover.max_primary_shard_size) warm:\(.value.policy.phases.warm.min_age) cold:\(.value.policy.phases.cold.min_age) delete:\(.value.policy.phases.delete.min_age)"' |
+    sort -V |
+    column -t
