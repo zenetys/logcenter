@@ -71,8 +71,28 @@ function get_aliases_json() {
       jq 'map({( .ip): .hostname}) | add // {}'
 }
 
+# Function to get archives disk usage
+function get_archives_usage_json() {
+    /opt/logcenter/bin/zlccli get-archives-usage |
+      awk '{printf("{\"used\":%s,\"max\":%s}",$1,$2)}' ||
+      echo "null"
+}
+
+# Function to get Elasticsearch indices usage
+function get_elastic_usage_json() {
+    /opt/logcenter/bin/zlccli get-elastic-usage |
+      awk '{printf("{\"used\":%s,\"max\":%s}",$1,$2)}' ||
+      echo "null"
+}
+
 # Get aliases from database
 ALIASES_JSON=$(get_aliases_json)
+
+# Get disk usage data
+ARCHIVES_USAGE_JSON=$(get_archives_usage_json)
+if [[ ${HTTP_REMOTE_GROUPS/opt_kibana} != ${HTTP_REMOTE_GROUPS} ]]; then
+  ELASTIC_USAGE_JSON=$(get_elastic_usage_json)
+fi
 
 headers 200 'content-type: application/json'
 jq -n \
@@ -81,6 +101,8 @@ jq -n \
     --arg "groups" "$HTTP_REMOTE_GROUPS" \
     --arg "timezone" "$(date +%Z)" \
     --argjson "aliases" "$ALIASES_JSON" \
+    --argjson "archives_usage" "${ARCHIVES_USAGE_JSON:-null}" \
+    --argjson "elastic_usage" "${ELASTIC_USAGE_JSON:-null}" \
 '
 {
     user_id: (if $user_id and ($user_id |length) > 0 then $user_id else null end),
@@ -89,6 +111,12 @@ jq -n \
 
     # Timezone of the archiver
     timezone: $timezone,
+
+    # Archives disk usage
+    archives_usage: $archives_usage,
+
+    # Elasticsearch indices usage
+    elastic_usage: $elastic_usage,
 
     # Hostname aliases mapping
     aliases: $aliases
