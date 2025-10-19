@@ -128,6 +128,33 @@ function do_get_archive() {
     fatal 'Not found!'
 }
 
+#: get-archives-usage
+#:     Output archives used bytes and max bytes on stdout.
+#:     Values are sperated by a tab.
+function do_get_archives_usage() {
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
+    [[ -z $ZLC_ARCHIVES_MAX_SIZE ]] && fatal 'Bad environment! ZLC_ARCHIVES_MAX_SIZE'
+
+    local usage
+    usage=( $(df -P "$ZLC_ARCHIVES_DIR" -B1 |tail -n +2) )
+    [[ -z ${usage[2]} ]] && fatal 'Failed to get disk usage!'
+    printf "%s\t%s\n" "${usage[2]}" "$ZLC_ARCHIVES_MAX_SIZE"
+}
+
+#: get-indices-usage
+#:     Output Elasticsearch indices total size in bytes on stdout.
+function do_get_elastic_usage() {
+    [[ -n $ZLC_ELASTIC_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ELASTIC_ZLCCLI_HOST"
+    [[ -z $ZLC_ELASTIC_MAX_SIZE ]] && fatal 'Bad environment! ZLC_ELASTIC_MAX_SIZE'
+
+    local usage
+    usage=$(es-curl "/_cat/indices?format=json&bytes=b" |
+        jq '[.[] | (.["store.size"] // .["pri.store.size"] // "0" | tonumber)] | add // 0' 2>/dev/null)
+    [[ -z $usage ]] && fatal 'Failed to get elastic usage!'
+    printf "%s\t%s\n" "$usage" "$ZLC_ELASTIC_MAX_SIZE"
+}
+
 #: list-aliases
 #:     Dump aliases
 #:
