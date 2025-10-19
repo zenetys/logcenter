@@ -4,6 +4,7 @@ set -f
 umask 0077
 PROGNAME=${0##*/}
 HEADERS_SENT=
+ZLCCLI=${ZLCCLI:-/opt/logcenter/bin/zlccli}
 
 function db2json() {
     awk '
@@ -72,10 +73,9 @@ now=$(date +%s) || fatal 'Failed to get time'
 if [[ ! -f $cachefile.json ]] ||
     (( now - $(stat -c %Y "$cachefile.json") > cachettl )) ||
     [[ $0 -nt $cachefile.json ]]; then
-
     (
         flock -w 5 9 || fatal 'Failed to take lock'
-        /opt/logcenter/bin/zlccli list-archives > "$cachefile" || {
+        ${ZLCCLI} list-archives > "$cachefile" || {
             rm -f "$cachefile.json"; fatal 'Could not save zlccli output'; }
         db2json < "$cachefile" > "$cachefile.json" || retval=2 || {
             rm -f "$cachefile.json"; fatal 'Could not save json encoded output'; }
