@@ -1,2 +1,5 @@
 40 1 * * 0 root /opt/logcenter/bin/update-geoip -c /etc/logcenter/update-geoip.conf -q
 #*/30 * * * * root /opt/logcenter/bin/es-auto-clean -M -t 92\% -r '.monitoring-es-*,,1' -r '*,1G,' -r '*,2G,5' -r '*,,3' --yes-do-it
+
+# elasticsearch indices stats db for zlccli / web ui
+7 * * * * root /opt/logcenter/bin/update-indices-db 2>&1 |logger -t CRON-update-indices-db -p info
