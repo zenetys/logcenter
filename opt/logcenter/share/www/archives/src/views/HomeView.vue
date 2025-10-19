@@ -145,6 +145,9 @@ import axios from 'axios'
 // Default view mode is "day"
 const viewMode = ref('day')
 
+// Inject elasticUsage from App.vue
+const elasticUsage = inject('elasticUsage')
+
 let rawLogs = null
 let rawIndices = null
 const error = ref(null)
@@ -256,10 +259,29 @@ const tableConfig = ref({
 const chartConfig = ref({
   viewMode,
   totals: totalVolumeByPeriod,
+  indexTotals: totalIndexVolumeByPeriod,
   date: selectedDate,
   currentQuarter,
   search
 })
+
+/**
+ * Format valid dates for indices as a JS Date object
+ * @param {Object} indexData - The index data object to format
+ * @returns {Object} The formatted index data object
+ */
+const formatIndexDate = (indexData) => {
+  indexData.rawDate = indexData.date
+  const dateObject = new Date(indexData.date)
+
+  /** @WORKAROUND Temporary hotfix to avoid incoherent dates (year of 32120 etc.) */
+  if (dateObject.getFullYear() <= new Date().getFullYear()) {
+    indexData.dateObject = dateObject
+    indexData.date = new Intl.DateTimeFormat('fr-FR').format(indexData.dateObject)
+  }
+
+  return indexData
+}
 
 /**
  * Fetch logs and indices data for the exact period being displayed
@@ -334,6 +356,26 @@ const fetchDataForPeriod = async (refDate = null, mode = 'day') => {
     error.value = 'Failed to fetch logs'
     console.error('Failed to fetch logs:', err)
   })
+
+  // Fetch indices data only if Elasticsearch is enabled (elastic_usage is not null)
+  if (elasticUsage.value) {
+    axios.get('./api/list-indices', {
+      params: { start: startStr, end: endStr, granularity }
+    }).then((response) => {
+      try {
+        rawIndices = response.data
+        formattedIndices.value = structuredClone(rawIndices).map((index) => formatIndexDate(index))
+      } catch (err) {
+        console.error('Failed to fetch indices:', err)
+      }
+    }).catch((err) => {
+      console.error('Failed to fetch indices:', err)
+    })
+  } else {
+    // Reset indices data if Elasticsearch is not available
+    rawIndices = null
+    formattedIndices.value = []
+  }
 }
 
 // Initial data loading
@@ -490,6 +532,63 @@ const generateTotalVolumeByPeriod = () => {
   })
 
   totalVolumeByPeriod.value = totals
+  generateTotalIndexVolumeByPeriod()
+}
+
+/**
+ * Generate total index volumes ordered by time period
+ */
+const generateTotalIndexVolumeByPeriod = () => {
+  if (!formattedIndices.value || formattedIndices.value.length === 0) return
+
+  const indexTotals = {}
+  let timePeriods = null
+
+  if (viewMode.value === 'day') {
+    timePeriods = hoursValues
+  } else if (viewMode.value === 'month') {
+    timePeriods = daysValues.value
+  } else if (viewMode.value === 'quarter') {
+    timePeriods = quarterWeeksValues.value
+  } else if (viewMode.value === 'year') {
+    timePeriods = monthsValues
+  }
+
+  // Initialiser les périodes avec des valeurs à zéro
+  timePeriods.forEach(period => {
+    indexTotals[period] = 0
+  })
+
+  // Filtrer les indices par période et par recherche
+  const indicesInPeriod = formattedIndices.value.filter(index => {
+    return index.dateObject && 
+           index.dateObject.getTime() >= currentTimeLimits.value.start && 
+           index.dateObject.getTime() <= currentTimeLimits.value.end &&
+           (!search.value.length || search.value.includes(index.hostname))
+  })
+
+  // Agréger les données par période
+  indicesInPeriod.forEach(index => {
+    if (!index.dateObject) return
+    
+    if (viewMode.value === 'day') {
+      const hour = index.dateObject.getHours()
+      indexTotals[hour] += index.size || 0
+    } else if (viewMode.value === 'month') {
+      const day = index.dateObject.getDate()
+      indexTotals[day] += index.size || 0
+    } else if (viewMode.value === 'quarter') {
+      const week = utils.getWeekNumberFromDate(index.dateObject)
+      if (quarterWeeksValues.value.includes(week)) {
+        indexTotals[week] += index.size || 0
+      }
+    } else if (viewMode.value === 'year') {
+      const month = index.dateObject.getMonth()
+      indexTotals[month] += index.size || 0
+    }
+  })
+
+  totalIndexVolumeByPeriod.value = indexTotals
 }
 
 /**
@@ -618,6 +717,18 @@ watch(
       // Set the current time limits based on the last log entry
       setCurrentTimeLimits(viewMode.value)
       generateHostsVolumeByPeriod()
+    }
+  },
+  { immediate: true }
+)
+
+// Watcher pour les données d'index
+watch(
+  formattedIndices,
+  (newIndices) => {
+    if (newIndices?.length > 0 && currentTimeLimits.value.start) {
+      // Générer les volumes d'index par période
+      generateTotalIndexVolumeByPeriod()
     }
   },
   { immediate: true }

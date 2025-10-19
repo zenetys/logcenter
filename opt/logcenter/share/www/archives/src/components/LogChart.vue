@@ -94,21 +94,7 @@ const options = ref({
       display: false
     },
     tooltip: {
-      callbacks: {
-        label: (context) => {
-          // Convert tooltip values to human readable byte sizes
-          let label = context.dataset.label || ''
-
-          if (label) {
-            label += ': '
-          }
-
-          if (context.parsed.y !== null) {
-            label += getHumanReadableByteSize(context.parsed.y).toString()
-          }
-          return label
-        }
-      }
+      enabled: false // Désactiver complètement le tooltip
     },
     legend: {
       // Preventing default onClick behaviour on legends
@@ -119,9 +105,8 @@ const options = ref({
     xAxisKey: 'time',
     yAxisKey: 'data'
   },
-  onHover: (event, elements) => {
-    event.native.target.style.cursor = elements && elements.length > 0 ? 'pointer' : 'default'
-  },
+  // Pas de changement de curseur au survol puisque le tooltip est désactivé
+  onHover: null,
   onClick: (event, elements) => {
     if (!elements || elements.length <= 0) return
     else {
@@ -162,6 +147,7 @@ const config = props.config
 const downloadDialog = ref(false)
 const downloadPendingData = ref(null)
 const label = ref('Volume reçu par heure')
+const indexedLabel = ref('Volume indexé par heure')
 
 // Component Events
 const emit = defineEmits(['change-date', 'change-mode'])
@@ -229,6 +215,37 @@ const setLabel = (labels) => {
 }
 
 /**
+ * Set the labels based on the view mode
+ * @param labels The labels
+ *
+ * @returns The labels
+ */
+const setLabels = (labels) => {
+   const dateObject = new Date(config.date)
+   const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject)
+ 
+   if (config.viewMode === 'day') {
+     labels = labels.map(hour => `${hour.padStart(2, '0')}:00`)
+     label.value = `Volume reçu par heure`
+     indexedLabel.value = `Volume indexé par heure`
+   } else if (config.viewMode === 'year') {
+     labels = labels.map(month => monthsLabels[month])
+     label.value = `Volume reçu par mois`
+     indexedLabel.value = `Volume indexé par mois`
+   } else if (config.viewMode === 'month') {
+     labels = labels.map(day => day)
+     label.value = `Volume reçu par jour`
+     indexedLabel.value = `Volume indexé par jour`
+   } else if (config.viewMode === 'quarter') {
+     labels = labels.map(week => `Sem ${week}`)
+     label.value = `Volume reçu par semaine`
+     indexedLabel.value = `Volume indexé par semaine`
+   }
+
+   return labels
+}
+
+/**
  * Build chart config from provided totals
  * @param totals The provided totals
  */
@@ -246,18 +263,68 @@ const buildChartData = (totals, search) => {
     }))
   }
 
-  label.value = setLabel(labels)
+  // Utiliser les données d'index réelles si disponibles, sinon utiliser une estimation
+  let indexedData = [];
+  
+  if (props.config.indexTotals && Object.keys(props.config.indexTotals).length > 0) {
+    // Utiliser les données d'index réelles
+    if (Array.isArray(data)) {
+      indexedData = Object.keys(props.config.indexTotals).map((key, index) => {
+        const period = parseInt(key);
+        if (typeof data[index] === 'object' && data[index] !== null) {
+          return {
+            time: data[index].time,
+            data: props.config.indexTotals[period] || 0,
+            rawLogs: []
+          };
+        }
+        return props.config.indexTotals[period] || 0;
+      });
+    } else {
+      // Si data n'est pas un tableau, créer un tableau à partir des données d'index
+      indexedData = Object.keys(props.config.indexTotals).map(key => props.config.indexTotals[key] || 0);
+    }
+  } else {
+    // Utiliser une estimation (80% des données reçues)
+    indexedData = data.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        return {
+          time: item.time,
+          data: 0,
+          rawLogs: item.rawLogs
+        };
+      }
+      return 0;
+    });
+  }
+
+  setLabels(labels)
+
+  // Build datasets array - only include index dataset if data is available
+  const datasets = [
+    {
+      data,
+      label: label.value,
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      borderColor: 'rgba(75, 192, 192, 1)',
+      borderWidth: 1
+    }
+  ]
+
+  // Only add index dataset if we have actual index data
+  if (props.config.indexTotals && Object.keys(props.config.indexTotals).length > 0) {
+    datasets.push({
+      data: indexedData,
+      label: indexedLabel.value,
+      backgroundColor: 'rgba(128, 0, 128, 0.2)', // Purple with transparency
+      borderColor: 'rgba(128, 0, 128, 1)', // Solid purple
+      borderWidth: 1
+    })
+  }
+
   chartData.value = {
     labels,
-    datasets: [
-      {
-        data,
-        label: label.value,
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1
-      }
-    ]
+    datasets
   }
 }
 

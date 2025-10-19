@@ -40,7 +40,7 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import { useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, provide } from 'vue'
 import { fetchConfig, getConfig } from './plugins/config.js'
 import { getHumanReadableByteSize } from './plugins/utils.js'
 
@@ -49,6 +49,9 @@ const user = ref('')
 const hasKibana = ref(false)
 const archivesUsage = ref(null)
 const elasticUsage = ref(null)
+
+// Provide elasticUsage to child components
+provide('elasticUsage', elasticUsage)
 
 const navigateTo = (path, tab = null) => {
   if (tab === true) window.open(path, '_blank')
