@@ -1,6 +1,8 @@
 Cmnd_Alias CMD_ZLCCLI = \
     /opt/logcenter/bin/zlccli list-archives, \
     /opt/logcenter/bin/zlccli list-archives-aggregated *, \
+    /opt/logcenter/bin/zlccli list-indices, \
+    /opt/logcenter/bin/zlccli list-indices-aggregated *, \
     /opt/logcenter/bin/zlccli list-aliases, \
     /opt/logcenter/bin/zlccli set-alias *, \
     /opt/logcenter/bin/zlccli get-archives-usage, \
