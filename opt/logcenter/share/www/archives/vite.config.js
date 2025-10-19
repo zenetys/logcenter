@@ -11,6 +11,11 @@ import * as sass from 'sass-embedded'
 const prepareCgiEnv = (req) => {
   return {
     ...process.env,
+    XDEBUG: 1,
+    ZLCCLI: '../../../bin/zlccli',
+    ZLC_DEVMODE: 1,
+    ZLC_ENV: '/dev/null',
+    ZLC_ARCHIVES_DIR: process.env['PWD'],
     HTTP_REMOTE_USER: req.headers['remote-user'] || '',
     HTTP_REMOTE_NAME: req.headers['remote-name'] || '',
     HTTP_REMOTE_GROUPS: req.headers['remote-groups'] || '',
@@ -44,7 +49,9 @@ const executeCgiScript = (scriptPath, req, res) => {
   try {
     // Execute the script with appropriate environment variables
     const result = execFileSync(scriptPath, [], {
-      env: prepareCgiEnv(req)
+      env: prepareCgiEnv(req),
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer limit
+      timeout: 30000 // 30 second timeout
     }).toString();
 
     // Parse CGI output - handle both \r\n and \n formats
