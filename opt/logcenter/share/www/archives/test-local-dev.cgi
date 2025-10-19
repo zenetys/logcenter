@@ -41,14 +41,14 @@ function get_aliases_json() {
   sqlite3 -json "$db_file" "SELECT ip, hostname FROM aliases" | jq 'map({( .ip): .hostname}) | add // {}'
 }
 
-set -x
+(( XDEBUG )) && set -x
 
 # Parse query string parameters
 if [[ ${QUERY_STRING} ]]; then
   IFS='&' url_decode _GET_ "$QUERY_STRING"
 fi
 
-set >&2
+# set >&2
 
 # Initialiser la base de données d'alias
 init_aliases_db
