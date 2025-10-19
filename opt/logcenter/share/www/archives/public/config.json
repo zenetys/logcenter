@@ -1,1 +1,22 @@
-{ "user_id": "default", "has_kibana": true, "timezone": "CET" }
+{
+  "user_id": null,
+  "user_name": null,
+  "has_kibana": false,
+  "timezone": "CEST",
+  "archives_usage": {
+    "used": 4826222592,
+    "max": 1099511627776
+  },
+  "elastic_usage": {
+    "used": 38807566362,
+    "max": 214748364800
+  },
+  "aliases": {
+    "10.50.0.252": "zutm1",
+    "10.50.0.253": "zutm2",
+    "10.50.0.23": "c1500-fr1-h003",
+    "10.50.0.21": "c1500-fr1-h001",
+    "10.50.0.22": "c1500-fr1-h002",
+    "10.50.0.101": "zvault-kompot"
+  }
+}

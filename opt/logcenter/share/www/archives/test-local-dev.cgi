@@ -65,7 +65,10 @@ if [[ ${REQUEST_URI%%\?*} == "/config.json" ]]; then
     printf ',"user_name": "Test User"'
     printf ',"has_kibana": true'
     printf ',"timezone": "CET"'
-    printf ',"aliases": %s' "$ALIASES"
+    printf ',"archives_usage": {"used": 4826222592,"max": 1099511627776}'
+    printf ',"elastic_usage": { "used": 38807566362, "max": 214748364800}'
+    # printf ',"elastic_usage": null'
+    printf ',"aliases": %s' "${ALIASES:-null}"
     printf '}'
     exit 0
 elif [[ ${REQUEST_URI%%\?*} == "/api/config" ]]; then
