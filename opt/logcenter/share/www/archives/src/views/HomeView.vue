@@ -139,16 +139,18 @@ import LogChart from '../components/LogChart.vue'
 import * as utils from '@/plugins/utils'
 import { getAliasForIP, fetchConfig, getConfig } from '@/plugins/config.js'
 
-import { onBeforeMount, ref, watch, computed } from 'vue'
+import { onBeforeMount, ref, watch, computed, inject } from 'vue'
 import axios from 'axios'
 
 // Default view mode is "day"
 const viewMode = ref('day')
 
 let rawLogs = null
+let rawIndices = null
 const error = ref(null)
 const timezone = ref('')
 const formattedLogs = ref([])
+const formattedIndices = ref([])
 const selectedDate = ref(null)
 /**
  * @computed The formatted version of the selected date
@@ -221,6 +223,8 @@ const currentTimeLimits = ref({ start: null, end: null })
 const hostsVolumeByPeriod = ref([])
 /** All log volumes added together and ordered by time period */
 const totalVolumeByPeriod = ref({})
+/** Index volumes ordered by time period */
+const totalIndexVolumeByPeriod = ref({})
 
 // Time-based values
 const hoursValues = [...Array(24).keys()]
@@ -257,9 +261,68 @@ const chartConfig = ref({
   search
 })
 
-// Fetching all logs and formatting them
-onBeforeMount(async () => {
-  axios.get('./api/list-archives').then((response) => {
+/**
+ * Fetch logs and indices data for the exact period being displayed
+ * @param {Date} refDate - Reference date for the period
+ * @param {string} mode - View mode:
+ *   - day: displays ONE day hour by hour (24 hours)
+ *   - month: displays ONE month day by day (~30 days)
+ *   - quarter: displays ONE quarter week by week (13 weeks)
+ *   - year: displays ONE year month by month (12 months)
+ */
+const fetchDataForPeriod = async (refDate = null, mode = 'day') => {
+  // Use current date if no reference provided
+  const reference = refDate ? new Date(refDate) : new Date()
+  
+  // Calculate exact period based on view mode
+  let startDate = new Date(reference)
+  let endDate = new Date(reference)
+  
+  switch (mode) {
+    case 'day':
+      // Load exactly 1 day
+      startDate.setHours(0, 0, 0, 0)
+      endDate.setHours(23, 59, 59, 999)
+      break
+    case 'month':
+      // Load exactly 1 month
+      startDate.setDate(1)
+      startDate.setHours(0, 0, 0, 0)
+      const lastDay = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()
+      endDate.setDate(lastDay)
+      endDate.setHours(23, 59, 59, 999)
+      break
+    case 'quarter':
+      // Load exactly 1 quarter (3 months)
+      const currentMonth = startDate.getMonth()
+      const quarterStartMonth = Math.floor(currentMonth / 3) * 3
+      startDate.setMonth(quarterStartMonth, 1)
+      startDate.setHours(0, 0, 0, 0)
+      endDate.setMonth(quarterStartMonth + 3, 0) // Last day of quarter
+      endDate.setHours(23, 59, 59, 999)
+      break
+    case 'year':
+      // Load exactly 1 year
+      startDate.setMonth(0, 1)
+      startDate.setHours(0, 0, 0, 0)
+      endDate.setMonth(11, 31)
+      endDate.setHours(23, 59, 59, 999)
+      break
+  }
+  
+  const startStr = startDate.toISOString().split('T')[0]
+  const endStr = endDate.toISOString().split('T')[0]
+  
+  // Determine aggregation level based on view mode
+  // hour: hourly data (for day view)
+  // day: daily aggregated data (for month/quarter view)
+  // month: monthly aggregated data (for year view)
+  const granularity = mode === 'day' ? 'hour' : mode === 'year' ? 'month' : 'day'
+  
+  // Fetch logs data with granularity parameter
+  axios.get('./api/list-archives', {
+    params: { start: startStr, end: endStr, granularity }
+  }).then((response) => {
     try {
       rawLogs = response.data
       formattedLogs.value = structuredClone(rawLogs).map((log) => formatLogDate(log))
@@ -271,10 +334,16 @@ onBeforeMount(async () => {
     error.value = 'Failed to fetch logs'
     console.error('Failed to fetch logs:', err)
   })
+}
 
+// Initial data loading
+onBeforeMount(async () => {
   await fetchConfig()
   const config = getConfig()
   if (config) timezone.value = config.timezone
+  
+  // Load initial data with default viewMode ('day')
+  await fetchDataForPeriod(null, viewMode.value)
 })
 
 /**
@@ -532,10 +601,16 @@ watch(
   formattedLogs,
   (newLogs) => {
     if (newLogs?.length > 0) {
-      viewMode.value = 'day'
-      // Calculate the latest log entry date
-      mostRecentLogDate.value = utils.getMostRecentLogDate(newLogs)
-      selectedDate.value = mostRecentLogDate.value
+      // Only initialize selectedDate on first load (when selectedDate is null)
+      // viewMode is already initialized to 'day' by default (line 146)
+      const isInitialLoad = !selectedDate.value
+      
+      if (isInitialLoad) {
+        // Calculate the latest log entry date
+        mostRecentLogDate.value = utils.getMostRecentLogDate(newLogs)
+        selectedDate.value = mostRecentLogDate.value
+      }
+      
       // Get all unique hosts
       hosts.value = utils.getUniqueHosts(newLogs)
       // Organise logs by host
@@ -550,16 +625,24 @@ watch(
 
 watch(viewMode, (newMode) => {
   setCurrentTimeLimits(newMode)
-  generateHostsVolumeByPeriod()
+  // Reload data if needed for the new view mode
+  if (selectedDate.value) {
+    fetchDataForPeriod(selectedDate.value, newMode)
+  }
+  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
 })
 
 watch(selectedDate, () => {
   setCurrentTimeLimits(viewMode.value)
-  generateHostsVolumeByPeriod()
+  // Reload data if needed for the new period
+  if (selectedDate.value) {
+    fetchDataForPeriod(selectedDate.value, viewMode.value)
+  }
+  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
 })
 
 watch(search, () => {
-  generateHostsVolumeByPeriod()
+  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
 })
 </script>
 
