@@ -1,9 +1,11 @@
 #!/bin/bash
 
-if [[ $(id -un) != zlccli ]]; then
+if (( ! ZLC_DEVMODE )) && [[ $(id -un) != zlccli ]]; then
     exec sudo -u zlccli -n "$0" "$@"
     # unreachable
 fi
+
+(( XDEBUG )) && set -x
 
 set -f
 export LC_ALL=C
