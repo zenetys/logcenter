@@ -16,6 +16,7 @@ const prepareCgiEnv = (req) => {
     ZLC_DEVMODE: 1,
     ZLC_ENV: '/dev/null',
     ZLC_ARCHIVES_DIR: process.env['PWD'],
+    ZLC_INDICES_DB: process.env['PWD']+'/indices.db',
     HTTP_REMOTE_USER: req.headers['remote-user'] || '',
     HTTP_REMOTE_NAME: req.headers['remote-name'] || '',
     HTTP_REMOTE_GROUPS: req.headers['remote-groups'] || '',
@@ -101,6 +102,8 @@ const cgiRoutes = [
   { path: '/api/stats', script: 'stats.cgi' },
   { path: '/api/config', script: 'test-local-dev.cgi' },
   { path: '/config.json', script: 'test-local-dev.cgi' },
+  { path: '/api/list-archives', script: '../../../lib/cgi-bin/list-archives.cgi' },
+  { path: '/api/list-indices', script: '../../../lib/cgi-bin/list-indices.cgi' },
 ];
 
 // 2. Routes à rediriger vers le proxy (127.0.0.1:9443)
@@ -112,8 +115,10 @@ const proxyRoutes = [
 
 // 3. Routes pour servir des fichiers statiques avec un content-type spécifique
 const staticFileRoutes = [
-  { path: '/api/list-archives', file: 'public/sample.json', contentType: 'application/json' },
-  { path: '/config.json', file: 'public/config.json', contentType: 'application/json' },
+  // Note: list-archives and list-indices are now handled by CGI routes above
+  // { path: '/api/list-archives', file: 'public/sample.json', contentType: 'application/json' },
+  // { path: '/api/list-indices', file: 'public/sample-indices.json', contentType: 'application/json' },
+  // { path: '/config.json', file: 'public/config.json', contentType: 'application/json' },
 ];
 
 // Plugin pour gérer les routes CGI, proxy et fichiers statiques
