@@ -98,6 +98,38 @@ function do_list_archives() {
     sqlite3 -tabs -header :memory: "$REPLY"
 }
 
+#: list-archives-aggregated SELECT-CLAUSE WHERE-CLAUSE GROUP-BY
+#:     List archive files with custom SELECT and optional GROUP BY for aggregation
+#:     database. Return TSV ouput with header line.
+#:
+function do_list_archives_aggregated() {
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
+    [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
+    local select_clause="${1:-*}"
+    local where_clause="${2:-1}"
+    local group_by="${3:-}"
+
+    REPLY=$'pragma query_only = ON;\n'
+    local dbfile dbid dbids=() i
+    while read -r dbfile; do
+        dbid=${dbfile##*/stats.}; dbid=${dbid%.db}; dbids+=( "$dbid" )
+        REPLY+="attach '$dbfile' as $dbid;"$'\n'
+    done < <(find "$ZLC_ARCHIVES_DIR/@stats/" -mindepth 1 -maxdepth 1 \
+                \( -name 'stats.db' -o -name 'stats.*.db' \))
+    [[ -z $dbids ]] && fatal 'Database not found!'
+
+    REPLY+="select $select_clause from ("$'\n'
+    for (( i = 0; i < ${#dbids[@]}; i++ )); do
+        (( i > 0 )) && REPLY+=' union all '
+        REPLY+="select '${dbids[i]}' as db, * from ${dbids[i]}.counters"$'\n'
+    done
+    REPLY+=$')\n'" where $where_clause"
+    [[ -n $group_by ]] && REPLY+=$'\n'"$group_by"
+    REPLY+=$'\n'"order by fdate desc, fhour desc, src asc"
+
+    sqlite3 -tabs -header :memory: "$REPLY"
+}
+
 #: get-archive [--proto] SRC,YYYY-MM-DD,H...
 #:     Stream an archive file, with optional proto header
 #:
