@@ -130,6 +130,56 @@ function do_list_archives_aggregated() {
     sqlite3 -tabs -header :memory: "$REPLY"
 }
 
+#: list-indices [SQL-WHERE]
+#:     List elastic indices with a query to the cache indices counters
+#:     database. Return TSV ouput with header line.
+#:
+function do_list_indices() {
+    [[ -n $ZLC_ELASTIC_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ELASTIC_ZLCCLI_HOST"
+
+    local query
+    local IFS=" "
+    # Get indices data
+
+    query=(
+      "SELECT"
+      "host as hostname,"
+      "doc_count as docs,"
+      "size_bytes as size,"
+      "strftime('%Y-%m-%d %H:%M:%S', timestamp) as date"
+      "FROM host_hour_data"
+      "${1:+WHERE $1}"
+      "ORDER BY date DESC, hostname asc;"
+    )
+    sqlite3 -tabs -header ${ZLC_INDICES_DB} "${query[*]}"
+}
+
+#: list-indices-aggregated SELECT-FIELDS WHERE-CLAUSE GROUP-BY
+#:     List elastic indices with custom SELECT and optional GROUP BY for aggregation
+#:     database. Return TSV ouput with header line.
+#:
+function do_list_indices_aggregated() {
+    [[ -n $ZLC_ELASTIC_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ELASTIC_ZLCCLI_HOST"
+
+    local select_fields="${1:-host as hostname, doc_count as docs, size_bytes as size, strftime('%Y-%m-%d %H:%M:%S', timestamp) as date}"
+    local where_clause="${2:-1}"
+    local group_by="${3:-}"
+    local query
+    local IFS=" "
+    
+    query=(
+      "SELECT"
+      "$select_fields"
+      "FROM host_hour_data"
+      "WHERE $where_clause"
+      "${group_by:+$group_by}"
+      "ORDER BY date DESC, hostname asc;"
+    )
+    
+    # Use ZLC_INDICES_DB if set, otherwise default path
+    sqlite3 -tabs -header "${ZLC_INDICES_DB}" "${query[*]}"
+}
+
 #: get-archive [--proto] SRC,YYYY-MM-DD,H...
 #:     Stream an archive file, with optional proto header
 #:
