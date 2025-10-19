@@ -65,7 +65,44 @@ function fatal() {
 }
 
 cachettl=600
-cachefile="$(id -un).${PROGNAME}" || fatal 'Failed to set cache filename'
+
+# Parse query string parameters
+declare -A params
+if [[ -n $QUERY_STRING ]]; then
+    IFS='&' read -ra pairs <<< "$QUERY_STRING"
+    for pair in "${pairs[@]}"; do
+        IFS='=' read -r key value <<< "$pair"
+        params[$key]=$(printf '%b' "${value//%/\\x}")
+    done
+fi
+
+# Build SQL WHERE clause from date parameters
+where_clause="1"
+if [[ -n ${params[start]} ]] && [[ -n ${params[end]} ]]; then
+    where_clause="fdate >= '${params[start]}' AND fdate <= '${params[end]}'"
+fi
+
+# Handle granularity parameter for aggregation
+granularity="${params[granularity]:-hour}"
+case "$granularity" in
+    day)
+        # Aggregate by day: sum all hours per day
+        select_clause="src as src, fdate as fdate, 0 as fhour, sum(lines) as lines, sum(bytes) as bytes, fdate || ' 00:00:00' as date"
+        group_by="GROUP BY src, fdate"
+        ;;
+    month)
+        # Aggregate by month: sum all days per month
+        select_clause="src as src, substr(fdate,1,7) || '-01' as fdate, 0 as fhour, sum(lines) as lines, sum(bytes) as bytes, substr(fdate,1,7) || '-01 00:00:00' as date"
+        group_by="GROUP BY src, substr(fdate,1,7)"
+        ;;
+    hour|*)
+        # Default: no aggregation, return hourly data
+        select_clause="*"
+        group_by=""
+        ;;
+esac
+
+cachefile="$(id -un).${PROGNAME}.${params[start]:-all}.${params[end]:-all}.${granularity:-hour}" || fatal 'Failed to set cache filename'
 cachefile="${TMPDIR:-/dev/shm}/${cachefile//[^[:alnum:]]/_}"
 lockfile="$cachefile.lock"
 now=$(date +%s) || fatal 'Failed to get time'
@@ -75,7 +112,7 @@ if [[ ! -f $cachefile.json ]] ||
     [[ $0 -nt $cachefile.json ]]; then
     (
         flock -w 5 9 || fatal 'Failed to take lock'
-        ${ZLCCLI} list-archives > "$cachefile" || {
+        ${ZLCCLI} list-archives-aggregated "$select_clause" "$where_clause" "$group_by" > "$cachefile" || {
             rm -f "$cachefile.json"; fatal 'Could not save zlccli output'; }
         db2json < "$cachefile" > "$cachefile.json" || retval=2 || {
             rm -f "$cachefile.json"; fatal 'Could not save json encoded output'; }
