@@ -93,8 +93,8 @@ export const getHumanReadableByteSize = (bytes, decimals = 0) => {
   let unit
   const units = ['o', 'ko', 'Mo', 'Go', 'To', 'Po', 'Eo', 'Zo', 'Yo']
 
-  exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1000)), units.length - 1)
-  bytes = (bytes / Math.pow(1000, exponent)).toFixed(decimals) * 1
+  exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  bytes = (bytes / Math.pow(1024, exponent)).toFixed(decimals) * 1
   unit = units[exponent]
 
   return {
