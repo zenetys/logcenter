@@ -90,7 +90,7 @@ function archives_db_query() {
 #:     database. Return TSV ouput with header line.
 #:
 function do_list_archives() {
-    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
     [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
     archives_db_query '*' "${1:-1} order by fdate desc, fhour desc, src asc"
     sqlite3 -tabs -header :memory: "$REPLY"
@@ -100,7 +100,7 @@ function do_list_archives() {
 #:     Stream an archive file, with optional proto header
 #:
 function do_get_archive() {
-    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
     [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
     local proto=; [[ $1 == --proto ]] && { proto=1; shift; }
     local IFS=,; set -- $1; IFS=$OIFS
@@ -130,7 +130,7 @@ function do_get_archive() {
 #:     Dump aliases
 #:
 function do_list_aliases() {
-    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
     [[ -z $ZLC_ALIASES_DB ]] && fatal 'Bad environment! ZLC_ALIASES_DB'
 
     if [[ ! -f "$ZLC_ALIASES_DB" ]]; then
@@ -157,7 +157,7 @@ __EOF__
 #:     If ALIAS is empty or not provided, the alias for IP will be deleted
 #:
 function do_set_alias() {
-    [[ -n $ZLC_ARCHIVES_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_HOST"
+    [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
     [[ -z $ZLC_ALIASES_DB ]] && fatal 'Bad environment! ZLC_ALIASES_DB'
 
     if [[ ! -f "$ZLC_ALIASES_DB" ]]; then
