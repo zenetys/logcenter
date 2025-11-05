@@ -48,9 +48,10 @@ function load_env_or_fatal() {
 
 # $1: target host
 function reexec_by_ssh() {
+    local host=$1; shift
+    [[ $host == 127.* || $host == localhost ]] && return 0
     [[ $REDIRECTED_FROM == $HOSTNAME ]] && return 0
     [[ -n $REDIRECTED_FROM ]] && fatal "Maximum redirect reached"
-    local host=$1; shift
     # assume this script is the user shell
     local args=( -R "$HOSTNAME" "${ARGS[@]}" )
     info "reexec_by_ssh $host -- ${args[*]@Q}"
