@@ -197,17 +197,74 @@ const formattedYear = computed(() => {
 const showTrimestre = computed(() => {
   return viewMode.value === 'quarter' || (selectedDate.value && currentQuarter.value)
 })
+
+/**
+ * Natural sort comparison function for IP addresses and hostnames
+ * @param {string} a - First string to compare
+ * @param {string} b - Second string to compare
+ * @returns {number} - Negative if a < b, positive if a > b, 0 if equal
+ */
+const compare = (a, b) => {
+  // Check if both are IPv4 addresses
+  const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+  const aIsIP = ipv4Regex.test(a)
+  const bIsIP = ipv4Regex.test(b)
+
+  // If both are IPs, compare octets numerically
+  if (aIsIP && bIsIP) {
+    const aParts = a.split('.').map(Number)
+    const bParts = b.split('.').map(Number)
+
+    for (let i = 0; i < 4; i++) {
+      if (aParts[i] !== bParts[i]) {
+        return aParts[i] - bParts[i]
+      }
+    }
+    return 0
+  }
+
+  // If one is IP and the other is not, IPs come first
+  if (aIsIP && !bIsIP) return -1
+  if (!aIsIP && bIsIP) return 1
+
+  // For non-IP strings (hostnames), use natural sort with numeric awareness
+  // Split by numbers and non-numbers
+  const aParts = a.match(/(\d+|\D+)/g) || []
+  const bParts = b.match(/(\d+|\D+)/g) || []
+
+  const maxLen = Math.max(aParts.length, bParts.length)
+
+  for (let i = 0; i < maxLen; i++) {
+    const aPart = aParts[i] || ''
+    const bPart = bParts[i] || ''
+
+    // If both parts are numeric, compare as numbers
+    const aNum = Number(aPart)
+    const bNum = Number(bPart)
+
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      if (aNum !== bNum) return aNum - bNum
+    } else {
+      // Compare as strings (case-insensitive)
+      const comparison = aPart.toLowerCase().localeCompare(bPart.toLowerCase())
+      if (comparison !== 0) return comparison
+    }
+  }
+
+  return 0
+}
+
 /**
  * @computed Hosts with their aliases as titles
  */
 const hostsWithAliases = computed(() => {
-  // Trier par ordre alphabétique des alias
+  // Sort using natural sort for both IPs and hostnames
   return hosts.value
-    .slice() // Créer une copie pour ne pas modifier l'original
+    .slice() // Create a copy to avoid modifying the original
     .sort((a, b) => {
-      const aliasA = getAliasForIP(a).toLowerCase()
-      const aliasB = getAliasForIP(b).toLowerCase()
-      return aliasA.localeCompare(aliasB)
+      const aliasA = getAliasForIP(a)
+      const aliasB = getAliasForIP(b)
+      return compare(aliasA, aliasB)
     })
     .map(host => ({
       title: getAliasForIP(host),
