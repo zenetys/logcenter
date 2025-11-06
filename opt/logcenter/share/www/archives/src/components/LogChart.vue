@@ -22,7 +22,6 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import axios from 'axios'
 import {
   getHumanReadableByteSize,
   monthsLabels,
@@ -158,7 +157,7 @@ const emit = defineEmits(['change-date', 'change-mode'])
  */
 const confirmDownload = () => {
   if (downloadPendingData.value) {
-    downloadLogs(axios, downloadPendingData.value)
+    downloadLogs(downloadPendingData.value)
     downloadPendingData.value = null
   }
   downloadDialog.value = false

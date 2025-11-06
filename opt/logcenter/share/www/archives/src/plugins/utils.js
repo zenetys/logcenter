@@ -128,41 +128,33 @@ export const monthsLabels = {
 
 /**
  * Format an array of logs as a JSON file and download it
+ * Uses form submission to enable immediate browser download popup
  * @param {array} logs The list of logs to download
  */
-export const downloadLogs = (axios, logs) => {
+export const downloadLogs = (logs) => {
     const postData = JSON.stringify(logs);
     console.log('downloadLogs', postData);
-    axios.post(
-      './api/get-archives',
-      postData,
-      {
-        headers: { 'content-type': 'application/json' },
-        responseType: 'blob',
-      }
-    )
-      .then((response) => {
-        // Try to get extract a filename from the content-disposition response
-        // header, fallback to download.dat.
-        let filename = undefined;
-        if (response.headers['content-disposition']) {
-          let cap = /; filename="([^"]+)"/.exec(response.headers['content-disposition']);
-          if (cap)
-            filename = cap[1];
-        }
-        if (!filename)
-          filename = 'download.dat';
-        // Offer to download
-        const url = window.URL.createObjectURL(new Blob([response.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', filename)
-        link.click()
-        window.URL.revokeObjectURL(url)
-      })
-      .catch((error) => {
-        console.error('Failed to download logs:', error)
-      });
+
+    // Create a hidden form to submit the POST request
+    // This allows the browser to handle the download natively with immediate popup
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = './api/get-archives';
+    form.style.display = 'none';
+
+    // Create a hidden input field to hold the JSON data
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = postData;
+
+    form.append(input);
+    document.body.append(form);
+    form.submit();
+
+    setTimeout(() => {
+      document.body.removeChild(form);
+    }, 100);
 }
 
 /**
