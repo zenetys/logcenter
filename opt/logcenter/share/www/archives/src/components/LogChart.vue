@@ -343,6 +343,7 @@ watch(props.config, (newConfig) => {
 .z__bar-chart-container {
   position: relative;
   overflow: hidden;
+  min-height: 30vh;
   height: 30vh;
   width: 100%;
   padding: 0;
@@ -350,9 +351,9 @@ watch(props.config, (newConfig) => {
 
 .z__bar-chart-container canvas,
 #z__bar-chart canvas {
+  max-width: calc(100% - 78px);
   box-sizing: border-box;
   position: relative;
-  max-width: calc(100% - 78px);
   min-width: 1227px;
   left: 78px;
 }
