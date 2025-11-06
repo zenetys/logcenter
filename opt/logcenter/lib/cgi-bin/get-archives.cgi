@@ -25,10 +25,17 @@ function fatal() {
 }
 
 [[ $REQUEST_METHOD == POST ]] || fatal 'Bad method'
-[[ $CONTENT_TYPE =~ ^application/json(;.*)?$ ]] || fatal 'Bad context type'
+
+if [[ $CONTENT_TYPE =~ ^application/x-www-form-urlencoded(;.*)?$ ]]; then
+    json_input=$(cat | sed 's/^data=//' | sed 's/+/ /g' | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read()))")
+elif [[ $CONTENT_TYPE =~ ^application/json(;.*)?$ ]]; then
+    json_input=$(cat)
+else
+    fatal 'Bad content type'
+fi
 
 OIFS=$IFS; IFS=$'\n'
-qarchives=($(jq -r '
+qarchives=($(echo "$json_input" | jq -r '
 if type != "array" then error("invalid input, array") else . end |
 map(
     if type != "object" then error("invalid input, object entries") else . end |
