@@ -1,10 +1,12 @@
 <template>
   <header>
     <div class="wrapper mt-2">
-      <picture>
-        <source srcset="/zenetys-light.png" media="(prefers-color-scheme: dark)" />
-        <img src="/zenetys.png" class="logo mr-4" alt="ZENETYS" />
-      </picture>
+      <a href="https://www.zenetys.com/" target="_blank">
+        <picture>
+          <source srcset="/zenetys-light.png" media="(prefers-color-scheme: dark)" />
+          <img src="/zenetys.png" class="logo mr-4" alt="ZENETYS" />
+        </picture>
+      </a>
       <nav>
         <RouterLink to="/"></RouterLink>
       </nav>
