@@ -106,16 +106,15 @@ header .wrapper {
   display: flex;
   gap: 10px;
 }
-
 .header-buttons .v-btn  {
+  background: var(--color-background-mute) !important;
+  color: var(--color-heading) !important;
   min-width: 10px !important;
   padding: 0 10px !important;
 }
-
 .header-buttons .usage-btn {
   font-size: 12px;
 }
-
 .header-buttons .usage-text {
   font-weight: 500;
 }
