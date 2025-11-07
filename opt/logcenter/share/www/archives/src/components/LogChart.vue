@@ -49,13 +49,13 @@ const options = ref({
   layout: {
     padding: {
       bottom: 0,
-      top: 5 // Keep a bit of padding on top
+      top: 5 // Keep some padding on top
     }
   },
   scales: {
     x: {
       ticks: {
-        display: false // Hide labels on X axis
+        display: false // Hide X-axis labels
       },
       grid: {
         drawTicks: false
@@ -64,16 +64,16 @@ const options = ref({
         display: false
       },
       afterFit: (scaleInstance) => {
-        // Reduce the height of X axis to minimum
+        // Minimize X-axis height
         scaleInstance.height = 1;
       }
     },
     y: {
       afterFit: (scaleInstance) => {
-        scaleInstance.width = 80 // sets the width to 80px
+        scaleInstance.width = 80 // Set width to 80px
       },
       afterTickToLabelConversion(scaleInstance) {
-        // Convert Y scale ticks to human readable byte sizes
+        // Convert Y-axis ticks to human-readable byte sizes
         scaleInstance.ticks = scaleInstance.ticks.map((tick) => {
           const humanReadableTick = getHumanReadableByteSize(tick.value, 1)
           return {
@@ -93,10 +93,10 @@ const options = ref({
       display: false
     },
     tooltip: {
-      enabled: false // Désactiver complètement le tooltip
+      enabled: false // Completely disable tooltip
     },
     legend: {
-      // Preventing default onClick behaviour on legends
+      // Prevent default onClick behavior on legends
       onClick: () => {}
     }
   },
@@ -104,7 +104,7 @@ const options = ref({
     xAxisKey: 'time',
     yAxisKey: 'data'
   },
-  // Pas de changement de curseur au survol puisque le tooltip est désactivé
+  // No cursor change on hover since tooltip is disabled
   onHover: null,
   onClick: (event, elements) => {
     if (!elements || elements.length <= 0) return
@@ -118,18 +118,18 @@ const options = ref({
         downloadDialog.value = true
         downloadPendingData.value = selectedTotal.rawLogs
       } else if (props.config.viewMode === 'quarter') {
-        // change date to first day of the selected ISO week and drill down to month view
+        // Change date to first day of the selected ISO week and drill down to month view
         const clickedWeek = Number(Object.keys(props.config.totals)[clickedItem.index])
         const adjustedDate = changeDateFromWeekNumber(date, clickedWeek)
         emit('change-date', adjustedDate)
         emit('change-mode', 'month')
       } else if (props.config.viewMode === 'month') {
         date.setDate(clickedItem.index + 1)
-        // change date and drill down to day view
+        // Change date and drill down to day view
         emit('change-date', date.getTime())
         emit('change-mode', 'day')
       } else if (props.config.viewMode === 'year') {
-        // change date and drill down to month view
+        // Change date and drill down to month view
         date.setMonth(clickedItem.index)
         emit('change-date', date.getTime())
         emit('change-mode', 'month')
@@ -222,7 +222,7 @@ const setLabel = (labels) => {
 const setLabels = (labels) => {
    const dateObject = new Date(config.date)
    const labelDate = new Intl.DateTimeFormat('fr-FR').format(dateObject)
- 
+
    if (config.viewMode === 'day') {
      labels = labels.map(hour => `${hour.padStart(2, '0')}:00`)
      label.value = `Volume reçu par heure`
@@ -262,11 +262,11 @@ const buildChartData = (totals, search) => {
     }))
   }
 
-  // Utiliser les données d'index réelles si disponibles, sinon utiliser une estimation
+  // Use actual index data if available, otherwise use an estimate
   let indexedData = [];
-  
+
   if (props.config.indexTotals && Object.keys(props.config.indexTotals).length > 0) {
-    // Utiliser les données d'index réelles
+    // Use actual index data
     if (Array.isArray(data)) {
       indexedData = Object.keys(props.config.indexTotals).map((key, index) => {
         const period = parseInt(key);
@@ -280,11 +280,11 @@ const buildChartData = (totals, search) => {
         return props.config.indexTotals[period] || 0;
       });
     } else {
-      // Si data n'est pas un tableau, créer un tableau à partir des données d'index
+      // If data is not an array, create an array from index data
       indexedData = Object.keys(props.config.indexTotals).map(key => props.config.indexTotals[key] || 0);
     }
   } else {
-    // Utiliser une estimation (80% des données reçues)
+    // Use an estimate (80% of received data)
     indexedData = data.map(item => {
       if (typeof item === 'object' && item !== null) {
         return {
@@ -304,8 +304,8 @@ const buildChartData = (totals, search) => {
     {
       data,
       label: label.value,
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)',
+      backgroundColor: '#4bc0c033', // Transparent teal
+      borderColor: '#4bc0c0', // Solid teal
       borderWidth: 1
     }
   ]
@@ -315,8 +315,8 @@ const buildChartData = (totals, search) => {
     datasets.push({
       data: indexedData,
       label: indexedLabel.value,
-      backgroundColor: 'rgba(128, 0, 128, 0.2)', // Purple with transparency
-      borderColor: 'rgba(128, 0, 128, 1)', // Solid purple
+      backgroundColor: '#80008033', // Transparent purple
+      borderColor: '#800080', // Solid purple
       borderWidth: 1
     })
   }

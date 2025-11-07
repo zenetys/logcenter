@@ -58,7 +58,7 @@
                 </div>
               </div>
               <!-- Display mode -->
-              <span 
+              <span
                 v-else
                 :title="getHostnameTooltip(item.name) + ' (Double-click to edit)'"
                 @dblclick="startEditing(item.name)"
@@ -120,18 +120,18 @@ const currentModeHeaders = ref(null)
 const loading = ref(true)
 
 /**
- * Obtient le nom d'affichage pour un hostname (alias si disponible)
- * @param {string} hostname - Le hostname original (IP)
- * @returns {string} L'alias si disponible, sinon le hostname original
+ * Gets the display name for a hostname (alias if available)
+ * @param {string} hostname - The original hostname (IP)
+ * @returns {string} The alias if available, otherwise the original hostname
  */
 const getDisplayName = (hostname) => {
   return getAliasForIP(hostname)
 }
 
 /**
- * Obtient le tooltip pour un hostname (IP originale si alias utilisé)
- * @param {string} hostname - Le hostname original (IP)
- * @returns {string} L'IP originale si un alias est utilisé, sinon le hostname
+ * Gets the tooltip for a hostname (original IP if alias is used)
+ * @param {string} hostname - The original hostname (IP)
+ * @returns {string} The original IP if an alias is used, otherwise the hostname
  */
 const getHostnameTooltip = (hostname) => {
   const alias = getAliasForIP(hostname)
@@ -146,7 +146,7 @@ const startEditing = (hostname) => {
   // Set the current hostname and alias being edited
   editingHostname.value = hostname
   editingAlias.value = getAliasForIP(hostname)
-  
+
   // Focus is handled automatically by Vue in the next render cycle
   setTimeout(() => {
     const input = document.querySelector('.hostname-edit-field')
@@ -173,10 +173,10 @@ const cancelEditing = () => {
  * @returns {boolean} - True if the alias is valid
  */
 const isAliasValid = (alias) => {
-  // An empty alias is valid (used for deletion)
+  // Empty alias is valid (used for deletion)
   if (!alias || alias.trim() === '') return true
-  // Check if the alias contains only valid characters
-  // Alphanumeric, hyphens, underscores, periods
+  // Check if alias contains only valid characters
+  // Allowed: alphanumeric, hyphens, underscores, periods
   return /^[a-zA-Z0-9\-_\.]+$/.test(alias)
 }
 
@@ -185,23 +185,23 @@ const isAliasValid = (alias) => {
  */
 const deleteAliasAction = async () => {
   if (!editingHostname.value || isUpdatingAlias.value) return
-  
+
   try {
     isUpdatingAlias.value = true
     aliasError.value = ''
     showAliasError.value = false
-    
-    // Appel explicite à la fonction de suppression d'alias
+
+    // Explicit call to the alias deletion function
     await deleteAlias(editingHostname.value)
-    
-    // Mise à jour de l'interface
+
+    // Update interface
     editingAlias.value = ''
     cancelEditing()
   } catch (error) {
     console.error('Error deleting alias:', error)
     aliasError.value = 'Delete error'
     showAliasError.value = true
-    
+
     // Display error for a moment then hide it
     setTimeout(() => {
       showAliasError.value = false
@@ -217,33 +217,33 @@ const deleteAliasAction = async () => {
 const saveAlias = async () => {
   // Check if editing is active
   if (!editingHostname.value || isUpdatingAlias.value) return
-  
+
   // Check if the value has changed
   const currentAlias = getAliasForIP(editingHostname.value)
   if (currentAlias === editingAlias.value) {
     cancelEditing()
     return
   }
-  
+
   // Check if the alias is valid
   if (!isAliasValid(editingAlias.value)) {
     aliasError.value = 'Invalid name. Use only letters, numbers, - _ .'
     showAliasError.value = true
-    
+
     // Display error for a moment then hide it
     setTimeout(() => {
       showAliasError.value = false
     }, 3000)
-    
+
     return
   }
-  
-  // If the alias is empty, show a confirmation message
+
+  // If alias is empty, prepare for deletion
   if (editingAlias.value.trim() === '') {
-    // Trim the alias to ensure it's truly empty
+    // Trim alias to ensure it's truly empty
     editingAlias.value = ''
   }
-  
+
   try {
     aliasError.value = ''
     showAliasError.value = false
@@ -254,7 +254,7 @@ const saveAlias = async () => {
     console.error('Error updating alias:', error)
     aliasError.value = 'Save error'
     showAliasError.value = true
-    
+
     // Display error for a moment then hide it
     setTimeout(() => {
       showAliasError.value = false
@@ -266,7 +266,7 @@ const saveAlias = async () => {
 
 /**
  * Handle special keys
- * @param {KeyboardEvent} event 
+ * @param {KeyboardEvent} event
  */
 const handleKeyPress = (event) => {
   if (event.key === 'Enter') {
@@ -393,7 +393,7 @@ watch(
             }
             newItem[key].raw = props.config.viewMode === 'day' ? item[key].data : item[key]
 
-            // Set the tooltip depending on the view mode
+            // Set tooltip based on view mode
             if (newConfig.viewMode === 'day') {
               newItem[key].title = 'Télécharger ces logs'
             } else if (newConfig.viewMode !== 'quarter') {
@@ -425,7 +425,7 @@ watch(
 }
 
 .v-data-table__th {
-  box-shadow: inset 0 -2px 0 rgb(var(--v-theme-primary)) !important;
+  box-shadow: inset 0 -2px 0 #17b8ce !important;
   white-space: nowrap;
   height: 32px !important;
   padding: 0 0 0 8px !important;
@@ -499,11 +499,11 @@ watch(
 }
 
 .v-data-table-footer .v-pagination__list {
-  color: rgb(var(--v-theme-primary));
+  color: #17b8ce;
 }
 
 tbody > :nth-child(odd) {
-  background: rgb(var(--v-theme-primary-super-light)) !important;
+  background: #e7f7fa !important;
 }
 
 #v-menu-11 * {
@@ -511,8 +511,8 @@ tbody > :nth-child(odd) {
 }
 
 .z__error-message {
-  background: rgb(var(--v-theme-primary-super-light));
-  border: 1px solid rgb(var(--v-theme-primary));
+  background: #e7f7fa;
+  border: 1px solid #17b8ce;
   text-align: center;
   margin: 0 auto;
   color: red;
@@ -522,7 +522,7 @@ tbody > :nth-child(odd) {
   border-radius: 10px;
 }
 
-/* Styles pour l'édition des hostnames */
+/* Styles for hostname editing */
 .hostname-display {
   transition: all 0.2s ease;
   cursor: pointer;
@@ -530,7 +530,7 @@ tbody > :nth-child(odd) {
   border-radius: 4px;
 }
 .hostname-display:hover {
-  background: rgba(var(--v-theme-primary), 0.1);
+  background: #17b8ce1a;
 }
 
 /* Container for editing with error message */
@@ -581,7 +581,7 @@ tbody > :nth-child(odd) {
 
 /* Error message */
 .hostname-error-message {
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px #00000033;
   background: #f44336;
   white-space: nowrap;
   position: absolute;

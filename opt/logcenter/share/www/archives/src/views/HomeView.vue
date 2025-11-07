@@ -26,34 +26,34 @@
         ></v-btn>
 
         <div class="date-parts">
-          <!-- Jour cliquable -->
+          <!-- Clickable day -->
           <span
             :class="['date-part', viewMode === 'day' ? 'date-part-active' : '']"
             @click="viewMode = 'day'">
             {{ formattedDay }}
           </span>
 
-          <!-- Séparateur -->
+          <!-- Separator -->
           <span class="date-separator">/</span>
 
-          <!-- Mois cliquable -->
+          <!-- Clickable month -->
           <span
             :class="['date-part', viewMode === 'month' ? 'date-part-active' : '']"
             @click="viewMode = 'month'">
             {{ formattedMonth }}
           </span>
 
-          <!-- Séparateur -->
+          <!-- Separator -->
           <span class="date-separator">/</span>
 
-          <!-- Année cliquable -->
+          <!-- Clickable year -->
           <span
             :class="['date-part', viewMode === 'year' ? 'date-part-active' : '']"
             @click="viewMode = 'year'">
             {{ formattedYear }}
           </span>
 
-          <!-- Trimestre (affiché conditionnellement) -->
+          <!-- Quarter (conditionally displayed) -->
           <span
             :class="['date-part', 'date-part-quarter', viewMode === 'quarter' ? 'date-part-active' : '']"
             @click="viewMode = 'quarter'"
@@ -586,12 +586,12 @@ const generateTotalIndexVolumeByPeriod = () => {
     timePeriods = monthsValues
   }
 
-  // Initialiser les périodes avec des valeurs à zéro
+  // Initialize periods with zero values
   timePeriods.forEach(period => {
     indexTotals[period] = 0
   })
 
-  // Filtrer les indices par période et par recherche
+  // Filter indices by period and search
   const indicesInPeriod = formattedIndices.value.filter(index => {
     return index.dateObject &&
            index.dateObject.getTime() >= currentTimeLimits.value.start &&
@@ -599,7 +599,7 @@ const generateTotalIndexVolumeByPeriod = () => {
            (!search.value.length || search.value.includes(index.hostname))
   })
 
-  // Agréger les données par période
+  // Aggregate data by period
   indicesInPeriod.forEach(index => {
     if (!index.dateObject) return
 
@@ -707,19 +707,19 @@ const setCurrentTimeLimits = (mode) => {
 }
 
 /**
- * Gère la mise à jour des sélections dans le combobox
- * @param {Array|null} event - Les éléments sélectionnés
+ * Handles the update of selections in the combobox
+ * @param {Array|null} event - The selected elements
  */
 const handleSearch = (event) => {
-  // Vérifier si les sélections sont des objets ou des chaînes
+  // Check if selections are objects or strings
   if (event && Array.isArray(event)) {
-    // Convertir les sélections en IPs (valeurs)
+    // Convert selections to IPs (values)
     search.value = event.map(item => {
-      // Si c'est un objet avec une propriété value (sélection d'un item du combobox)
+      // If it's an object with a value property (combobox item selection)
       if (item && typeof item === 'object' && 'value' in item) {
         return item.value
       }
-      // Si c'est une chaîne (saisie manuelle ou sélection directe)
+      // If it's a string (manual input or direct selection)
       return item
     })
   } else {
@@ -754,12 +754,12 @@ watch(
   { immediate: true }
 )
 
-// Watcher pour les données d'index
+// Watcher for index data
 watch(
   formattedIndices,
   (newIndices) => {
     if (newIndices?.length > 0 && currentTimeLimits.value.start) {
-      // Générer les volumes d'index par période
+      // Generate index volumes by period
       generateTotalIndexVolumeByPeriod()
     }
   },
@@ -772,7 +772,7 @@ watch(viewMode, (newMode) => {
   if (selectedDate.value && autoZoomRetries.value === 0) {
     fetchDataForPeriod(selectedDate.value, newMode)
   }
-  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
+  generateHostsVolumeByPeriod()
 })
 
 watch(selectedDate, () => {
@@ -781,34 +781,34 @@ watch(selectedDate, () => {
   if (selectedDate.value && autoZoomRetries.value === 0) {
     fetchDataForPeriod(selectedDate.value, viewMode.value)
   }
-  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
+  generateHostsVolumeByPeriod()
 })
 
 watch(search, () => {
-  generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
+  generateHostsVolumeByPeriod()
 })
 </script>
 
 <style scoped>
 .z__main-toolbar {
-  display: flex;
   justify-content: space-between;
   align-items: center;
+  display: flex;
   padding: 0 16px;
   margin-bottom: 16px;
 }
 
 .z__app-title-container {
-  display: flex;
   align-items: center;
+  display: flex;
 }
 
 .z__app-title {
-  display: flex;
   align-items: center;
-  font-size: 1.25rem;
-  font-weight: 500;
+  display: flex;
   margin: 0;
+  font-weight: 500;
+  font-size: 1.25rem;
 }
 
 .title-icon {
@@ -816,84 +816,81 @@ watch(search, () => {
 }
 
 .z__period-navigator {
-  display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  display: flex;
 }
 
 .date-parts {
-  display: flex;
   align-items: center;
+  display: flex;
   margin: 0 4px;
 }
 
 .date-part {
+  transition: all 0.2s;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 4px;
-  transition: background-color 0.2s;
 }
-
 .date-part:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: #0000000d;
 }
 
 .date-part-active {
-  font-weight: 600;
   color: var(--v-theme-primary);
+  font-weight: 600;
 }
 
 .date-separator {
+  color: #00000099;
   margin: 0 2px;
-  color: rgba(0, 0, 0, 0.6);
 }
 
 .date-part-quarter {
+  color: #00000099;
   margin-left: 4px;
   font-size: 0.9em;
-  color: rgba(0, 0, 0, 0.6);
 }
 
 .z__searchbar {
-  width: 300px;
   position: relative;
+  width: 300px;
 }
 
-/* Styles pour le sélecteur de host */
+/* Styles for host selector */
 .host-selector :deep(.v-field__input) {
-  padding-top: 4px;
   padding-bottom: 4px;
+  padding-top: 4px;
 }
-
 .host-selector :deep(.v-chip) {
-  margin-top: 2px;
   margin-bottom: 2px;
+  margin-top: 2px;
 }
 
-/* Styles pour les boutons d'action */
+/* Styles for action buttons */
 .host-selector-actions {
+  transform: translateY(-50%);
+  flex-direction: column;
   position: absolute;
+  display: flex;
   right: -40px;
   top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
 .action-btn {
-  opacity: 0.7;
   transition: opacity 0.2s;
+  opacity: 0.7;
 }
-
 .action-btn:hover {
   opacity: 1;
 }
 
 .z__chart-table-container {
-  display: flex;
-  flex-direction: column;
   height: calc(100vh - 140px);
+  flex-direction: column;
+  display: flex;
 }
 
 .nav-arrow {
@@ -901,17 +898,17 @@ watch(search, () => {
 }
 
 .z__error-message {
+  text-align: center;
   color: #f44336;
   padding: 16px;
-  text-align: center;
   font-weight: 500;
 }
 
 .z__chart-table-container {
-  display: flex;
   flex-direction: column;
+  display: flex;
+  gap: 0;
   margin-top: 10px;
-  gap: 0; /* Eliminates the space between flex elements */
 }
 
 #v-menu-2 {
@@ -928,36 +925,34 @@ watch(search, () => {
 }
 
 .z__main-toolbar {
-  display: flex;
-  flex-direction: row;
   justify-content: space-between;
+  flex-direction: row;
   align-items: center;
-  width: 100%;
-  margin-bottom: 15px;
-  margin-top: 15px;
+  display: flex;
   gap: 10px;
+  width: 100%;
   padding: 0 10px;
-  /* Main toolbar containing title, date selector and machine filter */
+  margin-top: 15px;
+  margin-bottom: 15px;
 
   .z__app-title-container {
-    flex: 1;
-    min-width: 350px;
-    max-width: 400px;
     background: var(--color-background-mute);
     border-radius: 6px;
     padding: 5px 10px;
-    /* Title container with increased width to show full text */
+    max-width: 400px;
+    min-width: 350px;
+    flex: 1;
 
     .z__app-title {
-      display: flex;
+      text-overflow: ellipsis;
       align-items: center;
-      font-size: 17px;
-      font-weight: 600;
-      color: #2c3e50;
-      margin: 0;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis;
+      color: #2c3e50;
+      display: flex;
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
 
       .title-icon {
         margin-right: 8px;
@@ -1000,13 +995,13 @@ watch(search, () => {
         border-radius: 4px;
 
         &:hover {
-          background: rgba(23, 184, 206, 0.1);
+          background: #17b8ce1a;
         }
       }
 
       /* Active date part styling */
       .date-part-active {
-        background: rgba(23, 184, 206, 0.2);
+        background: #17b8ce33;
         font-weight: 600;
         color: #17b8ce;
       }
@@ -1029,16 +1024,16 @@ watch(search, () => {
 }
 
 .z__searchbar {
-  flex: 1;
   max-width: 400px;
+  flex: 1;
 
   .host-selector-container {
     background: var(--color-background-mute);
-    border-radius: 6px;
-    padding: 5px 10px;
-    display: flex;
     align-items: center;
+    display: flex;
     gap: 8px;
+    padding: 5px 10px;
+    border-radius: 6px;
   }
 
   .filter-icon {
@@ -1047,12 +1042,12 @@ watch(search, () => {
   }
 
   .v-chip {
+    border: 1px solid #17b8ce33;
+    background: #17b8ce1a;
     height: 20px;
-    background: rgba(23, 184, 206, 0.1);
-    border: 1px solid rgba(23, 184, 206, 0.2);
 
     &:hover {
-      background: rgba(23, 184, 206, 0.2);
+      background: #17b8ce33;
     }
   }
 }
@@ -1066,8 +1061,8 @@ watch(search, () => {
     .z__app-title-container,
     .z__period-navigator,
     .z__searchbar {
-      width: 100%;
       max-width: 100%;
+      width: 100%;
     }
   }
 }
