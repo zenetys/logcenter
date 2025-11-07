@@ -19,6 +19,7 @@
       fixed-header
       :loading="loading"
       :items-per-page="25"
+      :custom-key-sort="{ name: (a, b) => naturalCompare(a, b) }"
     >
       <template v-slot:item="{ item }">
         <tr class="v-data-table__tr">
@@ -34,26 +35,24 @@
             <td v-else class="v-data-table__td" :title="item[header.key].raw">
               <!-- Edit / display mode -->
               <div v-if="editingHostname === item.name" class="hostname-edit-container">
-                <div class="hostname-input-wrapper">
-                  <input
-                    v-model="editingAlias"
-                    :disabled="isUpdatingAlias"
-                    @keydown="handleKeyPress"
-                    @blur="saveAlias"
-                    placeholder="Alias (Enter/Esc)"
-                    class="hostname-edit-field"
-                    :class="{ 'error': showAliasError }"
-                  />
-                  <button 
-                    type="button"
-                    class="hostname-delete-button"
-                    title="Supprimer l'alias"
-                    @mousedown.prevent="deleteAliasAction"
-                    :disabled="isUpdatingAlias"
-                  >
-                    ×
-                  </button>
-                </div>
+                <input
+                  v-model="editingAlias"
+                  :disabled="isUpdatingAlias"
+                  @keydown="handleKeyPress"
+                  @blur="saveAlias"
+                  placeholder="Alias (Enter/Esc)"
+                  class="hostname-edit-field"
+                  :class="{ 'error': showAliasError }"
+                />
+                <button
+                  type="button"
+                  class="hostname-delete-button"
+                  title="Supprimer l'alias"
+                  @mousedown.prevent="deleteAliasAction"
+                  :disabled="isUpdatingAlias"
+                >
+                  ×
+                </button>
                 <div v-if="showAliasError" class="hostname-error-message">
                   {{ aliasError }}
                 </div>
@@ -62,7 +61,7 @@
               <span 
                 v-else
                 :title="getHostnameTooltip(item.name) + ' (Double-click to edit)'"
-                @dblclick="(event) => startEditing(item.name, event)"
+                @dblclick="startEditing(item.name)"
                 class="hostname-display"
               >
                 {{ getDisplayName(item.name) }}
@@ -82,7 +81,8 @@ import {
   getHumanReadableByteSize,
   monthsLabels,
   downloadLogs,
-  changeDateFromWeekNumber
+  changeDateFromWeekNumber,
+  naturalCompare
 } from '@/plugins/utils'
 import { getAliasForIP, updateAlias, deleteAlias } from '@/plugins/config.js'
 
@@ -141,9 +141,8 @@ const getHostnameTooltip = (hostname) => {
 /**
  * Start editing an alias
  * @param {string} hostname - The original hostname (IP)
- * @param {Event} event - The double-click event
  */
-const startEditing = (hostname, event) => {
+const startEditing = (hostname) => {
   // Set the current hostname and alias being edited
   editingHostname.value = hostname
   editingAlias.value = getAliasForIP(hostname)
@@ -334,7 +333,11 @@ const confirmDownload = () => {
  * Generate table headers depending on the current time mode
  */
 const generateHeaders = () => {
-  const headers = [{ title: 'Nom', key: 'name', sortable: false }]
+  const headers = [{
+    title: 'Nom',
+    key: 'name',
+    sortable: true
+  }]
 
   if (props.config.viewMode === 'day') {
     // Generating 24 hourly headers
@@ -422,45 +425,39 @@ watch(
 }
 
 .v-data-table__th {
-  padding: 0 0 0 8px !important;
-  height: 32px !important;
   box-shadow: inset 0 -2px 0 rgb(var(--v-theme-primary)) !important;
   white-space: nowrap;
+  height: 32px !important;
+  padding: 0 0 0 8px !important;
 
-  .v-data-table-header__content {
-    font-weight: bold;
-  }
+  .v-icon { font-size: 14px !important; }
 
-  &:not(:nth-child(1)) {
-    span {
-      width: 100%;
-      min-width: 32px;
-      text-align: center;
-    }
+  &:first-child span { padding: 0 4px !important; }
+  &:not(:first-child) span {
+    text-align: center;
+    min-width: 32px;
+    width: 100%;
   }
 }
 
 .v-data-table__tr td {
-  &:not(:nth-child(1)) {
-    font-size: 11px;
-  }
-  padding: 0 4px !important;
-  height: 32px !important;
   white-space: nowrap;
   border: none !important;
+  padding: 0 4px !important;
+  height: 32px !important;
 
-  &:not(:nth-child(1)) {
-    text-align: center;
-  }
-
-  &:nth-child(1) {
+  &:first-child {
+    text-overflow: ellipsis;
+    overflow-x: hidden;
+    font-weight: bold;
     width: 150px;
     min-width: 150px;
     padding: 0 0 0 8px !important;
-    background: transparent;
-    overflow-x: hidden;
-    text-overflow: ellipsis;
-    font-weight: bold;
+  }
+  &:not(:first-child) {
+    text-align: center;
+    font-size: 11px;
+    padding: 0 15px !important;
   }
 
   &.mode__day {
@@ -490,9 +487,9 @@ watch(
 
 @media (max-width: 1400px) {
 .v-data-table__tr td {
-  &:nth-child(1) {
-    width: 100px;
+  &:first-child {
     min-width: 100px;
+    width: 100px;
   }
 }
 }
@@ -506,7 +503,7 @@ watch(
 }
 
 tbody > :nth-child(odd) {
-  background-color: rgb(var(--v-theme-primary-super-light)) !important;
+  background: rgb(var(--v-theme-primary-super-light)) !important;
 }
 
 #v-menu-11 * {
@@ -514,132 +511,90 @@ tbody > :nth-child(odd) {
 }
 
 .z__error-message {
-  color: red;
-  text-align: center;
-  background-color: rgb(var(--v-theme-primary-super-light));
+  background: rgb(var(--v-theme-primary-super-light));
   border: 1px solid rgb(var(--v-theme-primary));
-  border-radius: 10px;
-  padding: 30px 0;
+  text-align: center;
   margin: 0 auto;
-  font-size: 18px;
+  color: red;
   width: 500px;
+  padding: 30px 0;
+  font-size: 18px;
+  border-radius: 10px;
 }
 
 /* Styles pour l'édition des hostnames */
 .hostname-display {
+  transition: all 0.2s ease;
   cursor: pointer;
-  transition: background-color 0.2s ease;
   padding: 2px 4px;
   border-radius: 4px;
 }
-
 .hostname-display:hover {
-  background-color: rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.1);
 }
 
 /* Container for editing with error message */
 .hostname-edit-container {
-  position: relative;
   display: inline-block;
-}
-
-.hostname-input-wrapper {
   position: relative;
-  display: flex;
-  align-items: center;
 }
 
 /* Simple style for hostname edit field */
 .hostname-edit-field {
-  /* Dimensions and spacing */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 0 4px;
+  height: 24px;
+  margin: 0;
   width: 100%;
   max-width: 150px;
-  height: 24px;
-  padding: 0 4px;
-  margin: 0;
-  box-sizing: border-box;
-  padding-right: 24px; /* Make room for the delete button */
-  
-  /* Appearance */
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  font-size: 12px;
-  font-family: inherit;
 }
-
-/* Delete button style */
-.hostname-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.hostname-edit-field {
-  width: 100%;
-  padding-right: 24px; /* Espace pour le bouton de suppression */
-}
-
-.hostname-delete-button {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 100%;
-  width: 24px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: transparent;
-  font-size: 18px;
-  line-height: 1;
-  color: #888;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hostname-delete-button:hover {
-  color: #f44336;
-}
-
-.hostname-delete-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Focus state */
 .hostname-edit-field:focus {
-  outline: none;
   border-color: #888;
+  outline: none;
 }
-
-/* Error state */
-.hostname-edit-field.error {
-  border-color: #f44336;
-}
-
-/* Placeholder */
 .hostname-edit-field::placeholder {
   font-size: 10px;
   opacity: 0.7;
 }
+.hostname-edit-field.error {
+  border-color: #f44336;
+}
+
+.hostname-delete-button {
+  position: absolute;
+  border: none;
+  top: -2px;
+  right: 0;
+  width: 24px;
+  height: 100%;
+  font-size: 18px;
+}
+.hostname-delete-button:hover {
+  color: #f44336;
+}
+.hostname-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
 /* Error message */
 .hostname-error-message {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background: #f44336;
+  white-space: nowrap;
   position: absolute;
-  top: 100%;
-  left: 0;
+  color: white;
   width: auto;
+  left: 0;
+  top: 100%;
+  z-index: 100;
+  margin-top: 2px;
+  font-size: 11px;
+  padding: 4px 8px;
   min-width: 150px;
   max-width: 250px;
-  padding: 4px 8px;
-  margin-top: 2px;
-  background-color: #f44336;
-  color: white;
-  font-size: 11px;
   border-radius: 2px;
-  z-index: 100;
-  white-space: nowrap;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 </style>

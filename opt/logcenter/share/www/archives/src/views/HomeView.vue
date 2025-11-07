@@ -205,62 +205,6 @@ const showTrimestre = computed(() => {
 })
 
 /**
- * Natural sort comparison function for IP addresses and hostnames
- * @param {string} a - First string to compare
- * @param {string} b - Second string to compare
- * @returns {number} - Negative if a < b, positive if a > b, 0 if equal
- */
-const compare = (a, b) => {
-  // Check if both are IPv4 addresses
-  const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-  const aIsIP = ipv4Regex.test(a)
-  const bIsIP = ipv4Regex.test(b)
-
-  // If both are IPs, compare octets numerically
-  if (aIsIP && bIsIP) {
-    const aParts = a.split('.').map(Number)
-    const bParts = b.split('.').map(Number)
-
-    for (let i = 0; i < 4; i++) {
-      if (aParts[i] !== bParts[i]) {
-        return aParts[i] - bParts[i]
-      }
-    }
-    return 0
-  }
-
-  // If one is IP and the other is not, IPs come first
-  if (aIsIP && !bIsIP) return -1
-  if (!aIsIP && bIsIP) return 1
-
-  // For non-IP strings (hostnames), use natural sort with numeric awareness
-  // Split by numbers and non-numbers
-  const aParts = a.match(/(\d+|\D+)/g) || []
-  const bParts = b.match(/(\d+|\D+)/g) || []
-
-  const maxLen = Math.max(aParts.length, bParts.length)
-
-  for (let i = 0; i < maxLen; i++) {
-    const aPart = aParts[i] || ''
-    const bPart = bParts[i] || ''
-
-    // If both parts are numeric, compare as numbers
-    const aNum = Number(aPart)
-    const bNum = Number(bPart)
-
-    if (!isNaN(aNum) && !isNaN(bNum)) {
-      if (aNum !== bNum) return aNum - bNum
-    } else {
-      // Compare as strings (case-insensitive)
-      const comparison = aPart.toLowerCase().localeCompare(bPart.toLowerCase())
-      if (comparison !== 0) return comparison
-    }
-  }
-
-  return 0
-}
-
-/**
  * @computed Hosts with their aliases as titles
  */
 const hostsWithAliases = computed(() => {
@@ -270,7 +214,7 @@ const hostsWithAliases = computed(() => {
     .sort((a, b) => {
       const aliasA = getAliasForIP(a)
       const aliasB = getAliasForIP(b)
-      return compare(aliasA, aliasB)
+      return utils.naturalCompare(aliasA, aliasB)
     })
     .map(host => ({
       title: getAliasForIP(host),
@@ -891,7 +835,7 @@ watch(search, () => {
 }
 
 .date-part:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .date-part-active {
@@ -999,7 +943,7 @@ watch(search, () => {
     flex: 1;
     min-width: 350px;
     max-width: 400px;
-    background-color: #f5f5f5;
+    background: #f5f5f5;
     border-radius: 6px;
     padding: 5px 10px;
     /* Title container with increased width to show full text */
@@ -1037,7 +981,7 @@ watch(search, () => {
     display: flex;
     align-items: center;
     white-space: nowrap;
-    background-color: #f5f5f5;
+    background: #f5f5f5;
     border-radius: 6px;
     padding: 2px 4px;
     /* Period selection component with interactive date parts */
@@ -1066,13 +1010,13 @@ watch(search, () => {
         user-select: none;
         
         &:hover {
-          background-color: rgba(23, 184, 206, 0.1);
+          background: rgba(23, 184, 206, 0.1);
         }
       }
       
       /* Active date part styling */
       .date-part-active {
-        background-color: rgba(23, 184, 206, 0.2);
+        background: rgba(23, 184, 206, 0.2);
         font-weight: 600;
         color: #17b8ce;
       }
@@ -1100,7 +1044,7 @@ watch(search, () => {
   max-height: 40px;
   
   .host-selector-container {
-    background-color: #f5f5f5;
+    background: #f5f5f5;
     border-radius: 6px;
     padding: 2px 4px;
     height: 100%;
@@ -1127,11 +1071,11 @@ watch(search, () => {
   
   .v-chip {
     height: 20px;
-    background-color: rgba(23, 184, 206, 0.1);
+    background: rgba(23, 184, 206, 0.1);
     border: 1px solid rgba(23, 184, 206, 0.2);
     
     &:hover {
-      background-color: rgba(23, 184, 206, 0.2);
+      background: rgba(23, 184, 206, 0.2);
     }
   }
 }
