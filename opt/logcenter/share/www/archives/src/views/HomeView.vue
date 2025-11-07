@@ -4,15 +4,15 @@
       <!-- Left: Title with icon -->
       <div class="z__app-title-container">
         <h2 class="z__app-title">
-          <v-icon 
-            icon="mdi-chart-bar" 
-            color="primary" 
+          <v-icon
+            icon="mdi-chart-bar"
+            color="primary"
             class="title-icon"
           ></v-icon>
           <span>Volume reçu sur la plateforme LogVault</span>
         </h2>
       </div>
-      
+
       <!-- Center: Period Navigator -->
       <div class="z__period-navigator">
         <v-btn
@@ -24,44 +24,44 @@
           @click="navigatePeriod('prev')"
           class="nav-arrow"
         ></v-btn>
-        
+
         <div class="date-parts">
           <!-- Jour cliquable -->
-          <span 
+          <span
             :class="['date-part', viewMode === 'day' ? 'date-part-active' : '']"
             @click="viewMode = 'day'">
             {{ formattedDay }}
           </span>
-          
+
           <!-- Séparateur -->
           <span class="date-separator">/</span>
-          
+
           <!-- Mois cliquable -->
-          <span 
+          <span
             :class="['date-part', viewMode === 'month' ? 'date-part-active' : '']"
             @click="viewMode = 'month'">
             {{ formattedMonth }}
           </span>
-          
+
           <!-- Séparateur -->
           <span class="date-separator">/</span>
-          
+
           <!-- Année cliquable -->
-          <span 
+          <span
             :class="['date-part', viewMode === 'year' ? 'date-part-active' : '']"
             @click="viewMode = 'year'">
             {{ formattedYear }}
           </span>
 
           <!-- Trimestre (affiché conditionnellement) -->
-          <span 
+          <span
             :class="['date-part', 'date-part-quarter', viewMode === 'quarter' ? 'date-part-active' : '']"
             @click="viewMode = 'quarter'"
             v-if="showTrimestre || viewMode === 'quarter'">
             (T{{ currentQuarter }})
           </span>
         </div>
-        
+
         <v-btn
           icon="mdi-chevron-right"
           size="x-small"
@@ -71,7 +71,7 @@
           @click="navigatePeriod('next')"
           class="nav-arrow"
         ></v-btn>
-        
+
         <v-tooltip
           location="bottom"
           text="Réinitialiser à la date la plus récente"
@@ -91,12 +91,13 @@
           </template>
         </v-tooltip>
       </div>
-      
+
       <!-- Right: Machine Filter -->
       <div class="z__searchbar">
         <div class="host-selector-container">
+          <v-icon icon="mdi-server" color="primary" class="filter-icon"></v-icon>
           <v-combobox
-            label="Filtrer par machine"
+            placeholder="Filtrer par machine"
             density="compact"
             :items="hostsWithAliases"
             item-title="title"
@@ -110,7 +111,6 @@
             chips
             closable-chips
             @update:modelValue="handleSearch"
-            prepend-icon="mdi-server"
             :menu-props="{ maxHeight: '400px' }"
             class="host-selector"
           ></v-combobox>
@@ -302,11 +302,11 @@ const formatIndexDate = (indexData) => {
 const fetchDataForPeriod = async (refDate = null, mode = 'day') => {
   // Use current date if no reference provided
   const reference = refDate ? new Date(refDate) : new Date()
-  
+
   // Calculate exact period based on view mode
   let startDate = new Date(reference)
   let endDate = new Date(reference)
-  
+
   switch (mode) {
     case 'day':
       // Load exactly 1 day
@@ -338,16 +338,16 @@ const fetchDataForPeriod = async (refDate = null, mode = 'day') => {
       endDate.setHours(23, 59, 59, 999)
       break
   }
-  
+
   const startStr = startDate.toISOString().split('T')[0]
   const endStr = endDate.toISOString().split('T')[0]
-  
+
   // Determine aggregation level based on view mode
   // hour: hourly data (for day view)
   // day: daily aggregated data (for month/quarter view)
   // month: monthly aggregated data (for year view)
   const granularity = mode === 'day' ? 'hour' : mode === 'year' ? 'month' : 'day'
-  
+
   // Fetch logs data with granularity parameter
   axios.get('./api/list-archives', {
     params: { start: startStr, end: endStr, granularity }
@@ -414,7 +414,7 @@ onBeforeMount(async () => {
   await fetchConfig()
   const config = getConfig()
   if (config) timezone.value = config.timezone
-  
+
   // Load initial data with default viewMode ('day')
   await fetchDataForPeriod(null, viewMode.value)
 })
@@ -445,7 +445,7 @@ const navigatePeriod = (direction) => {
   
   const currentDate = new Date(selectedDate.value)
   let newDate
-  
+
   switch (viewMode.value) {
     case 'day':
       // Navigate by 1 day
@@ -468,7 +468,7 @@ const navigatePeriod = (direction) => {
       newDate.setUTCFullYear(currentDate.getUTCFullYear() + (direction === 'next' ? 1 : -1))
       break
   }
-  
+
   // Update selected date
   if (newDate) {
     selectedDate.value = newDate.getTime()
@@ -593,8 +593,8 @@ const generateTotalIndexVolumeByPeriod = () => {
 
   // Filtrer les indices par période et par recherche
   const indicesInPeriod = formattedIndices.value.filter(index => {
-    return index.dateObject && 
-           index.dateObject.getTime() >= currentTimeLimits.value.start && 
+    return index.dateObject &&
+           index.dateObject.getTime() >= currentTimeLimits.value.start &&
            index.dateObject.getTime() <= currentTimeLimits.value.end &&
            (!search.value.length || search.value.includes(index.hostname))
   })
@@ -602,7 +602,7 @@ const generateTotalIndexVolumeByPeriod = () => {
   // Agréger les données par période
   indicesInPeriod.forEach(index => {
     if (!index.dateObject) return
-    
+
     if (viewMode.value === 'day') {
       const hour = index.dateObject.getHours()
       indexTotals[hour] += index.size || 0
@@ -735,13 +735,13 @@ watch(
       // Only initialize selectedDate on first load (when selectedDate is null)
       // viewMode is already initialized to 'day' by default (line 146)
       const isInitialLoad = !selectedDate.value
-      
+
       if (isInitialLoad) {
         // Calculate the latest log entry date
         mostRecentLogDate.value = utils.getMostRecentLogDate(newLogs)
         selectedDate.value = mostRecentLogDate.value
       }
-      
+
       // Get all unique hosts
       hosts.value = utils.getUniqueHosts(newLogs)
       // Organise logs by host
@@ -938,16 +938,16 @@ watch(search, () => {
   gap: 10px;
   padding: 0 10px;
   /* Main toolbar containing title, date selector and machine filter */
-  
+
   .z__app-title-container {
     flex: 1;
     min-width: 350px;
     max-width: 400px;
-    background: #f5f5f5;
+    background: var(--color-background-mute);
     border-radius: 6px;
     padding: 5px 10px;
     /* Title container with increased width to show full text */
-    
+
     .z__app-title {
       display: flex;
       align-items: center;
@@ -958,76 +958,66 @@ watch(search, () => {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      /* Main app title styling with enhanced visibility */
-      
+
       .title-icon {
         margin-right: 8px;
         font-size: 22px;
-        /* Icon styling to complement the title */
       }
-      
-      span {
-        background-image: linear-gradient(to right, #17b8ce, #1e7b98);
-        background-clip: text;
-        -webkit-background-clip: text;
-        color: transparent;
-        text-shadow: 0px 1px 1px rgba(255,255,255,0.5);
-        /* Gradient text effect for title */
-      }
+
+      span { color: #2fb4c5; }
     }
   }
-  
+
   .z__period-navigator {
-    display: flex;
+    background: var(--color-background-mute);
     align-items: center;
     white-space: nowrap;
-    background: #f5f5f5;
-    border-radius: 6px;
+    display: flex;
     padding: 2px 4px;
-    /* Period selection component with interactive date parts */
-    
+    border-radius: 6px;
+
     /* Style for the navigation arrows */
     .nav-arrow {
       min-width: 24px;
-      width: 24px;
       height: 24px;
+      width: 24px;
     }
-    
+
     /* Container for the date parts */
     .date-parts {
-      display: flex;
       align-items: center;
+      display: flex;
       padding: 0 4px;
       font-size: 14px;
       font-weight: 500;
-      
+
       /* Style for each clickable date part */
       .date-part {
+        transition: all 0.2s ease;
+        user-select: none;
         cursor: pointer;
         padding: 2px 4px;
         border-radius: 4px;
-        transition: all 0.2s ease;
-        user-select: none;
-        
+
         &:hover {
           background: rgba(23, 184, 206, 0.1);
         }
       }
-      
+
       /* Active date part styling */
       .date-part-active {
         background: rgba(23, 184, 206, 0.2);
         font-weight: 600;
         color: #17b8ce;
       }
-      
+
       /* Quarter indicator styling */
       .date-part-quarter {
         margin-left: 4px;
         font-size: 12px;
         color: #666;
       }
-      
+
       /* Date separator styling */
       .date-separator {
         margin: 0 2px;
@@ -1041,39 +1031,26 @@ watch(search, () => {
 .z__searchbar {
   flex: 1;
   max-width: 400px;
-  max-height: 40px;
-  
+
   .host-selector-container {
-    background: #f5f5f5;
+    background: var(--color-background-mute);
     border-radius: 6px;
-    padding: 2px 4px;
-    height: 100%;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
-  }
-  
-  .host-selector {
-    width: 100%;
-    
-    .v-field__field {
-      padding-top: 0;
-      padding-bottom: 0;
-    }
+    gap: 8px;
   }
 
-  .v-field {
-    border-radius: 6px;
+  .filter-icon {
+    font-size: 22px;
+    flex-shrink: 0;
   }
 
-  .v-field-label, .v-autocomplete__selection-text {
-    font-size: 14px !important;
-  }
-  
   .v-chip {
     height: 20px;
     background: rgba(23, 184, 206, 0.1);
     border: 1px solid rgba(23, 184, 206, 0.2);
-    
+
     &:hover {
       background: rgba(23, 184, 206, 0.2);
     }
@@ -1085,7 +1062,7 @@ watch(search, () => {
   .z__main-toolbar {
     flex-direction: column;
     gap: 15px;
-    
+
     .z__app-title-container,
     .z__period-navigator,
     .z__searchbar {
@@ -1093,5 +1070,17 @@ watch(search, () => {
       max-width: 100%;
     }
   }
+}
+</style>
+
+<style>
+/* Overrides Vuetify outside of scoped styles */
+.host-selector input::placeholder {
+  color: #2fb4c5 !important;
+  opacity: 1 !important;
+}
+.host-selector .v-field__append-inner {
+  align-items: center !important;
+  padding: 0 !important;
 }
 </style>
