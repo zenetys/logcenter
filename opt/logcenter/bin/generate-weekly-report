@@ -16,12 +16,10 @@ onERR() {
 
 export LC_ALL=C
 PROGNAME=${0##*/}
-# ZLC_ENV=${ZLC_ENV:-/etc/logcenter/logcenter.conf}
 ZLCCLI=${ZLCCLI:-zlccli}
 
 # Load environment
-# [[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
-# source "$ZLC_ENV" || { echo "Failed to load env" >&2; exit 2; }
+[[ -f /etc/profile.d/logcenter-path.sh ]] && source /etc/profile.d/logcenter-path.sh
 
 # Paramètres
 WEEK_OFFSET=${1:-0}
@@ -59,6 +57,13 @@ calculate_per_host_totals() {
 calculate_global_total() {
     local data=$1
     echo "$data" | awk -F'\t' 'NR>1 {sum+=$8} END {print sum}'
+}
+
+# Format une valeur en pourcentage d'un maximum
+# $1: value
+# $2: max
+calculate_percent() {
+    awk -v "value=$1" -v "max=$2" 'BEGIN {printf "%.1f", (value && max) ? (value/max)*100 : 0.0}'
 }
 
 # Formater les bytes en format lisible
@@ -127,9 +132,9 @@ fi
 TOP10=$(echo "$PER_HOST_DATA" | head -10)
 
 # Calculer les pourcentages d'usage
-ARCHIVES_PERCENT=$(awk "BEGIN {printf \"%.1f\", ($ARCHIVES_USED / $ARCHIVES_MAX) * 100}")
+ARCHIVES_PERCENT=$(calculate_percent "$ARCHIVES_USED" "$ARCHIVES_MAX")
 if [[ $HAS_ELASTIC == true ]]; then
-    ELASTIC_PERCENT=$(awk "BEGIN {printf \"%.1f\", ($ELASTIC_USED / $ELASTIC_MAX) * 100}")
+    ELASTIC_PERCENT=$(calculate_percent "$ELASTIC_USED" "$ELASTIC_MAX")
 fi
 
 # Générer le HTML
@@ -295,6 +300,10 @@ cat <<EOF
             padding-top: 20px;
             border-top: 1px solid #ddd;
             font-size: 0.9em;
+        }
+
+        .footer p {
+            margin: 0.1em;
         }
     </style>
 </head>
@@ -502,7 +511,7 @@ cat <<EOF
 
     <div class="footer">
         <p>Ce rapport a été généré automatiquement par LogVault</p>
-        <p>Pour plus d'informations, consultez l'interface web LogVault</p>
+        <p>Pour plus d'informations, consultez <a href="https://www.logvault.io" target="_blank">l'interface web LogVault</a></p>
     </div>
 
 </body>
