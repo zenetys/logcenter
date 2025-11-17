@@ -353,7 +353,7 @@ EOF
 if [[ $HAS_ELASTIC == true ]]; then
 cat <<EOF
         <div class="card">
-            <h2>🔍 Elasticsearch</h2>
+            <h2>🔍 Indexation</h2>
             <div class="metric">
                 <span class="metric-label">Espace utilisé</span>
                 <span class="metric-value">$(format_bytes $ELASTIC_USED)</span>
