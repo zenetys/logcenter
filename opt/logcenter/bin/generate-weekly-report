@@ -78,8 +78,8 @@ format_bytes() {
         split("o Ko Mo Go To", units)
         size = bytes
         unit = 1
-        while (size >= 1000 && unit < 5) {
-            size = size / 1000
+        while (size >= 1024 && unit < 5) {
+            size = size / 1024
             unit++
         }
         printf "%.2f %s", size, units[unit]
