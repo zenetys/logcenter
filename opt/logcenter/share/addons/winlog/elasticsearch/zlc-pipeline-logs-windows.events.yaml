@@ -62,3 +62,11 @@ processors:
       copy_from: winlog.event_data.SubjectUserName
       ignore_empty_value: true
       override: false
+
+  # Copy winlog.event_data.ObjectName to file.name for conveniance
+  - set:
+      field: file.name
+      copy_from: winlog.event_data.ObjectName
+      ignore_empty_value: true
+      override: false
+      if: ctx?.winlog?.event_data?.ObjectType == 'File'
