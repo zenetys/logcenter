@@ -54,3 +54,11 @@ processors:
   - pipeline:
       name: zlc-pipeline-ep-windows-forwarded-security_default
       if: ctx.event?.module == 'security'
+
+  # Pipelines from elastic integration do not always sert user.name when it could.
+  # Note: related.user field is set from it via default zlc pipeline.
+  - set:
+      field: user.name
+      copy_from: winlog.event_data.SubjectUserName
+      ignore_empty_value: true
+      override: false
