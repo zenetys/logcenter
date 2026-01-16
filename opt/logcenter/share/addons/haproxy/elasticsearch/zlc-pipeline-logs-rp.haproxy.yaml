@@ -35,6 +35,10 @@ processors:
   - script:
       lang: painless
       source: |
+        // prepare for adding standard fields
+        if (ctx.event == null)
+            ctx.event = [:];
+
         // field http.version should not contain "HTTP/" prefix
         if (ctx.http?.version != null && ctx.http.version.startsWith('HTTP/'))
             ctx.http.version = ctx.http.version.substring(5);
