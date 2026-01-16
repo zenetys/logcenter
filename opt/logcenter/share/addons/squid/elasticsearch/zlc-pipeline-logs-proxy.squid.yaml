@@ -8,7 +8,7 @@ processors:
   - script:
       lang: painless
       source: |
-        ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000);
+        ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000L);
 
   # try to get a destination IP out of squid.last_peer
   - convert:
