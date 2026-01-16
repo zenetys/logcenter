@@ -135,7 +135,7 @@ processors:
           IW_xpol: { code: '1126', name: 'Regional Restricted Sites (Poland)' }
       source: |
         // @timestamp
-        ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000);
+        ctx['@timestamp'] = (long)(ctx['@timestamp'] * 1000L);
 
         // log.lovel
         if (ctx.log?.level instanceof String)
