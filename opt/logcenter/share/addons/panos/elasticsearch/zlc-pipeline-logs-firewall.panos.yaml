@@ -190,7 +190,7 @@ processors:
       pattern: '%{destination.user.domain}\%{destination.user.name}'
       on_failure: [ { set: { field: destination.user.name, copy_from: panos.dstuser } } ]
 
-  - lowercase: { field: panos.type, target_field: _.type }
+  - lowercase: { field: panos.type, target_field: _.type, ignore_missing: true }
   - pipeline: { name: 'zlc-pipeline-panos-type-{{{ _.type }}}', ignore_missing_pipeline: true }
 
   # It is not clear if xff_ip is guaranteed to be an IP address.
