@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"destination.bytes":{"count":0},"iis.access.csBytes":{"count":0},"iis.access.scBytes":{"count":0},"source.bytes":{"count":0},"host.name":{"count":1},"iis.access.sSitename":{"count":1},"source.ip":{"count":1},"http.request.method":{"count":1},"url.path":{"count":1},"http.response.status_code":{"count":1},"event.duration":{"count":1},"iis.access.timeTaken":{"count":0},"url.query":{"count":1},"event.outcome":{"count":1}}'
+  fieldFormatMap: '{"destination.bytes":{"id":"bytes","params":{}},"iis.access.csBytes":{"id":"bytes","params":{}},"iis.access.scBytes":{"id":"bytes","params":{}},"source.bytes":{"id":"bytes","params":{}},"event.duration":{"id":"duration","params":{"inputFormat":"nanoseconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"iis.access.timeTaken":{"id":"duration","params":{"inputFormat":"milliseconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"event.outcome":{"id":"color","params":{"fieldType":"string","colors":[{"range":"-Infinity:Infinity","regex":"success","text":"#000000","background":"#cdfad1","boolean":"true"},{"range":"-Infinity:Infinity","regex":"failure","text":"#000000","background":"#ffd6d6","boolean":"true"}]}}}'
+  fields: '[]'
+  name: logs-http.iis.access-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-http.iis.access-zlc,logs-http.iis.access-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2025-10-03T19:13:26.805Z"
+id: 63e7d025-6a43-47e2-ba27-22e3f35a70d9
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2025-10-03T19:30:25.623Z"
+version: WzM3NDEsMTVd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

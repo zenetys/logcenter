@@ -1,0 +1,22 @@
+version: 2
+template:
+  mappings:
+    dynamic_templates:
+
+      - iis_access_ip:
+          path_match:
+            - 'iis.access.*Ip'
+            - 'iis.access.xForwardedFor'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - iis_access_keyword_and_text:
+          path_match:
+            - 'iis.access.csUsername'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

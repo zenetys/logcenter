@@ -1,0 +1,110 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'iis.access.* fields expected'
+      if: (ctx.iis instanceof Map) == false ||
+          (ctx.iis.access instanceof Map) == false
+
+  - set:
+      field: _
+      value:
+        enable_remove_empty_string: false
+
+  - script:
+      id: zlc-script-ingest-remove-empty-fields
+      params:
+        empty_string: [ '-', '' ]
+
+  - set:
+      if: ctx.iis.access.date != null && ctx.iis.access.time != null
+      field: _
+      value:
+        datetime: '{{{iis.access.date}}} {{{iis.access.time}}}'
+
+  - date:
+      if: ctx._.datetime != null
+      field: _.datetime
+      formats: [ 'yyyy-MM-dd HH:mm:ss' ]
+      timezone: UTC
+      ignore_failure: true
+
+  - script:
+      lang: painless
+      source: |
+        // prepare for adding standard fields
+        if (ctx.event == null)
+            ctx.event = [:];
+        if (ctx.event.category == null)
+            ctx.event.category = new ArrayList();
+        if (ctx.event.type == null)
+            ctx.event.type = new ArrayList();
+
+        ctx.event.kind = 'event';
+        ctx.event.category.add('web');
+        if (ctx.iis.access.cIp != null && ctx.iis.access.sIp != null) {
+            ctx.event.category.add('network');
+            ctx.event.type.add('connection');
+        }
+
+        if (ctx.iis.access.scStatus instanceof Number) {
+            if (ctx.iis.access.scStatus < 400)
+                ctx.event.outcome = 'success';
+            else
+                ctx.event.outcome = 'failure';
+        }
+
+        if (ctx.iis.access.timeTaken instanceof Number)
+            ctx.event.duration = ctx.iis.access.timeTaken * 1000000L;
+
+  - grok:
+      field: iis.access.csUsername
+      patterns:
+        - '%{DATA:user.name}@%{GREEDYDATA:user.domain}'
+        - '%{DATA:user.domain}\\%{GREEDYDATA:user.name}'
+        - '%{GREEDYDATA:user.name}'
+      ignore_missing: true
+      ignore_failure: true
+
+  - grok:
+      field: iis.access.cIp
+      ignore_failure: true
+      ignore_missing: true
+      patterns:
+          - '%{NOZONEIP:source.ip}'
+      pattern_definitions:
+          NOZONEIP: '[^%]*'
+
+  - grok:
+      field: iis.access.sIp
+      ignore_failure: true
+      ignore_missing: true
+      patterns:
+          - '%{NOZONEIP:destination.ip}'
+      pattern_definitions:
+          NOZONEIP: '[^%]*'
+
+  - grok:
+      field: iis.access.xForwardedFor
+      ignore_failure: true
+      ignore_missing: true
+      patterns:
+          - '%{NOZONEIP:source.ip}'
+      pattern_definitions:
+          NOZONEIP: '[^%]*'
+
+  - urldecode:
+      field: iis.access.csUserAgent
+      target_field: user_agent.original
+      ignore_missing: true
+
+  # Try to isolate the registered domain of url.domain
+  - registered_domain:
+      field: url.domain
+      target_field: url
+      ignore_missing: true
+      ignore_failure: true

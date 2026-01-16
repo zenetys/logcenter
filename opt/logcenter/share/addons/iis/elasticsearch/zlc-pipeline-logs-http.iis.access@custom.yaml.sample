@@ -1,0 +1,15 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - grok:
+      field: log.file.path
+      patterns:
+        # hostname\sitename\W3LOGDIR\file.log
+        # WSRV42/www.somesite.com/W3SVC5/u_ex250907.log
+        - '(.*/)?%{DATA:host.name}/%{DATA:iis.access.sSitename}/%{DATA}/[^/]+$'
+      ignore_missing: true
+      ignore_failure: true

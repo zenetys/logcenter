@@ -1,0 +1,35 @@
+version: 1
+index_patterns:
+  - logs-http.iis.access-zlc
+  - logs-http.iis.access-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-http.iis.access-dynamic
+  - zlc-component-logs-http.iis.access-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-http.iis.access@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-http.iis.access-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-http.iis.access@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+
+      destination.port: { type: zlc_alias, target: { path: iis.access.sPort, type: long } }
+      http.request.method: { type: zlc_alias, target: { path: iis.access.csMethod, type: keyword } }
+      http.request.referrer: { type: zlc_alias, target: { path: iis.access.csReferer, type: keyword } }
+      url.query: { type: zlc_alias, target: { path: iis.access.csUriQuery, type: keyword } }
+      url.path: { type: zlc_alias, target: { path: iis.access.csUriStem, type: keyword } }
+      url.domain: { type: zlc_alias, target: { path: iis.access.csHost, type: keyword } }
+      http.version: { type: zlc_alias, target: { path: iis.access.csVersion, type: keyword } }
+      http.response.status_code: { type: zlc_alias, target: { path: iis.access.scStatus, type: keyword } }
+      source.bytes: { type: zlc_alias, target: { path: iis.access.scBytes, type: long } }
+      destination.bytes: { type: zlc_alias, target: { path: iis.access.csBytes, type: long } }
+      source.user.name: { type: zlc_alias, target: { path: user.name, type: [ keyword, text ] } }
