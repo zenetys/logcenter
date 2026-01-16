@@ -81,7 +81,7 @@ processors:
 
         // event.duration
         if (ctx.haproxy.total_time_ms != null)
-            ctx.event.duration = ctx.haproxy.total_time_ms * 1000000;
+            ctx.event.duration = ctx.haproxy.total_time_ms * 1000000L;
 
         // captured_headers
         if (ctx.haproxy.http?.captured_headers != null)
