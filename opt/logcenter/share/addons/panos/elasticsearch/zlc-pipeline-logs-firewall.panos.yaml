@@ -97,7 +97,7 @@ processors:
         if (duration != null && duration != '') {
             if (duration instanceof String)
                 duration = Long.parseLong(ctx.panos.elapsed);
-            ctx.event.duration = duration * 1000000000;
+            ctx.event.duration = duration * 1000000000L;
         }
       params:
         action2evtype:
