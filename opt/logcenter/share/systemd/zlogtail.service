@@ -1,0 +1,14 @@
+[Unit]
+Description=zlogtail
+After=elasticsearch.service
+
+[Service]
+Type=exec
+EnvironmentFile=-/etc/sysconfig/zlogtail
+ExecStart=/opt/logcenter/bin/zlogtail
+KillSignal=SIGINT
+Restart=always
+SyslogIdentifier=zlogtail
+
+[Install]
+WantedBy=multi-user.target
