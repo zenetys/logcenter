@@ -82,7 +82,7 @@ processors:
                 if (duration instanceof String)
                     duration = Long.parseLong(ctx.fortigate.duration);
                 if (duration instanceof Number)
-                    ctx.event.duration = duration * 1000000000;
+                    ctx.event.duration = duration * 1000000000L;
             }
             catch (Exception e) {}
         }
