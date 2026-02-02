@@ -145,6 +145,12 @@ import axios from 'axios'
 // Default view mode is "day"
 const viewMode = ref('day')
 
+// Auto-zoom: hierarchy of zoom levels and retry counter
+// Allows cascading day→month→quarter→year, then up to 5 previous years
+const zoomOutMap = { day: 'month', month: 'quarter', quarter: 'year' }
+const autoZoomRetries = ref(0)
+const MAX_AUTO_ZOOM_RETRIES = 8 // 4 zoom levels + up to 4 previous years
+
 // Inject elasticUsage from App.vue
 const elasticUsage = inject('elasticUsage')
 
@@ -404,12 +410,36 @@ const fetchDataForPeriod = async (refDate = null, mode = 'day') => {
   }).then((response) => {
     try {
       rawLogs = response.data
+
+      // Auto-zoom: if no data returned, try a broader view or previous year
+      if ((!rawLogs || rawLogs.length === 0) && autoZoomRetries.value < MAX_AUTO_ZOOM_RETRIES) {
+        autoZoomRetries.value++
+        const nextMode = zoomOutMap[mode]
+        if (nextMode) {
+          // Zoom out to next broader level (day→month→quarter→year)
+          viewMode.value = nextMode
+          setCurrentTimeLimits(nextMode)
+          fetchDataForPeriod(selectedDate.value ?? reference.getTime(), nextMode)
+        } else {
+          // Already at year level with no data: try previous year
+          const prevYear = new Date(reference)
+          prevYear.setUTCFullYear(prevYear.getUTCFullYear() - 1)
+          selectedDate.value = prevYear.getTime()
+          setCurrentTimeLimits(viewMode.value)
+          fetchDataForPeriod(prevYear.getTime(), viewMode.value)
+        }
+        return
+      }
+
+      autoZoomRetries.value = 0
       formattedLogs.value = structuredClone(rawLogs).map((log) => formatLogDate(log))
     } catch (err) {
+      autoZoomRetries.value = 0
       error.value = 'Failed to fetch logs'
       console.error('Failed to fetch logs:', err)
     }
   }).catch((err) => {
+    autoZoomRetries.value = 0
     error.value = 'Failed to fetch logs'
     console.error('Failed to fetch logs:', err)
   })
@@ -467,6 +497,7 @@ const changeMode = (newMode) => {
  */
 const navigatePeriod = (direction) => {
   if (!selectedDate.value) return
+  autoZoomRetries.value = 0
   
   const currentDate = new Date(selectedDate.value)
   let newDate
@@ -793,8 +824,8 @@ watch(
 
 watch(viewMode, (newMode) => {
   setCurrentTimeLimits(newMode)
-  // Reload data if needed for the new view mode
-  if (selectedDate.value) {
+  // Skip fetch during auto-zoom (auto-zoom handles its own fetches)
+  if (selectedDate.value && autoZoomRetries.value === 0) {
     fetchDataForPeriod(selectedDate.value, newMode)
   }
   generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
@@ -802,8 +833,8 @@ watch(viewMode, (newMode) => {
 
 watch(selectedDate, () => {
   setCurrentTimeLimits(viewMode.value)
-  // Reload data if needed for the new period
-  if (selectedDate.value) {
+  // Skip fetch during auto-zoom (auto-zoom handles its own fetches)
+  if (selectedDate.value && autoZoomRetries.value === 0) {
     fetchDataForPeriod(selectedDate.value, viewMode.value)
   }
   generateHostsVolumeByPeriod() // Cette fonction appelle aussi generateTotalIndexVolumeByPeriod()
