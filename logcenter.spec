@@ -28,6 +28,7 @@
     else print(revision_source:format(name, revision, name, revision)) end
 }
 
+%global source_date_epoch_from_changelog 0
 %global __brp_mangle_shebangs_exclude_from ^(/opt/logcenter/libexec/es-object-preprocessor)$
 
 Name: logcenter
@@ -61,7 +62,7 @@ cd logcenter
 
 # archives wui
 cd opt/logcenter/share/www/archives
-node_modules_sig=$(md5sum package.json |cut -d ' ' -f 1)
+node_modules_sig=$({ node --version; cat package.json; } |md5sum |cut -d ' ' -f 1)
 if [ -f "%{_sourcedir}/archives_wui_node_modules_${node_modules_sig}_%{_arch}.tar.xz" ]; then
     tar xJf "%{_sourcedir}/archives_wui_node_modules_${node_modules_sig}_%{_arch}.tar.xz"
 else
