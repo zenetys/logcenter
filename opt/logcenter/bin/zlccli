@@ -188,9 +188,9 @@ function do_get_archive() {
     [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
     local proto=; [[ $1 == --proto ]] && { proto=1; shift; }
     local IFS=,; set -- $1; IFS=$OIFS
-    local src=$1 fdate=$2 fhour=$3
-    local file=$(archives_db_query 'file' "src=\"${src//\"/\"\"}\" and
-        fdate=\"${fdate//\"/\"\"}\" and fhour=\"${fhour//\"/\"\"}\"
+    local src=$1 fdate=$2 fhour=$3 q="'"
+    local file=$(archives_db_query 'file' "src='${src//$q/$q$q}' and
+        fdate='${fdate//$q/$q$q}' and fhour='${fhour//$q/$q$q}'
         order by db asc limit 1"
         sqlite3 :memory: "$REPLY")
     [[ -z $file ]] && fatal 'No match!'
