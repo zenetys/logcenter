@@ -790,31 +790,6 @@ watch(search, () => {
 </script>
 
 <style scoped>
-.z__main-toolbar {
-  justify-content: space-between;
-  align-items: center;
-  display: flex;
-  padding: 0 16px;
-  margin-bottom: 16px;
-}
-
-.z__app-title-container {
-  align-items: center;
-  display: flex;
-}
-
-.z__app-title {
-  align-items: center;
-  display: flex;
-  margin: 0;
-  font-weight: 500;
-  font-size: 1.25rem;
-}
-
-.title-icon {
-  margin-right: 8px;
-}
-
 .z__period-navigator {
   justify-content: center;
   align-items: center;
@@ -939,6 +914,8 @@ watch(search, () => {
   margin-bottom: 15px;
 
   .z__app-title-container {
+    align-items: center;
+    display: flex;
     background: var(--color-background-mute);
     border-radius: 6px;
     padding: 5px 10px;
