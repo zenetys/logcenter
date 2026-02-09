@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export LC_ALL=C
+
 set -f
 umask 0077
 PROGNAME=${0##*/}
@@ -24,12 +26,16 @@ function fatal() {
     exit 2
 }
 
+max_post_size=$((1024*1024))
+
 [[ $REQUEST_METHOD == POST ]] || fatal 'Bad method'
+(( CONTENT_LENGTH > 0 && CONTENT_LENGTH <= max_post_size )) || fatal 'Invalid content-length'
 
 if [[ $CONTENT_TYPE =~ ^application/x-www-form-urlencoded(;.*)?$ ]]; then
-    json_input=$(cat | sed 's/^data=//' | sed 's/+/ /g' | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read()))")
+    json_input=$(head -c "$max_post_size" |sed -nre '/^data=/{s,^data=,,;p;q}' |
+        awk -niord -v RS=%.. -v ORS= '{gsub(/\+/," ");print RT?$0chr("0x"substr(RT,2)):$0}')
 elif [[ $CONTENT_TYPE =~ ^application/json(;.*)?$ ]]; then
-    json_input=$(cat)
+    json_input=$(head -c "$max_post_size")
 else
     fatal 'Bad content type'
 fi
