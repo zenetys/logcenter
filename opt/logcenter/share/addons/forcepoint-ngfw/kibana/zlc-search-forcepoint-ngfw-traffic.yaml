@@ -1,6 +1,6 @@
 attributes:
   columns:
-    - forcepoint.CompId
+    - service.name
     - forcepoint.Situation
     - event.action
     - source.ip
@@ -24,7 +24,7 @@ attributes:
         width: 67
       event.action:
         width: 93
-      forcepoint.CompId:
+      service.name:
         width: 139
       forcepoint.Situation:
         width: 249
