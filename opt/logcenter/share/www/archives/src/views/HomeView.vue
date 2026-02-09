@@ -867,6 +867,9 @@ watch(search, () => {
   margin-bottom: 2px;
   margin-top: 2px;
 }
+.host-selector :deep(.v-field__clearable) {
+  --v-input-padding-top: 5px;
+}
 
 /* Styles for action buttons */
 .host-selector-actions {
@@ -931,7 +934,7 @@ watch(search, () => {
   display: flex;
   gap: 10px;
   width: 100%;
-  padding: 0 10px;
+  padding: 0;
   margin-top: 15px;
   margin-bottom: 15px;
 
@@ -968,7 +971,7 @@ watch(search, () => {
     align-items: center;
     white-space: nowrap;
     display: flex;
-    padding: 2px 4px;
+    padding: 5px 4px;
     border-radius: 6px;
 
     /* Style for the navigation arrows */
@@ -1032,7 +1035,7 @@ watch(search, () => {
     align-items: center;
     display: flex;
     gap: 8px;
-    padding: 5px 10px;
+    padding: 4px 10px;
     border-radius: 6px;
   }
 
@@ -1071,7 +1074,6 @@ watch(search, () => {
 <style>
 /* Overrides Vuetify outside of scoped styles */
 .host-selector input::placeholder {
-  color: #2fb4c5 !important;
   opacity: 1 !important;
 }
 .host-selector .v-field__append-inner {
