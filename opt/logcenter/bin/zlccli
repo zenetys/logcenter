@@ -225,16 +225,22 @@ function do_get_archives_usage() {
 }
 
 #: get-indices-usage
-#:     Output Elasticsearch indices total size in bytes on stdout.
+#:     Output Elasticsearch used bytes and max bytes on stdout.
+#:     Values are sperated by a tab.
 function do_get_elastic_usage() {
     [[ -n $ZLC_ELASTIC_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ELASTIC_ZLCCLI_HOST"
-    [[ -z $ZLC_ELASTIC_MAX_SIZE ]] && fatal 'Bad environment! ZLC_ELASTIC_MAX_SIZE'
 
-    local usage
-    usage=$(es-curl "/_cat/indices?format=json&bytes=b" |
-        jq '[.[] | (.["store.size"] // .["pri.store.size"] // "0" | tonumber)] | add // 0' 2>/dev/null)
-    [[ -z $usage ]] && fatal 'Failed to get elastic usage!'
-    printf "%s\t%s\n" "$usage" "$ZLC_ELASTIC_MAX_SIZE"
+    local usage=( $(es-curl _nodes/stats/fs |jq -r '.nodes |to_entries |
+        map( .value |select(.roles|join(",")|test("data")) ) |
+        reduce .[] as $i ({ used:0, total:0 };
+            .used += ($i.fs.total.total_in_bytes - $i.fs.total.available_in_bytes) |
+            .total += $i.fs.total.total_in_bytes
+        ) |
+        "\(.used // 0) \(.total // 0)"') )
+    [[ -z ${usage[0]} ]] && fatal 'Failed to get elastic disk usage!'
+    local max=${ZLC_ELASTIC_MAX_SIZE:-${usage[1]}}
+    [[ -z $max ]] && fatal 'Failed to get elastic disk max size!'
+    printf "%s\t%s\n" "${usage[0]}" "$max"
 }
 
 #: list-aliases
