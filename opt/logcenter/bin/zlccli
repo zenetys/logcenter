@@ -216,12 +216,12 @@ function do_get_archive() {
 function do_get_archives_usage() {
     [[ -n $ZLC_ARCHIVES_ZLCCLI_HOST ]] && reexec_by_ssh "$ZLC_ARCHIVES_ZLCCLI_HOST"
     [[ -z $ZLC_ARCHIVES_DIR ]] && fatal 'Bad environment! ZLC_ARCHIVES_DIR'
-    [[ -z $ZLC_ARCHIVES_MAX_SIZE ]] && fatal 'Bad environment! ZLC_ARCHIVES_MAX_SIZE'
 
-    local usage
-    usage=( $(df -P "$ZLC_ARCHIVES_DIR" -B1 |tail -n +2) )
-    [[ -z ${usage[2]} ]] && fatal 'Failed to get disk usage!'
-    printf "%s\t%s\n" "${usage[2]}" "$ZLC_ARCHIVES_MAX_SIZE"
+    local usage=( $(df -P "$ZLC_ARCHIVES_DIR" -B1 |tail -n +2) )
+    [[ -z ${usage[2]} ]] && fatal 'Failed to get archives disk usage!'
+    local max=${ZLC_ARCHIVES_MAX_SIZE:-${usage[1]}}
+    [[ -z $max ]] && fatal 'Failed to get archives disk max size!'
+    printf "%s\t%s\n" "${usage[2]}" "$max"
 }
 
 #: get-indices-usage
