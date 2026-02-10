@@ -24,14 +24,14 @@ attributes:
         width: 67
       event.action:
         width: 93
-      service.name:
-        width: 139
       forcepoint.Situation:
         width: 249
       network.application:
         width: 256
       network.protocol:
         width: 185
+      service.name:
+        width: 139
       source.bytes:
         width: 64
       source.ip:
@@ -68,8 +68,8 @@ references:
     type: tag
 type: search
 typeMigrationVersion: 10.5.0
-updated_at: "2025-09-23T14:12:15.687Z"
-version: Wzg2OCw3XQ==
+updated_at: "2026-02-09T16:15:38.244Z"
+version: WzI1NiwxXQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0
