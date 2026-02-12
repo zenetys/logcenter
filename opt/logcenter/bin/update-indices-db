@@ -30,7 +30,7 @@ init_database() {
         doc_count INTEGER,
         size_bytes INTEGER
     );
-    
+
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_indice ON host_hour_data(indice);
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_host ON host_hour_data(host);
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_timestamp ON host_hour_data(timestamp);
@@ -45,7 +45,7 @@ compute-metrics() {
 build_es_query() {
     local start_time=$1; shift
     local end_time=$1; shift
-    
+
     # Start building the query
     local query="{"
 
@@ -56,15 +56,15 @@ build_es_query() {
     if [[ "$start_time" ]]; then
         printf -v query '"query": {"range": {"@timestamp": {"gte": "%s","lt": "%s||/h"}}}, %s' "$start_time" "$end_time" "$query"
     fi
-    
+
     echo "{$query}"
 }
 
 JQ_HOST_HOUR='.aggregations
-            | .per_index.buckets[] | .key as $index
-            | .per_hosts.buckets[] | .key as $host
-            | .per_hour.buckets[] 
-            | [$index, $host, .key_as_string, .doc_count, (.doc_count * $size_per_entry)]
+    | .per_index.buckets[] | .key as $index
+    | .per_hosts.buckets[] | .key as $host
+    | .per_hour.buckets[]
+    | [$index, $host, .key_as_string, .doc_count, (.doc_count * $size_per_entry)]
 '
 
 docs-size-per-host-per-hour() {
@@ -72,10 +72,10 @@ docs-size-per-host-per-hour() {
     local size_per_entry=$1; shift
     local start_time=$1; shift
     local end_time=$1; shift
-    
+
     # Build query dynamically
     local query=$(build_es_query "$start_time" "$end_time")
-    
+
     es-curl "$indice-*/_search?size=0" -d "$query" |
         jq --argjson size_per_entry "$size_per_entry" -r "$JQ_HOST_HOUR | @tsv"
 }
@@ -100,7 +100,7 @@ if [[ "$last_timestamp" ]]; then
     # Use the last timestamp as start time
     start_time=$(date --utc -d "$last_timestamp" +"%Y-%m-%dT%H:%M:%S.000Z")
     echo "# Using last log timestamp: $last_timestamp" >&2
-    
+
     # End time is current hour minus 1 hour (to ensure complete data)
     end_time=$(date --utc +"%Y-%m-%dT%H:%M:%S.000Z")
     echo "# Time range: $start_time to $end_time" >&2
@@ -119,10 +119,10 @@ echo "# Cleaning up obsolete indices from database..." >&2
 if [ ${#indices[@]} -gt 0 ]; then
     # Create SQL IN clause with all current indices
     indices_sql="'$(echo "${indices[*]}" | sed "s/ /','/g")'"
-    
+
     # Delete entries for indices not in the current list
     sqlite3 "$DB_FILE" "DELETE FROM host_hour_data WHERE indice NOT IN ($indices_sql);"
-    
+
     # Report number of deleted rows
     deleted_count=$(sqlite3 "$DB_FILE" "SELECT changes();")
     echo "# Deleted $deleted_count entries for obsolete indices" >&2
@@ -137,12 +137,11 @@ echo "# INDICES by prefix: ${indices[*]}" >&2
 
 # Process each index
 for indice in ${indices[@]}; do
-  metrics=( $(grep -E "^\\w+ \\w+ $indice-"<<<"$output" | compute-metrics) )
+    metrics=( $(grep -E "^\\w+ \\w+ $indice-"<<<"$output" | compute-metrics) )
 
-  # Get and store host-hour data with or without time filter
-  docs-size-per-host-per-hour "$indice" "${metrics[2]}" "$start_time" "$end_time" |
-          sqlite3 "$DB_FILE" -tabs ".import /dev/stdin host_hour_data"
-  
-  echo "# METRICS($indice): ${metrics[*]}" >&2
+    # Get and store host-hour data with or without time filter
+    docs-size-per-host-per-hour "$indice" "${metrics[2]}" "$start_time" "$end_time" |
+        sqlite3 "$DB_FILE" -tabs ".import /dev/stdin host_hour_data"
+
+    echo "# METRICS($indice): ${metrics[*]}" >&2
 done
-
