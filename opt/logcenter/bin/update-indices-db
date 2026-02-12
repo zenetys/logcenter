@@ -39,7 +39,7 @@ EOF
 }
 
 compute-metrics() {
-    awk '{COUNT+=$7;SIZE+=$9}END{print COUNT,SIZE,int(SIZE/COUNT+1)}'
+    awk '{COUNT+=$7;SIZE+=$9}END{print COUNT,SIZE,(COUNT>0?int(SIZE/COUNT+1):0)}'
 }
 
 # Function to build Elasticsearch query dynamically
