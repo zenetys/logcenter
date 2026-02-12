@@ -135,7 +135,7 @@ for indice in ${indices[@]}; do
     docs-size-per-host-per-hour "$indice" "${metrics[2]}" "$start_time" "$end_time" |
         while read -r i h t d s; do
             printf "REPLACE INTO host_hour_data (indice,host,timestamp,doc_count,size_bytes) VALUES (%s,%s,%s,%d,%d);\n" \
-                "'${i//\'/\'\'}'" "'${h//\'/\'\'}'" "'${t//\'/\'\'}'" "$d" "$s" |tee /dev/stderr
+                "'${i//\'/\'\'}'" "'${h//\'/\'\'}'" "'${t//\'/\'\'}'" "$d" "$s"
         done |
         sqlite3 "$DB_FILE"
 
