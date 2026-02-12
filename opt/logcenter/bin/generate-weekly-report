@@ -138,8 +138,10 @@ TOP10=$(echo "$PER_HOST_DATA" | head -10)
 
 # Calculer les pourcentages d'usage
 ARCHIVES_PERCENT=$(calculate_percent "$ARCHIVES_USED" "$ARCHIVES_MAX")
+ARCHIVES_BAR_PERCENT=$(awk -v "p=$ARCHIVES_PERCENT" 'BEGIN {printf "%.1f", (p > 100 ? 100 : p)}')
 if [[ $HAS_ELASTIC == true ]]; then
     ELASTIC_PERCENT=$(calculate_percent "$ELASTIC_USED" "$ELASTIC_MAX")
+    ELASTIC_BAR_PERCENT=$(awk -v "p=$ELASTIC_PERCENT" 'BEGIN {printf "%.1f", (p > 100 ? 100 : p)}')
     CARD_WIDTH="31"
 else
     CARD_WIDTH="48"
@@ -214,7 +216,7 @@ cat <<EOF
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
                 <tr>
                     <td bgcolor="#e0e0e0" style="height:16px;">
-                        <table role="presentation" width="${ARCHIVES_PERCENT}%" cellpadding="0" cellspacing="0" border="0">
+                        <table role="presentation" width="${ARCHIVES_BAR_PERCENT}%" cellpadding="0" cellspacing="0" border="0">
                         <tr><td bgcolor="#17b8ce" style="height:16px; font-size:1px; line-height:1px;">&nbsp;</td></tr>
                         </table>
                     </td>
@@ -269,7 +271,7 @@ cat <<EOF
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
                 <tr>
                     <td bgcolor="#e0e0e0" style="height:16px;">
-                        <table role="presentation" width="${ELASTIC_PERCENT}%" cellpadding="0" cellspacing="0" border="0">
+                        <table role="presentation" width="${ELASTIC_BAR_PERCENT}%" cellpadding="0" cellspacing="0" border="0">
                         <tr><td bgcolor="#17b8ce" style="height:16px; font-size:1px; line-height:1px;">&nbsp;</td></tr>
                         </table>
                     </td>
