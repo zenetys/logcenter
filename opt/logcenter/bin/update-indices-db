@@ -110,7 +110,7 @@ fi
 read -d '' output < <(es-curl /_cat/indices?bytes=b)
 indices=( $(sed -rns 's/^\w+ \w+ (\.ds-logs-[^ ]*) .*/\1/p'<<<"$output" | sort -u) )
 
-echo "# INDICES: ${indices[*]}" >&2
+(( DEBUG )) && echo "# INDICES: ${indices[*]}" >&2
 
 # Delete entries for indices that no longer exist
 echo "# Cleaning up obsolete indices from database..." >&2
