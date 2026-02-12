@@ -31,6 +31,7 @@ init_database() {
         size_bytes INTEGER
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_host_hour_data_pk ON host_hour_data(indice,host,timestamp);
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_indice ON host_hour_data(indice);
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_host ON host_hour_data(host);
     CREATE INDEX IF NOT EXISTS idx_host_hour_data_timestamp ON host_hour_data(timestamp);
@@ -78,15 +79,6 @@ docs-size-per-host-per-hour() {
 
     es-curl "$indice-*/_search?size=0" -d "$query" |
         jq --argjson size_per_entry "$size_per_entry" -r "$JQ_HOST_HOUR | @tsv"
-}
-
-# Store data in SQLite
-store_host_hour_data() {
-    # Direct import of data into the table
-    sqlite3 "$DB_FILE" <<EOF
-.mode tabs
-.import /dev/stdin host_hour_data
-EOF
 }
 
 # Initialize the database
@@ -141,7 +133,11 @@ for indice in ${indices[@]}; do
 
     # Get and store host-hour data with or without time filter
     docs-size-per-host-per-hour "$indice" "${metrics[2]}" "$start_time" "$end_time" |
-        sqlite3 "$DB_FILE" -tabs ".import /dev/stdin host_hour_data"
+        while read -r i h t d s; do
+            printf "REPLACE INTO host_hour_data (indice,host,timestamp,doc_count,size_bytes) VALUES (%s,%s,%s,%d,%d);\n" \
+                "'${i//\'/\'\'}'" "'${h//\'/\'\'}'" "'${t//\'/\'\'}'" "$d" "$s" |tee /dev/stderr
+        done |
+        sqlite3 "$DB_FILE"
 
     echo "# METRICS($indice): ${metrics[*]}" >&2
 done
