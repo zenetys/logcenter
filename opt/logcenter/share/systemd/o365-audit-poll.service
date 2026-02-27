@@ -1,0 +1,15 @@
+[Unit]
+Description=Office 365 Management Activity audit poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=CONFIG=/etc/logcenter/o365.conf
+EnvironmentFile=-/etc/sysconfig/o365
+ExecStart=/opt/logcenter/bin/o365-audit-poll -c $CONFIG
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

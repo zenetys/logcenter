@@ -1,0 +1,468 @@
+#!/bin/bash
+
+OIFS=$IFS
+PROGNAME=${0##*/}
+
+function fatal() {
+    echo "FATAL: $PROGNAME: $*" >&2
+    exit 2
+}
+
+function error() {
+    echo "ERROR: $PROGNAME: $*" >&2
+}
+
+function info() {
+    echo "INFO: $PROGNAME: $*" >&2
+}
+
+function debug() {
+    [[ -z $O365_DEBUG ]] && return 0
+    echo "DEBUG: $PROGNAME: $*" >&2
+}
+
+function exit_usage() {
+    echo "Usage: $PROGNAME [-c config] [-t content-type] [-d] [-r] [-h]" >&2
+    exit "${1:-0}"
+}
+
+# base64url encode (no padding)
+function b64url() {
+    openssl base64 -e -A |tr '+/' '-_' |tr -d '='
+}
+
+function cat_nl() {
+    cat "$@" |sed '$a\'
+}
+
+#
+# build_jwt - Build a signed JWT client assertion for Entra ID certificate auth
+#
+# Usage:
+#   build_jwt
+#   echo "$REPLY"
+#
+function build_jwt() {
+    local thumbprint
+    thumbprint=$(openssl x509 -in "$O365_APPLICATION_CERT" -noout -fingerprint -sha1 |
+        sed -re 's,^[^=]+=(.*),\1,; s,:,,g')
+    if [[ -z "$thumbprint" ]]; then
+        error "Failed to read sha1 certificate thumbprint"
+        return 1
+    fi
+
+    # x5t = base64url( raw SHA-1 thumbprint bytes )
+    local x5t
+    x5t=$(printf '%b' "$(echo -n "$thumbprint" | sed 's/../\\x&/g')" | b64url)
+
+    # Header
+    local header header_b64
+    printf -v header '{"alg":"RS256","typ":"JWT","x5t":"%s"}' "$x5t"
+    header_b64=$(echo -n "$header" |b64url)
+
+    # Payload
+    local now exp jti payload payload_b64
+    now=$(date +%s)
+    exp=$((now + 300))
+    jti=$(cat /proc/sys/kernel/random/uuid)
+
+    printf -v payload '{"aud":"https://login.microsoftonline.com/%s/oauth2/v2.0/token","iss":"%s","sub":"%s","jti":"%s","iat":%d,"nbf":%d,"exp":%d}' \
+        "$O365_TENANT_ID" "$O365_APPLICATION_ID" "$O365_APPLICATION_ID" "$jti" "$now" "$now" "$exp"
+    payload_b64=$(echo -n "$payload" | b64url)
+
+    # Signature
+    local signature
+    signature=$(echo -n "${header_b64}.${payload_b64}" |
+        openssl dgst -sha256 -sign "$O365_APPLICATION_KEY" -binary |
+        b64url)
+    if [[ -z "$signature" ]]; then
+        error "Failed to sign data, check key"
+        return 1
+    fi
+
+    # Return via REPLY
+    REPLY="${header_b64}.${payload_b64}.${signature}"
+}
+
+#
+# get_access_token - Obtain an OAuth2 access token via client_credentials
+#
+# Usage:
+#   get_access_token
+#   echo "$REPLY"
+#
+function get_access_token() {
+    if [[ -z ${ACCESS_TOKEN+defined} ]]; then
+        # first time, try to load from cache
+        ACCESS_TOKEN=()
+        if [[ -f $O365_CACHEDIR/access_token ]]; then
+            source "$O365_CACHEDIR/access_token"
+        fi
+    elif [[ -n $__AUTH_RETRY ]]; then
+        # clear cache / reset token
+        ACCESS_TOKEN=()
+    fi
+
+    local now
+    now=$(date +%s)
+    if [[ -z "$now" ]]; then
+        error "Failed to get current time"
+        return 1
+    fi
+
+    if [[ -z ${ACCESS_TOKEN[0]} ]] || (( now > ACCESS_TOKEN[1] )); then
+        build_jwt || return 1
+        local jwt_assertion=$REPLY
+
+        local url="https://login.microsoftonline.com/${O365_TENANT_ID}/oauth2/v2.0/token"
+        local http_code
+        http_code=$(curl -sS -w '%{http_code}' -X POST "$url" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "client_id=${O365_APPLICATION_ID}" \
+            --data-urlencode "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" \
+            --data-urlencode "client_assertion=${jwt_assertion}" \
+            --data-urlencode "scope=https://manage.office.com/.default" \
+            -o "${O365_TMPDIR}/get_access_token_response.json")
+        if [[ "$http_code" != "200" ]]; then
+            error "Token request failed, HTTP ${http_code}"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+
+        local access_token
+        IFS=$'\n'
+        access_token=($(jq -r '"\(.access_token//"")\n\(.expires_in//"")"' \
+            < "${O365_TMPDIR}/get_access_token_response.json"))
+        IFS=$OIFS
+        if [[ -z "${access_token[0]}" ]]; then
+            error "No access_token in get_access_token response"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+        if [[ -z "${access_token[1]}" ]]; then
+            error "No expires_in in get_access_token response"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+
+        ACCESS_TOKEN=( "${access_token[0]}" $(( now + access_token[1] - 60 )) )
+        debug "New access token: ${ACCESS_TOKEN[0]:0:7}..${ACCESS_TOKEN[0]: -7}"
+        declare -p ACCESS_TOKEN |sed -re 's,^declare,& -g,' > "$O365_CACHEDIR/access_token"
+    else
+        debug "Reuse cached access token: ${ACCESS_TOKEN[0]:0:7}..${ACCESS_TOKEN[0]: -7}"
+    fi
+
+    REPLY=${ACCESS_TOKEN[0]}
+}
+
+function o365_auth_curl() {
+    get_access_token || return 1
+    local access_token=$REPLY
+
+    REPLY=$(curl "$@" -sS -w '%{http_code}' \
+        -H "Authorization: Bearer ${access_token}" \
+        -o "${O365_TMPDIR}/curl_response.json")
+    if [[ $REPLY == 401 ]]; then
+        if [[ -n $__AUTH_RETRY ]]; then
+            error "Authentication error"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+        fi
+        __AUTH_RETRY=1 o365_auth_curl "$@" # retry
+    fi
+}
+
+#
+# get_subscriptions - List active O365 Management Activity subscriptions
+#
+# Usage:
+#   get_subscriptions
+#
+function get_subscriptions() {
+    local url="https://manage.office.com/api/v1.0/${O365_TENANT_ID}/activity/feed/subscriptions/list?PublisherIdentifier=${O365_TENANT_ID}"
+
+    o365_auth_curl -X GET "$url" || return 1
+    local http_code=$REPLY
+    if [[ "$http_code" != 2* ]]; then
+        error "List subscriptions request failed, HTTP ${http_code}"
+        [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+        return 1
+    fi
+
+    if [[ -n $O365_DEBUG ]]; then
+        debug "Activity feed subscriptions:"
+        cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+    fi
+}
+
+#
+# subscribe - Start or verify a subscription to an O365 Management Activity content type
+#
+# Usage:
+#   subscribe <content_type>
+#
+# content_type: Audit.AzureActiveDirectory, Audit.Exchange, Audit.SharePoint,
+#               Audit.General, DLP.All
+#
+function subscribe() {
+    local content_type="$1"
+
+    if [[ -z "$content_type" ]]; then
+        error "Usage: subscribe <content_type>"
+        return 1
+    fi
+
+    local url="https://manage.office.com/api/v1.0/${O365_TENANT_ID}/activity/feed/subscriptions/start?contentType=${content_type}&PublisherIdentifier=${O365_TENANT_ID}"
+
+    o365_auth_curl -X POST -H "Content-Type: application/json" -d '' "$url" || return 1
+    local http_code=$REPLY
+    case "$http_code" in
+        2*)
+            info "Subscription started for ${content_type}"
+            ;;
+        *)
+            error "Subscription request failed, HTTP ${http_code}"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+            ;;
+    esac
+}
+
+#
+# stop_subscription - Stop an O365 Management Activity subscription
+#
+# Usage:
+#   stop_subscription <content_type>
+#
+function stop_subscription() {
+    local content_type="$1"
+
+    if [[ -z "$content_type" ]]; then
+        error "Usage: stop_subscription <content_type>"
+        return 1
+    fi
+
+    local url="https://manage.office.com/api/v1.0/${O365_TENANT_ID}/activity/feed/subscriptions/stop?contentType=${content_type}&PublisherIdentifier=${O365_TENANT_ID}"
+
+    o365_auth_curl -X POST -H "Content-Type: application/json" -d '' "$url" || return 1
+    local http_code=$REPLY
+    case "$http_code" in
+        2*)
+            info "Subscription stopped for ${content_type}"
+            ;;
+        *)
+            error "Stop subscription request failed (HTTP ${http_code})"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+            ;;
+    esac
+}
+
+#
+# poll_content - Fetch available content blobs and output events to stdout
+#
+# Algo:
+#   1. List content from start (cache, or now - O365_INITIAL_LOOKBACK) to now, chunked by O365_MAX_WINDOW
+#   2. Fetch each blob, output events not already in SEEN_IDS (dedup on event Id)
+#   3. Cache end_epoch as next start (strict non-overlapping windows)
+#   4. Expire old entries from SEEN_IDS, persist to cache
+#
+function poll_content() {
+    local content_type="$1"
+    [[ -z "$content_type" ]] && { error "Usage: poll_content <content_type>"; return 1; }
+
+    local ct_slug="${content_type//[^[:alnum:]]/_}"
+    local last_poll_file="$O365_CACHEDIR/last_poll_${ct_slug}"
+    local seen_ids_file="$O365_CACHEDIR/seen_ids_${ct_slug}"
+    local seen_ids_var="SEEN_IDS_${ct_slug}"
+    declare -n seen_ids_ref="$seen_ids_var"
+    local listings_file="${O365_TMPDIR}/listings.ndjson"
+
+    # start point
+    local now start_epoch
+    now=$(date +%s)
+    if [[ -f "$last_poll_file" ]]; then
+        start_epoch=$(< "$last_poll_file")
+        local min_epoch=$(( now - O365_MAX_LOOKBACK ))
+        if (( start_epoch < min_epoch )); then
+            debug "Clamping start $start_epoch to max lookback $min_epoch"
+            start_epoch=$min_epoch
+        fi
+    else
+        start_epoch=$(( now - O365_INITIAL_LOOKBACK ))
+    fi
+
+    local end_epoch=$now
+
+    # fetch content listings, chunked by O365_MAX_WINDOW (API hard limit: 24h)
+    > "$listings_file"
+    local chunk_start=$start_epoch chunk_end
+
+    while (( chunk_start < end_epoch )); do
+        chunk_end=$(( chunk_start + O365_MAX_WINDOW ))
+        (( chunk_end > end_epoch )) && chunk_end=$end_epoch
+
+        local start_str end_str
+        start_str=$(date -u -d "@${chunk_start}" '+%Y-%m-%dT%H:%M:%S')
+        end_str=$(date -u -d "@${chunk_end}" '+%Y-%m-%dT%H:%M:%S')
+        debug "Listing ${content_type}: ${start_str} .. ${end_str}"
+
+        local url="https://manage.office.com/api/v1.0/${O365_TENANT_ID}/activity/feed/subscriptions/content?contentType=${content_type}&startTime=${start_str}&endTime=${end_str}&PublisherIdentifier=${O365_TENANT_ID}"
+
+        while [[ -n "$url" ]]; do
+            o365_auth_curl -X GET -D "${O365_TMPDIR}/curl_headers.txt" "$url" || return 1
+            if [[ "$REPLY" != 2* ]]; then
+                error "List content failed, HTTP ${REPLY}"
+                [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+                return 1
+            fi
+            jq -c '.[]' "${O365_TMPDIR}/curl_response.json" >> "$listings_file"
+            url=$(sed -nre '/^NextPageUri:/{s,^[^:]+:\s*(\S+),\1,p;q}' \
+                "${O365_TMPDIR}/curl_headers.txt")
+        done
+
+        chunk_start=$chunk_end
+    done
+
+    [[ -s "$listings_file" ]] || return 0
+
+    # fetch blobs, dedup and output events
+    local new_count=0 dup_count=0
+    while IFS= read -r content_uri; do
+        debug "Fetching: $content_uri"
+        o365_auth_curl -X GET "$content_uri" || return 1
+        if [[ "$REPLY" != 2* ]]; then
+            error "Fetch content failed, HTTP ${REPLY}"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+        fi
+
+        local id event
+        while IFS=$'\t' read -r id event; do
+            if [[ -n "${seen_ids_ref[$id]}" ]]; then
+                debug "Ignoring duplicate event: $id"
+                seen_ids_ref[$id]=$now
+                (( dup_count++ ))
+                continue
+            fi
+            seen_ids_ref[$id]=$now
+            (( new_count++ ))
+            echo "$event"
+        done < <(jq -r '.[] | "\(.Id)\t\(.)"' "${O365_TMPDIR}/curl_response.json")
+    done < <(jq -r '.contentUri' "$listings_file")
+
+    # advance: strict non-overlapping, next start = end_epoch
+    echo "$end_epoch" > "$last_poll_file"
+
+    # expire old entries from SEEN_IDS_<type>
+    local cutoff=$(( now - O365_SEEN_IDS_TTL )) expired=0
+    for id in "${!seen_ids_ref[@]}"; do
+        if (( seen_ids_ref[$id] < cutoff )); then
+            unset 'seen_ids_ref[$id]'
+            (( expired++ ))
+        fi
+    done
+
+    # persist SEEN_IDS_<type>
+    declare -p "$seen_ids_var" > "$seen_ids_file"
+
+    debug "Poll done: $new_count new, $dup_count dup, $expired expired, ${#seen_ids_ref[@]} tracked"
+}
+
+CONFIG=
+RESET=
+while (( $# > 0 )); do
+    case "$1" in
+        -c|--config) CONFIG=$2; shift ;;
+        -t|--content-type) O365_AUDIT_CONTENT_TYPE+=( "$2" ); shift ;;
+        -d|--debug) O365_DEBUG=1 ;;
+        -r|--reset) RESET=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n "$CONFIG" ]]; then
+    source "$CONFIG" || fatal "Failed to load config: $CONFIG"
+fi
+
+O365_TMPDIR=${TMPDIR:-/dev/shm}/$PROGNAME.$RANDOM.$RANDOM
+O365_CACHEDIR=${O365_CACHEDIR:-${O365_CACHEBASE:-${TMPDIR:-/dev/shm}}/$PROGNAME}
+O365_DEBUG=${O365_DEBUG:-}
+
+O365_TENANT_ID=${O365_TENANT_ID:-}
+O365_APPLICATION_ID=${O365_APPLICATION_ID:-}
+O365_APPLICATION_CERT=${O365_APPLICATION_CERT:-}
+O365_APPLICATION_KEY=${O365_APPLICATION_KEY:-}
+O365_AUDIT_CONTENT_TYPE=( "${O365_AUDIT_CONTENT_TYPE[@]}" )
+O365_RESET_SUBSCRIPTIONS=${O365_RESET_SUBSCRIPTIONS:-}
+# Lookback on first run, when no cache exists (seconds, API retention max: 7d)
+O365_INITIAL_LOOKBACK=${O365_INITIAL_LOOKBACK:-86400}
+# Max lookback when resuming from cache (seconds)
+O365_MAX_LOOKBACK=${O365_MAX_LOOKBACK:-$(( 2*86400 ))}
+# Max time window per content listing request (seconds, API hard limit: 24h)
+O365_MAX_WINDOW=${O365_MAX_WINDOW:-86400}
+# Sleep between poll cycles (seconds)
+O365_POLL_INTERVAL=${O365_POLL_INTERVAL:-60}
+# TTL for seen event Ids used for dedup (seconds)
+O365_SEEN_IDS_TTL=${O365_SEEN_IDS_TTL:-$(( 2*86400 ))}
+O365_OUTPUT_SYSLOG_HOST=${O365_OUTPUT_SYSLOG_HOST:-}
+O365_OUTPUT_SYSLOG_PORT=${O365_OUTPUT_SYSLOG_PORT:-514}
+
+[[ -z $O365_AUDIT_CONTENT_TYPE ]] && fatal "Empty variable: O365_AUDIT_CONTENT_TYPE"
+[[ -z $O365_TENANT_ID ]] && fatal "Empty variable: O365_TENANT_ID"
+[[ -z $O365_APPLICATION_ID ]] && fatal "Empty variable: O365_APPLICATION_ID"
+[[ -z $O365_APPLICATION_CERT ]] && fatal "Empty variable: O365_APPLICATION_CERT"
+[[ -z $O365_APPLICATION_KEY ]] && fatal "Empty variable: O365_APPLICATION_KEY"
+
+for cmd in curl jq openssl; do
+    command -v "$cmd" > /dev/null || fatal "Required command not found: $cmd"
+done
+
+trap '[[ -d "$O365_TMPDIR" ]] && rm -rf "$O365_TMPDIR"' EXIT
+mkdir -m 0700 -p "$O365_TMPDIR" || fatal "Failed to create tmpdir $O365_TMPDIR"
+
+if [[ -n "$RESET" ]]; then
+    rm -rf "$O365_CACHEDIR"
+    info "Cache reset: $O365_CACHEDIR"
+fi
+
+mkdir -m 0700 -p "$O365_CACHEDIR" || fatal "Failed to create cachedir $O365_CACHEDIR"
+
+get_subscriptions || fatal "Failed to list subscriptions"
+
+if [[ -n "$O365_RESET_SUBSCRIPTIONS" ]]; then
+    while IFS= read -r content_type; do
+        stop_subscription "$content_type" || fatal "Failed to stop subscription $content_type"
+    done < <(jq -r '.[].contentType' "${O365_TMPDIR}/curl_response.json")
+    get_subscriptions || fatal "Failed to list subscriptions"
+fi
+
+for content_type in "${O365_AUDIT_CONTENT_TYPE[@]}"; do
+    if ! jq -e --arg ct "$content_type" '.[] | select(.contentType == $ct and .status == "enabled")' \
+            "${O365_TMPDIR}/curl_response.json" > /dev/null; then
+        subscribe "$content_type" || fatal "Failed to subscribe to $content_type"
+    fi
+    ct_slug="${content_type//[^[:alnum:]]/_}"
+    seen_ids_file="$O365_CACHEDIR/seen_ids_${ct_slug}"
+    declare -A "SEEN_IDS_${ct_slug}=()"
+    if [[ -f "$seen_ids_file" ]]; then
+        source "$seen_ids_file" || error "Failed to source seen ids cache for $content_type"
+    fi
+done
+
+if [[ -n $O365_OUTPUT_SYSLOG_HOST ]]; then
+    exec 1> >(exec logger -p daemon.notice -t "$PROGNAME.ev" --id="$$" --rfc5424=notq \
+        --size=65536 -n "$O365_OUTPUT_SYSLOG_HOST" -P "$O365_OUTPUT_SYSLOG_PORT")
+fi
+
+while :; do
+    debug "Starting poll cycle"
+    for content_type in "${O365_AUDIT_CONTENT_TYPE[@]}"; do
+        poll_content "$content_type" || error "Poll cycle failed for $content_type"
+    done
+    debug "Poll cycle done, sleeping ${O365_POLL_INTERVAL}s"
+    sleep "$O365_POLL_INTERVAL"
+done
