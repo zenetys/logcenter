@@ -15,6 +15,12 @@ Sample C:\program files\nxlog\nxlog.d\windows.conf
         <QueryList>
             <Query Id='0'>
                 <Select Path='ForwardedEvents'>*</Select>
+                <!--
+                <Select Path='Security'>*</Select>
+                <Select Path='Application'>*</Select>
+                <Select Path='Setup'>*</Select>
+                <Select Path='System'>*</Select>
+                -->
             </Query>
         </QueryList>
     </QueryXML>
