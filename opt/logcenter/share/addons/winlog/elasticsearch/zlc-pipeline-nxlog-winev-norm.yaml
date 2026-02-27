@@ -10,12 +10,49 @@ processors:
       if: (ctx.nxlog instanceof Map) == false ||
           (ctx.nxlog.winev instanceof Map) == false
 
-  # Require NXLog custom field for accuracy: $EventTimeEpoch, $EventReceivedTimeEpoch
-  # $EventTimeEpoch = string(integer($EventTime)/1000000) + "." + \
-  #         string(microsecond($EventTime));
-  - convert: { field: nxlog.winev.EventTimeEpoch, type: double }
-  - convert: { field: nxlog.winev.EventReceivedTimeEpoch, type: double, ignore_missing: true }
-  - date: { field: nxlog.winev.EventTimeEpoch, target_field: '@timestamp', formats: [ UNIX ] }
+# Handle custom NXLog date fields for accuracy:
+#   $EventTimeEpoch,
+#   $EventReceivedTimeEpoch
+#
+# $EventTimeEpoch = string(integer($EventTime)/1000000) + "." + \
+#     string(microsecond($EventTime));
+# $EventReceivedTimeEpoch = string(integer($EventReceivedTime)/1000000) + "." + \
+#     string(microsecond($EventReceivedTime));
+  - convert:
+      field: nxlog.winev.EventTimeEpoch
+      type: double
+      ignore_missing: true
+  - convert:
+      field: nxlog.winev.EventReceivedTimeEpoch
+      type: double
+      ignore_missing: true
+  - date:
+      field: nxlog.winev.EventTimeEpoch
+      target_field: '@timestamp'
+      formats: [ UNIX ]
+      on_failure:
+        - date:
+            # Case where EventTime is a unix epoch timestamp. This is set
+            # in field EventTimeEpoch in our recent NXLog configuration.
+            field: nxlog.winev.EventTime
+            target_field: '@timestamp'
+            formats: [ UNIX ]
+            on_failure:
+              - date:
+                  # Parse EventTime yyyy-MM-dd HH:mm:ss using custom
+                  # timezone provided on _.tz field (to be set from
+                  # the sender, eg: rsyslog).
+                  field: nxlog.winev.EventTime
+                  target_field: '@timestamp'
+                  timezone: '{{{ _.tz }}}'
+                  formats: [ 'yyyy-MM-dd HH:mm:ss' ]
+                  on_failure:
+                    # Fallback parsing EventTime yyyy-MM-dd HH:mm:ss as UTC,
+                    # which is WRONG as it is localtime of the Windows host.
+                    - date:
+                        field: nxlog.winev.EventTime
+                        target_field: '@timestamp'
+                        formats: [ 'yyyy-MM-dd HH:mm:ss' ]
 
   - script:
       lang: painless
