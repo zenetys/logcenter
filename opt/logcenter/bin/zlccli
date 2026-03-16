@@ -121,9 +121,9 @@ function do_list_archives_aggregated() {
     REPLY+="select $select_clause from ("$'\n'
     for (( i = 0; i < ${#dbids[@]}; i++ )); do
         (( i > 0 )) && REPLY+=' union all '
-        REPLY+="select '${dbids[i]}' as db, * from ${dbids[i]}.counters"$'\n'
+        REPLY+="select '${dbids[i]}' as db, * from ${dbids[i]}.counters where $where_clause"$'\n'
     done
-    REPLY+=$')\n'" where $where_clause"
+    REPLY+=$')\n'
     [[ -n $group_by ]] && REPLY+=$'\n'"$group_by"
     REPLY+=$'\n'"order by fdate desc, fhour desc, src asc"
 
