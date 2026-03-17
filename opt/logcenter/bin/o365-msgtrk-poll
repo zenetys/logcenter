@@ -1,0 +1,320 @@
+#!/bin/bash
+
+OIFS=$IFS
+PROGNAME=${0##*/}
+
+function fatal() {
+    echo "FATAL: $PROGNAME: $*" >&2
+    exit 2
+}
+
+function error() {
+    echo "ERROR: $PROGNAME: $*" >&2
+}
+
+function info() {
+    echo "INFO: $PROGNAME: $*" >&2
+}
+
+function debug() {
+    [[ -z $O365_DEBUG ]] && return 0
+    echo "DEBUG: $PROGNAME: $*" >&2
+}
+
+function exit_usage() {
+    echo "Usage: $PROGNAME [-c config] [-d] [-r] [-h]" >&2
+    exit "${1:-0}"
+}
+
+# base64url encode (no padding)
+function b64url() {
+    openssl base64 -e -A |tr '+/' '-_' |tr -d '='
+}
+
+function cat_nl() {
+    cat "$@" |sed '$a\'
+}
+
+#
+# build_jwt - Build a signed JWT client assertion for Entra ID certificate auth
+#
+# Usage:
+#   build_jwt
+#   echo "$REPLY"
+#
+function build_jwt() {
+    local thumbprint
+    thumbprint=$(openssl x509 -in "$O365_APPLICATION_CERT" -noout -fingerprint -sha1 |
+        sed -re 's,^[^=]+=(.*),\1,; s,:,,g')
+    if [[ -z "$thumbprint" ]]; then
+        error "Failed to read sha1 certificate thumbprint"
+        return 1
+    fi
+
+    # x5t = base64url( raw SHA-1 thumbprint bytes )
+    local x5t
+    x5t=$(printf '%b' "$(echo -n "$thumbprint" | sed 's/../\\x&/g')" | b64url)
+
+    # Header
+    local header header_b64
+    printf -v header '{"alg":"RS256","typ":"JWT","x5t":"%s"}' "$x5t"
+    header_b64=$(echo -n "$header" |b64url)
+
+    # Payload
+    local now exp jti payload payload_b64
+    now=$(date +%s)
+    exp=$((now + 300))
+    jti=$(cat /proc/sys/kernel/random/uuid)
+
+    printf -v payload '{"aud":"https://login.microsoftonline.com/%s/oauth2/v2.0/token","iss":"%s","sub":"%s","jti":"%s","iat":%d,"nbf":%d,"exp":%d}' \
+        "$O365_TENANT_ID" "$O365_APPLICATION_ID" "$O365_APPLICATION_ID" "$jti" "$now" "$now" "$exp"
+    payload_b64=$(echo -n "$payload" | b64url)
+
+    # Signature
+    local signature
+    signature=$(echo -n "${header_b64}.${payload_b64}" |
+        openssl dgst -sha256 -sign "$O365_APPLICATION_KEY" -binary |
+        b64url)
+    if [[ -z "$signature" ]]; then
+        error "Failed to sign data, check key"
+        return 1
+    fi
+
+    # Return via REPLY
+    REPLY="${header_b64}.${payload_b64}.${signature}"
+}
+
+#
+# get_access_token - Obtain an OAuth2 access token via client_credentials
+#
+# Usage:
+#   get_access_token
+#   echo "$REPLY"
+#
+function get_access_token() {
+    if [[ -z ${ACCESS_TOKEN+defined} ]]; then
+        # first time, try to load from cache
+        ACCESS_TOKEN=()
+        if [[ -f $O365_CACHEDIR/access_token ]]; then
+            source "$O365_CACHEDIR/access_token"
+        fi
+    elif [[ -n $__AUTH_RETRY ]]; then
+        # clear cache / reset token
+        ACCESS_TOKEN=()
+    fi
+
+    local now
+    now=$(date +%s)
+    if [[ -z "$now" ]]; then
+        error "Failed to get current time"
+        return 1
+    fi
+
+    if [[ -z ${ACCESS_TOKEN[0]} ]] || (( now > ACCESS_TOKEN[1] )); then
+        build_jwt || return 1
+        local jwt_assertion=$REPLY
+
+        local url="https://login.microsoftonline.com/${O365_TENANT_ID}/oauth2/v2.0/token"
+        local http_code
+        http_code=$(curl -sS -w '%{http_code}' -X POST "$url" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "client_id=${O365_APPLICATION_ID}" \
+            --data-urlencode "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" \
+            --data-urlencode "client_assertion=${jwt_assertion}" \
+            --data-urlencode "scope=https://graph.microsoft.com/.default" \
+            -o "${O365_TMPDIR}/get_access_token_response.json")
+        if [[ "$http_code" != "200" ]]; then
+            error "Token request failed, HTTP ${http_code}"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+
+        local access_token
+        IFS=$'\n'
+        access_token=($(jq -r '"\(.access_token//"")\n\(.expires_in//"")"' \
+            < "${O365_TMPDIR}/get_access_token_response.json"))
+        IFS=$OIFS
+        if [[ -z "${access_token[0]}" ]]; then
+            error "No access_token in get_access_token response"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+        if [[ -z "${access_token[1]}" ]]; then
+            error "No expires_in in get_access_token response"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/get_access_token_response.json" >&2
+            return 1
+        fi
+
+        ACCESS_TOKEN=( "${access_token[0]}" $(( now + access_token[1] - 60 )) )
+        debug "New access token: ${ACCESS_TOKEN[0]:0:7}..${ACCESS_TOKEN[0]: -7}"
+        declare -p ACCESS_TOKEN |sed -re 's,^declare,& -g,' > "$O365_CACHEDIR/access_token"
+    else
+        debug "Reuse cached access token: ${ACCESS_TOKEN[0]:0:7}..${ACCESS_TOKEN[0]: -7}"
+    fi
+
+    REPLY=${ACCESS_TOKEN[0]}
+}
+
+function o365_auth_curl() {
+    get_access_token || return 1
+    local access_token=$REPLY
+
+    REPLY=$(curl "$@" -sS -w '%{http_code}' \
+        -H "Authorization: Bearer ${access_token}" \
+        -o "${O365_TMPDIR}/curl_response.json")
+    if [[ $REPLY == 401 ]]; then
+        if [[ -n $__AUTH_RETRY ]]; then
+            error "Authentication error"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+        fi
+        __AUTH_RETRY=1 o365_auth_curl "$@" # retry
+    fi
+}
+
+#
+# poll_message_traces - Fetch message traces via Microsoft Graph and output them to stdout
+#
+# Algo:
+#   1. Query receivedDateTime >= start (from cache, or now - O365_INITIAL_LOOKBACK)
+#   2. Output new events (skip IDs already seen in previous overlap window)
+#   3. Cache max(receivedDateTime) - O365_POLL_OVERLAP as next start
+#   4. Cache IDs in [max - overlap, max] for dedup on next cycle
+#
+function poll_message_traces() {
+    local last_poll_file="$O365_CACHEDIR/last_poll_msgtrace"
+    local seen_ids_file="$O365_CACHEDIR/seen_ids_msgtrace"
+    local results_file="${O365_TMPDIR}/results.ndjson"
+
+    # start point
+    local now start_epoch
+    now=$(date +%s)
+    if [[ -f "$last_poll_file" ]]; then
+        start_epoch=$(< "$last_poll_file")
+        local min_epoch=$(( now - O365_MAX_LOOKBACK ))
+        if (( start_epoch < min_epoch )); then
+            debug "Clamping start $start_epoch to max lookback $min_epoch"
+            start_epoch=$min_epoch
+        fi
+    else
+        start_epoch=$(( now - O365_INITIAL_LOOKBACK ))
+    fi
+
+    local start_str end_str
+    start_str=$(date -u -d "@${start_epoch}" '+%Y-%m-%dT%H:%M:%SZ')
+    end_str=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    debug "Polling MessageTrace: ${start_str} .. ${end_str}"
+
+    # fetch all pages
+    > "$results_file"
+    local url="https://graph.microsoft.com/beta/admin/exchange/tracing/messageTraces?\$filter=receivedDateTime+ge+${start_str}+and+receivedDateTime+le+${end_str}&\$top=${O365_PAGE_SIZE}"
+
+    while [[ -n "$url" ]]; do
+        o365_auth_curl -X GET "$url" || return 1
+        if [[ "$REPLY" != 2* ]]; then
+            error "MessageTrace query failed, HTTP ${REPLY}"
+            [[ -n $O365_DEBUG ]] && cat_nl "${O365_TMPDIR}/curl_response.json" >&2
+            return 1
+        fi
+        jq -c '.value[]' "${O365_TMPDIR}/curl_response.json" >> "$results_file"
+        url=$(jq -r '.["@odata.nextLink"] // empty' "${O365_TMPDIR}/curl_response.json")
+    done
+
+    [[ -s "$results_file" ]] || return 0
+
+    # output new events, skip IDs from previous overlap window
+    if [[ -s "$seen_ids_file" ]]; then
+        jq -c --rawfile seen "$seen_ids_file" '
+            ($seen | split("\n") | map(select(. != ""))) as $ids |
+            select(.id | IN($ids[]) | not)
+        ' "$results_file"
+    else
+        cat "$results_file"
+    fi
+
+    # advance: next start = max(receivedDateTime) - overlap
+    local max_received max_epoch next_epoch next_str
+    max_received=$(jq -rs '[.[].receivedDateTime] | max' "$results_file")
+    max_epoch=$(date -u -d "$max_received" '+%s')
+    next_epoch=$(( max_epoch - O365_POLL_OVERLAP ))
+    next_str=$(date -u -d "@${next_epoch}" '+%Y-%m-%dT%H:%M:%SZ')
+
+    echo "$next_epoch" > "$last_poll_file"
+
+    # save IDs in overlap window for dedup
+    jq -rs --arg cutoff "$next_str" '
+        [.[] | select(.receivedDateTime >= $cutoff) | .id] | unique | .[]
+    ' "$results_file" > "$seen_ids_file"
+
+    debug "Next start: ${next_str} ($(jq -rs 'length' "$results_file") events, $(wc -l < "$seen_ids_file") in overlap)"
+}
+
+CONFIG=
+RESET=
+while (( $# > 0 )); do
+    case "$1" in
+        -c|--config) CONFIG=$2; shift ;;
+        -d|--debug) O365_DEBUG=1 ;;
+        -r|--reset) RESET=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage 1 ;;
+    esac
+    shift
+done
+
+if [[ -n "$CONFIG" ]]; then
+    source "$CONFIG" || fatal "Failed to load config: $CONFIG"
+fi
+
+O365_TMPDIR=${TMPDIR:-/dev/shm}/$PROGNAME.$RANDOM.$RANDOM
+O365_CACHEDIR=${O365_CACHEDIR:-${O365_CACHEBASE:-${TMPDIR:-/dev/shm}}/$PROGNAME}
+O365_DEBUG=${O365_DEBUG:-}
+
+O365_TENANT_ID=${O365_TENANT_ID:-}
+O365_APPLICATION_ID=${O365_APPLICATION_ID:-}
+O365_APPLICATION_CERT=${O365_APPLICATION_CERT:-}
+O365_APPLICATION_KEY=${O365_APPLICATION_KEY:-}
+# Lookback on first run, when no cache exists (seconds)
+O365_INITIAL_LOOKBACK=${O365_INITIAL_LOOKBACK:-86400}
+# Max lookback when resuming from cache (seconds)
+O365_MAX_LOOKBACK=${O365_MAX_LOOKBACK:-$(( 2*86400 ))}
+# Sleep between poll cycles (seconds)
+O365_POLL_INTERVAL=${O365_POLL_INTERVAL:-60}
+# Overlap margin subtracted from max(receivedDateTime) to catch late-indexed events (seconds)
+O365_POLL_OVERLAP=${O365_POLL_OVERLAP:-1200}
+# Number of results per page ($top, API max: 5000)
+O365_PAGE_SIZE=${O365_PAGE_SIZE:-1000}
+O365_OUTPUT_SYSLOG_HOST=${O365_OUTPUT_SYSLOG_HOST:-}
+O365_OUTPUT_SYSLOG_PORT=${O365_OUTPUT_SYSLOG_PORT:-514}
+
+[[ -z $O365_TENANT_ID ]] && fatal "Empty variable: O365_TENANT_ID"
+[[ -z $O365_APPLICATION_ID ]] && fatal "Empty variable: O365_APPLICATION_ID"
+[[ -z $O365_APPLICATION_CERT ]] && fatal "Empty variable: O365_APPLICATION_CERT"
+[[ -z $O365_APPLICATION_KEY ]] && fatal "Empty variable: O365_APPLICATION_KEY"
+
+for cmd in curl jq openssl; do
+    command -v "$cmd" > /dev/null || fatal "Required command not found: $cmd"
+done
+
+trap '[[ -d "$O365_TMPDIR" ]] && rm -rf "$O365_TMPDIR"' EXIT
+mkdir -m 0700 -p "$O365_TMPDIR" || fatal "Failed to create tmpdir $O365_TMPDIR"
+
+if [[ -n "$RESET" ]]; then
+    rm -rf "$O365_CACHEDIR"
+    info "Cache reset: $O365_CACHEDIR"
+fi
+
+mkdir -m 0700 -p "$O365_CACHEDIR" || fatal "Failed to create cachedir $O365_CACHEDIR"
+
+if [[ -n $O365_OUTPUT_SYSLOG_HOST ]]; then
+    exec 1> >(exec logger -p daemon.notice -t "$PROGNAME.ev" --id="$$" --rfc5424=notq \
+        --size=65536 -n "$O365_OUTPUT_SYSLOG_HOST" -P "$O365_OUTPUT_SYSLOG_PORT")
+fi
+
+while :; do
+    debug "Starting poll cycle"
+    poll_message_traces || error "Poll cycle failed"
+    debug "Poll cycle done, sleeping ${O365_POLL_INTERVAL}s"
+    sleep "$O365_POLL_INTERVAL"
+done
