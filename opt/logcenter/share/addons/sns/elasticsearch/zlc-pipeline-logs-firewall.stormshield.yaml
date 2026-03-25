@@ -1,0 +1,45 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'sns.* fields expected'
+      if: (ctx.sns instanceof Map) == false
+
+  - date:
+      ignore_failure: true
+      field: sns.time
+      target_field: sns.time
+      timezone: '{{{ sns.tz }}}'
+      formats: [ 'yyyy-MM-dd HH:mm:ss' ]
+
+  - date:
+      ignore_failure: true
+      field: sns.startime
+      target_field: sns.startime
+      timezone: '{{{ sns.tz }}}'
+      formats: [ 'yyyy-MM-dd HH:mm:ss' ]
+
+  - script:
+      lang: painless
+      source: |
+        // prepare for adding standard fields
+        if (ctx.event == null)
+            ctx.event = [:];
+
+        // event.duration
+        if (ctx.sns.duration instanceof String) {
+            try {
+                def duration = Float.parseFloat(ctx.sns.duration);
+                ctx.event.duration = (Long)(duration * 1000000000L);
+            }
+            catch (Exception e) {}
+        }
+
+  - remove:
+      field: sns
+      if: ctx.sns.logtype == 'monitor' ||
+          ctx.sns.logtype == 'filterstat'

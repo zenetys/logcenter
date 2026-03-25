@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"destination.bytes":{"count":1},"destination.geo.country_iso_code":{"count":1},"destination.ip":{"count":1},"destination.port":{"count":1},"event.action":{"count":1},"host.name":{"count":1},"log.level":{"count":1},"message":{"count":3},"sns.dstiprep":{"count":1},"sns.dstname":{"count":1},"sns.logtype":{"count":19},"sns.msg":{"count":2},"sns.pri":{"count":1},"sns.remotenet":{"count":1},"sns.service":{"count":1},"sns.srcname":{"count":1},"sns.startime":{"count":1},"source.bytes":{"count":1},"source.geo.country_iso_code":{"count":2},"source.ip":{"count":1},"source.user.name":{"count":1},"user.name":{"count":1},"network.bytes":{"count":0},"sns.rcvd":{"count":0},"sns.sent":{"count":0},"destination.nat.port":{"count":0},"sns.dstport":{"count":0},"sns.modsrcport":{"count":0},"sns.origdstport":{"count":0},"source.nat.port":{"count":0},"sns.srcport":{"count":0},"source.port":{"count":0},"sns.action":{"count":0},"event.duration":{"count":0},"sns.duration":{"count":0}}'
+  fieldFormatMap: '{"destination.bytes":{"id":"bytes","params":{}},"network.bytes":{"id":"bytes","params":{}},"source.bytes":{"id":"bytes","params":{}},"sns.rcvd":{"id":"bytes","params":{}},"sns.sent":{"id":"bytes","params":{}},"destination.nat.port":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"destination.port":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"sns.dstport":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"sns.modsrcport":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"sns.origdstport":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"source.nat.port":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"sns.srcport":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"source.port":{"id":"number","params":{"pattern":"0.[000]","alwaysShowSign":false}},"sns.action":{"id":"color","params":{"fieldType":"string","colors":[{"range":"-Infinity:Infinity","regex":"pass","text":"#000000","background":"#8eff90","boolean":"true"},{"range":"-Infinity:Infinity","regex":"block","text":"#000000","background":"#FFCECE","boolean":"true"}]}},"event.action":{"id":"color","params":{"fieldType":"string","colors":[{"range":"-Infinity:Infinity","regex":"pass","text":"#000000","background":"#8eff90","boolean":"true"},{"range":"-Infinity:Infinity","regex":"block","text":"#000000","background":"#FFCECE","boolean":"true"}]}},"event.duration":{"id":"duration","params":{"inputFormat":"nanoseconds","outputFormat":"humanizePrecise","outputPrecision":2,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"sns.duration":{"id":"duration","params":{"inputFormat":"seconds","outputFormat":"humanizePrecise","outputPrecision":2,"includeSpaceWithSuffix":true,"useShortSuffix":true}}}'
+  fields: '[]'
+  name: logs-firewall.stormshield-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-firewall.stormshield-zlc,logs-firewall.stormshield-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2026-03-26T17:12:52.411Z"
+id: a8027753-a5dc-4336-be95-b60ab096eb19
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2026-03-27T11:49:19.176Z"
+version: Wzc1MSwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

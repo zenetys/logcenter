@@ -1,0 +1,19 @@
+attributes:
+  color: '#c4eef9'
+  description: ""
+  name: stormshield
+coreMigrationVersion: 8.8.0
+created_at: "2026-03-26T19:08:01.604Z"
+id: c6295716-0be6-4c24-ae00-091f62650bbf
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2026-03-26T19:08:01.604Z"
+version: WzE0OTIsMV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

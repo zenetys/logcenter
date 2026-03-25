@@ -1,0 +1,83 @@
+attributes:
+  columns:
+    - host.name
+    - sns.logtype
+    - source.ip
+    - source.geo.country_iso_code
+    - user.name
+    - sns.remotenet
+    - sns.msg
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 222
+      destination.bytes:
+        width: 65
+      destination.geo.country_iso_code:
+        width: 57
+      destination.ip:
+        width: 134
+      destination.port:
+        width: 66
+      event.action:
+        width: 82
+      host.name:
+        width: 104
+      sns.dstiprep: {}
+      sns.dstname: {}
+      sns.logtype:
+        width: 96
+      sns.remotenet:
+        width: 141
+      sns.srcname: {}
+      source.bytes:
+        width: 71
+      source.geo.country_iso_code:
+        width: 44
+      source.ip:
+        width: 128
+      user.name:
+        width: 256
+  headerRowHeight: 1
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"type":"query_string","disabled":false,"negate":false,"alias":"DO-NOT-REMOVE sns.logtype:*vpn","key":"query","value":"sns.logtype: *vpn","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"query_string":{"query":"sns.logtype: *vpn"}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 1
+  rowsPerPage: 100
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing stormshield sns vpn
+coreMigrationVersion: 8.8.0
+created_at: "2026-03-27T11:16:13.380Z"
+id: 0042a965-1578-4fe2-bb62-0dab3498c9b6
+managed: false
+references:
+  - id: a8027753-a5dc-4336-be95-b60ab096eb19
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: a8027753-a5dc-4336-be95-b60ab096eb19
+    name: kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index
+    type: index-pattern
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+  - id: aba62814-ea35-4608-86d0-c44980c810d9
+    name: tag-ref-aba62814-ea35-4608-86d0-c44980c810d9
+    type: tag
+  - id: c6295716-0be6-4c24-ae00-091f62650bbf
+    name: tag-ref-c6295716-0be6-4c24-ae00-091f62650bbf
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2026-03-27T11:44:23.489Z"
+version: Wzc0MSwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

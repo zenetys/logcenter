@@ -1,0 +1,64 @@
+attributes:
+  columns:
+    - host.name
+    - sns.logtype
+    - sns.service
+    - log.level
+    - message
+  description: ""
+  grid:
+    columns:
+      host.name:
+        width: 104
+      log.level:
+        width: 97
+      sns.logtype:
+        width: 120
+      sns.pri:
+        width: 73
+      sns.service:
+        width: 151
+  headerRowHeight: 1
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"DO-NOT-REMOVE sns.logtype:system","disabled":false,"key":"sns.logtype","negate":false,"params":{"query":"system"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"sns.logtype":"system"}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 1
+  rowsPerPage: 100
+  sort:
+    - - '@timestamp'
+      - desc
+    - - event.action
+      - asc
+  timeRestore: false
+  title: Listing stormshield sns system
+coreMigrationVersion: 8.8.0
+created_at: "2026-03-27T11:23:59.852Z"
+id: aa697edb-5301-44b1-ba66-77e2e7afc271
+managed: false
+references:
+  - id: a8027753-a5dc-4336-be95-b60ab096eb19
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: a8027753-a5dc-4336-be95-b60ab096eb19
+    name: kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index
+    type: index-pattern
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+  - id: aba62814-ea35-4608-86d0-c44980c810d9
+    name: tag-ref-aba62814-ea35-4608-86d0-c44980c810d9
+    type: tag
+  - id: c6295716-0be6-4c24-ae00-091f62650bbf
+    name: tag-ref-c6295716-0be6-4c24-ae00-091f62650bbf
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2026-03-27T11:45:01.138Z"
+version: Wzc0NiwxXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

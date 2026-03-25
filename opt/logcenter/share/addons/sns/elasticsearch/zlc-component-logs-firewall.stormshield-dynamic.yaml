@@ -1,0 +1,68 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - firewall_stormshield_date:
+          path_match:
+            - 'sns.*time'
+          match_mapping_type: string
+          mapping:
+            ignore_malformed: true
+            type: date
+
+      - firewall_stormshield_long:
+          path_match:
+            - 'sns.*byte'
+            - 'sns.*Byte'
+            - 'sns.*port'
+            - 'sns.pri'
+            - 'sns.rcvd'
+            - 'sns.sent'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - firewall_stormshield_float:
+          path_match:
+            - 'sns.duration'
+          match_mapping_type: string
+          mapping:
+            type: float
+
+      - firewall_stormshield_ip:
+          path_match:
+            - 'sns.*src'
+            - 'sns.*dst'
+            - 'sns.remotenet'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - firewall_stormshield_text:
+          path_match:
+            - 'sns.msg'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - firewall_stormshield_wildcard_and_text:
+          path_match:
+            - 'sns.arg'
+          match_mapping_type: string
+          mapping:
+            type: wildcard
+            fields:
+              text:
+                type: match_only_text
+
+      - firewall_stormshield_keyword_and_text:
+          path_match:
+            - 'sns.*user'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text
+

@@ -1,0 +1,37 @@
+version: 2
+index_patterns:
+  - logs-firewall.stormshield-zlc
+  - logs-firewall.stormshield-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-firewall.stormshield-dynamic
+  - zlc-component-logs-firewall.stormshield-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.stormshield@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-firewall.stormshield-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-firewall.stormshield@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      destination.bytes: { type: zlc_alias, target: { path: sns.rcvd, type: long }}
+      event.action: { type: zlc_alias, target: { path: sns.action, type: keyword }}
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+      message: { type: zlc_alias, target: { path: sns.msg, type: match_only_text }}
+      network.transport: { type: zlc_alias, target: { path: sns.ipproto, type: keyword }}
+      observer.egress.interface.id: { type: zlc_alias, target: { path: sns.dstif, type: keyword }}
+      observer.egress.interface.name: { type: zlc_alias, target: { path: sns.dstifname, type: keyword }}
+      observer.ingress.interface.id: { type: zlc_alias, target: { path: sns.srcif, type: keyword }}
+      observer.ingress.interface.name: { type: zlc_alias, target: { path: sns.srcifname, type: keyword }}
+      rule.uuid: { type: zlc_alias, target: { path: sns.ruleid, type: keyword }}
+      source.bytes: { type: zlc_alias, target: { path: sns.sent, type: long }}
+      source.user.domain: { type: zlc_alias, target: { path: sns.domain, type: keyword }}
+      source.user.name: { type: zlc_alias, target: { path: user.name, type: [ keyword, text ] }}
+      user.domain: { type: zlc_alias, target: { path: sns.domain, type: keyword }}
