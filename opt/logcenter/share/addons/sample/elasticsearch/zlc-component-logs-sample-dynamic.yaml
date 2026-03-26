@@ -1,0 +1,28 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - sample_date:
+          path_match:
+            - 'w3c.timestamp'
+          match_mapping_type: string
+          mapping:
+            type: date
+
+      - sample_long:
+          path_match:
+            - '*.offset'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - sample_keyword_and_text:
+          path_match:
+            - '*.path'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

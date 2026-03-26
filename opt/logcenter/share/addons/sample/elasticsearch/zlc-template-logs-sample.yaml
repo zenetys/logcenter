@@ -1,0 +1,36 @@
+version: 2
+index_patterns:
+  - logs-sample-zlc
+  - logs-sample-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-sample-dynamic
+  - zlc-component-logs-sample-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-sample@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-sample-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-sample@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+
+      # classic syslog fields
+      process.name: { type: zlc_alias, target: { path: log.syslog.appname, type: [ keyword, text ] } }
+      process.pid: { type: zlc_alias, target: { path: log.syslog.procid.long, type: long } }
+
+      # disabled to allow custom log.level and event.severity extracted from the message
+      #event.severity: { type: zlc_alias, target: { path: log.syslog.severity.code, type: long } }
+      #log.level: { type: zlc_alias, target: { path: log.syslog.severity.name, type: keyword } }
+
+      # w3c logs
+      source.user.domain: { type: zlc_alias, target: { path: user.domain, type: keyword } }
+      source.user.name: { type: zlc_alias, target: { path: user.name, type: [ keyword, text ] } }

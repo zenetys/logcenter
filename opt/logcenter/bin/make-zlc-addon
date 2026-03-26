@@ -1,0 +1,67 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "Usage: $PROGNAME addon [dataset [target-base-dir]]"
+    exit "$status"
+}
+
+function fatal() {
+    echo "FATAL: $PROGNAME: $*" >&2
+    exit 2
+}
+
+function info() {
+    echo "INFO: $PROGNAME: $*" >&2
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -*) exit_usage 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+
+ADDON_TEMPLATE=${ADDON_TEMPLATE:-${0%/*}/../share/addons/sample}
+[[ -d $ADDON_TEMPLATE ]] || fatal 'Bad addon template directory'
+
+ADDON_NAME=${1//[^[:alnum:]._-]/_}; shift
+[[ -n $ADDON_NAME ]] || fatal 'Missing addon name'
+
+ADDON_DATASET=${1:-$ADDON_NAME}; shift
+ADDON_DATASET=${ADDON_DATASET//[^[:alnum:]._]/_}
+
+ADDON_TARGET_BASEDIR=${1:-.}; shift
+[[ -d $ADDON_TARGET_BASEDIR ]] || fatal 'Bad addon target base directory'
+[[ -e $ADDON_TARGET_BASEDIR/$ADDON_NAME ]] && fatal 'Target addon directory exists'
+
+cp_opts=( -a )
+tpl_basedir=$(realpath -e "$ADDON_TEMPLATE/..")
+target_basedir=$(realpath -e "$ADDON_TARGET_BASEDIR")
+[[ $target_basedir != $tpl_basedir ]] && cp_opts+=( -L )
+
+info "Copy skeleton to $ADDON_TARGET_BASEDIR/$ADDON_NAME"
+cp "${cp_opts[@]}" "$ADDON_TEMPLATE" "$ADDON_TARGET_BASEDIR/$ADDON_NAME" ||
+    fatal 'Failed to copy addon template'
+
+find "$ADDON_TARGET_BASEDIR/$ADDON_NAME/" -mindepth 1 -not -type d |
+    while read -r; do
+        newname="${REPLY//sample/$ADDON_DATASET}"
+        info "> Rename $newname"
+        mv "$REPLY" "$newname" || fatal 'Failed to rename addon files'
+    done
+
+find "$ADDON_TARGET_BASEDIR/$ADDON_NAME/" -mindepth 1 -type f |
+    while read -r; do
+        info "> Edit $REPLY"
+        sed -i -r -e "s@logs-sample@logs-${ADDON_DATASET}@g" \
+            -e "s@sample_@${ADDON_DATASET//[^[:alnum:]_]/_}_@g" "$REPLY" ||
+                fatal 'Failed to prepare addon files'
+    done
+
+info "Addon created in $ADDON_TARGET_BASEDIR/$ADDON_NAME"
