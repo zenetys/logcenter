@@ -28,7 +28,8 @@ rule=w3c,w3c.access,w3c.access.common:%[
     { "type": "whitespace" },
     { "type": "number", "name": "http.response.status_code", "format": "number" },
     { "type": "whitespace" },
-    { "type": "word", "name": "http.response.body.bytes" } ]%
+    { "type": "word", "name": "http.response.body.bytes" },
+    { "type": "rest" } ]%
 
 # 10.109.21.42 - - 17/06/2024 08:07:42.338 122 "GET /path/to/something HTTP/1.1" 200 206
 rule=w3c,w3c.access,w3c.access.common_custom_date:%[
@@ -55,7 +56,8 @@ rule=w3c,w3c.access,w3c.access.common_custom_date:%[
     { "type": "whitespace" },
     { "type": "number", "name": "http.response.status_code", "format": "number" },
     { "type": "whitespace" },
-    { "type": "word", "name": "http.response.body.bytes", "extradata": " " } ]%
+    { "type": "word", "name": "http.response.body.bytes", "extradata": " " },
+    { "type": "rest" } ]%
 
 annotate=w3c:+event.category="web"
 annotate=w3c.access:+service.name="access"
