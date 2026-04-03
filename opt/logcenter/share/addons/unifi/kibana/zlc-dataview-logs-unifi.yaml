@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"event.action":{"count":1},"message":{"count":1},"unifi.category":{"count":1},"unifi.clientHostname":{"count":1},"unifi.clientIp":{"count":1},"unifi.clientMac":{"count":1},"unifi.connectedToDeviceName":{"count":1},"unifi.duration":{"count":1},"unifi.host":{"count":1},"unifi.lastConnectedToDeviceName":{"count":1},"unifi.networkName":{"count":1},"unifi.wifiName":{"count":1},"user.name":{"count":1},"unifi.usageDownBytes":{"count":0},"unifi.usageUpBytes":{"count":0},"unifi.usageDown_bytes":{"count":0},"unifi.usageUp_bytes":{"count":0},"event.duration":{"count":1},"unifi.duration_sec":{"count":1},"network.bytes":{"count":0},"destination.bytes":{"count":0},"source.bytes":{"count":0}}'
+  fieldFormatMap: '{"unifi.usageDownBytes":{"id":"bytes","params":{}},"unifi.usageUpBytes":{"id":"bytes","params":{}},"unifi.usageDown_bytes":{"id":"bytes","params":{}},"unifi.usageUp_bytes":{"id":"bytes","params":{}},"event.duration":{"id":"duration","params":{"inputFormat":"nanoseconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"unifi.duration_sec":{"id":"duration","params":{"inputFormat":"seconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"network.bytes":{"id":"bytes","params":{}},"destination.bytes":{"id":"bytes","params":{}},"source.bytes":{"id":"bytes","params":{}}}'
+  fields: '[]'
+  name: logs-unifi-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-unifi-zlc,logs-unifi-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2026-04-03T06:42:39.704Z"
+id: e533f605-ba3e-4722-a44d-d1bb55a775f1
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2026-04-03T17:27:41.617Z"
+version: WzE4NzAsMV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

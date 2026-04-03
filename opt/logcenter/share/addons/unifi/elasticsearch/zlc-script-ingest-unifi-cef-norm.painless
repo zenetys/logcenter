@@ -1,0 +1,34 @@
+/* version 2 */
+
+if (!(ctx?.cef?.extensions instanceof Map))
+    return;
+
+/**
+ * We are going to populate unifi.* fields, create the object if it
+ * does not already exist.
+ */
+
+if (!(ctx.unifi instanceof Map))
+    ctx.unifi = [:];
+
+/**
+ * Custom UniFi CEF extensions fields have prefix UNIFI in keys, ex:
+ * UNIFIattemptedConnectionSource. The following moves these fields
+ * to unifi.<key>, with the UNIFI prefix stripped from <key>.
+ */
+
+def to_add = [ /* [ stripped_key, value ], ... */ ];
+def it = ctx.cef.extensions.entrySet().iterator();
+while (it.hasNext()) {
+    def e = it.next();
+    def key = e.getKey();
+
+    if (key.startsWith('UNIFI')) {
+        to_add.add([ key.substring(5), e.getValue() ]);
+        it.remove();
+    }
+}
+if (to_add.length > 0) {
+    for (int i = 0; i < to_add.length; i++)
+        ctx.unifi[to_add[i][0]] = to_add[i][1];
+}

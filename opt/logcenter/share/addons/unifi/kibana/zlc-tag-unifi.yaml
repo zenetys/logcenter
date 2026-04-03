@@ -1,0 +1,19 @@
+attributes:
+  color: '#dec1ff'
+  description: ""
+  name: unifi
+coreMigrationVersion: 8.8.0
+created_at: "2026-04-03T08:42:36.989Z"
+id: c29a51f1-85a0-4b05-9c18-259bdca647c0
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2026-04-03T08:43:55.940Z"
+version: Wzc4NTQsMV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

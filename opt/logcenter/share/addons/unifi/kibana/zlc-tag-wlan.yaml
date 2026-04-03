@@ -1,0 +1,19 @@
+attributes:
+  color: '#f1e3b4'
+  description: ""
+  name: wlan
+coreMigrationVersion: 8.8.0
+created_at: "2026-04-03T08:43:22.879Z"
+id: 70ac9d3e-9d57-47e5-a857-a64d10be3bbb
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2026-04-03T08:43:22.879Z"
+version: Wzc4NTMsMV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

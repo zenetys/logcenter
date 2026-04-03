@@ -1,0 +1,59 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+
+  - fail:
+      message: 'cef.* fields expected'
+      if: (ctx.cef instanceof Map) == false
+
+  - script:
+      id: zlc-script-ingest-cef-rsyslog-norm
+  - script:
+      id: zlc-script-ingest-unifi-cef-norm
+
+  - script:
+      id: zlc-script-ingest-parse-human
+      ignore_failure: true
+      params:
+        field: unifi.usageUp
+        target_field: unifi.usageUp_bytes
+        bytes: true
+  - script:
+      id: zlc-script-ingest-parse-human
+      ignore_failure: true
+      params:
+        field: unifi.usageDown
+        target_field: unifi.usageDown_bytes
+        bytes: true
+
+  - script:
+      id: zlc-script-ingest-parse-duration
+      ignore_failure: true
+      params:
+        field: unifi.duration
+        target_field: unifi.duration_sec
+
+  - script:
+      lang: painless
+      source: |
+        // prepare for adding standard fields
+        if (ctx.event == null)
+            ctx.event = [:];
+        if (ctx.network == null)
+            ctx.network = [:];
+
+        // event.duration
+        if (ctx?.unifi?.duration_sec != null) {
+            try { ctx.event.duration = (Long)(ctx.unifi.duration_sec * 1000000000L); }
+            catch (Exception e) {}
+        }
+        // network.bytes
+        if (ctx?.unifi?.usageDown_bytes != null && ctx?.unifi?.usageUp_bytes != null)
+            ctx.network.bytes = ctx.unifi.usageDown_bytes + ctx.unifi.usageDown_bytes;
+
+  - remove:
+      field: event.original

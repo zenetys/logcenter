@@ -1,0 +1,54 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - unifi_date:
+          path_match:
+            - 'unifi.*Time'
+          mapping:
+            ignore_malformed: true
+            type: date
+
+      - unifi_long:
+          path_match:
+            - 'cef.extensions.cnt'
+            - 'unifi.*Bytes'
+            - 'unifi.*Channel'
+            - 'unifi.*Interference'
+            - 'unifi.*Rssi'
+            - 'unifi.*Utilization'
+            - 'unifi.*Vlan'
+            - 'unifi.*Width'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - unifi_ip:
+          path_match:
+            - 'cef.extensions.src'
+            - 'unifi.*Ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - unifi_text:
+          path_match:
+            - 'cef.extensions.msg'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - unifi_keyword_and_text:
+          path_match:
+            - 'cef.extensions.*user'
+            - 'unifi.*Alias'
+            - 'unifi.*Model'
+            - 'unifi.*Name'
+            - 'unifi.*name'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

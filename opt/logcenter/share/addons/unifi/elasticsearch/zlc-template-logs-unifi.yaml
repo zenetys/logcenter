@@ -1,0 +1,37 @@
+version: 2
+index_patterns:
+  - logs-unifi-zlc
+  - logs-unifi-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-unifi-dynamic
+  - zlc-component-logs-unifi-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-unifi@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-unifi-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-unifi@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      destination.bytes: { type: zlc_alias, target: { path: unifi.usageDown_bytes, type: long }}
+      event.action: { type: zlc_alias, target: { path: cef.name, type: keyword } }
+      event.code: { type: zlc_alias, target: { path: cef.deviceEventClassId, type: keyword } }
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+      event.reason: { type: zlc_alias, target: { path: cef.extensions.reason, type: [ keyword, text ] }}
+      message: { type: zlc_alias, target: { path: cef.extensions.msg, type: match_only_text }}
+      observer.egress.interface.id: { type: zlc_alias, target: { path: cef.extensions.deviceOutboundInterface, type: keyword } }
+      observer.product: { type: zlc_alias, target: { path: cef.deviceProduct, type: keyword } }
+      observer.vendor: { type: zlc_alias, target: { path: cef.deviceVendor, type: keyword } }
+      observer.version: { type: zlc_alias, target: { path: cef.deviceVersion, type: keyword } }
+      source.bytes: { type: zlc_alias, target: { path: unifi.usageUp_bytes, type: long }}
+      source.ip: { type: zlc_alias, target: { path: cef.extensions.src, type: ip } }
+      source.user.name: { type: zlc_alias, target: { path: cef.extensions.suser, type: [ keyword, text ] }}
+      user.name: { type: zlc_alias, target: { path: cef.extensions.suser, type: [ keyword, text ] }}
