@@ -1,0 +1,118 @@
+/* version: 1 */
+
+/**
+ * Convert a human duration string like "1m 6s" to a number of seconds.
+ * The script does nothing if the input value does not exit or is empty.
+ * @param {String} field - Input field
+ * @param {String} target_field - Optional output field, override input by default
+ */
+
+List kpath(String input) {
+    ArrayList output = new ArrayList();
+    if (input != null && input.length() > 0) {
+        int pos = 0;
+        while (true) {
+            int dot = input.indexOf('.', pos);
+            if (dot == -1)
+                break;
+            output.add(input.substring(pos, dot));
+            pos = dot + 1;
+        }
+        output.add(input.substring(pos));
+    }
+    return output;
+}
+
+Object oget(Object o, List k) {
+    for (int i = 0; i < k.length; i++) {
+        if (!(o instanceof Map))
+            return null;
+        if (k[i].isEmpty())
+            throw new Exception("parse-duration/oget: invalid path");
+        o = ((Map)o).get(k[i]);
+    }
+    return o;
+}
+
+Object oset(Object o, List k, Object v) {
+    if (!(o instanceof Map))
+        throw new Exception("parse-duration/oset: invalid root, object expected");
+    if (k.length == 0)
+        throw new Exception("parse-duration/oset: empty path");
+    int i;
+    Object next;
+    for (i = 0; i < k.length -1; i++) {
+        if (k[i].isEmpty())
+            throw new Exception("parse-duration/oset: invalid path");
+        next = ((Map)o).get(k[i]);
+        if (!(next instanceof Map)) {
+            next = new HashMap();
+            ((Map)o).put(k[i], next); /* may override */
+        }
+        o = next;
+    }
+    if (k[i].isEmpty())
+        throw new Exception("parse-duration/oset: invalid path");
+    ((Map)o).put(k[i], v); /* may override */
+    return v;
+}
+
+if (!(params?.field instanceof String))
+    throw new Exception("parse-duration: field param, expect string");
+List input_p = kpath(params.field);
+if (input_p.length == 0)
+    throw new Exception("parse-duration: field param, expect non-empty string");
+def input = oget(ctx, input_p);
+// let pass null as noop
+if (input == null)
+    return;
+if (!(input instanceof String))
+    throw new Exception("parse-duration: field param, expect resolved string");
+// let pass empty string as noop
+if (input.isEmpty())
+    return;
+
+List target_p = input_p;
+if (params?.target_field != null) {
+    if (!(params?.target_field instanceof String))
+        throw new Exception("parse-duration: target_field param, expect string");
+    target_p = kpath(params.target_field);
+    if (target_p.length == 0)
+        throw new Exception("parse-duration: target_field param, expect non-empty string");
+}
+
+int input_length = input.length();
+long seconds = 0;
+int num_start = -1;
+
+for (int i = 0; i < input_length; i++) {
+    char c = Character.toLowerCase(input.charAt(i));
+    if (c >= 48 /* 0 */ && c <= 57 /* 9 */) {
+        if (num_start == -1)
+            num_start = i;
+    }
+    else if (c == 100 /* d */ || c == 104 /* h */ || c == 109 /* m */ || c == 115 /* s */) {
+        if (num_start == -1)
+            throw new Exception("parse-duration: no number to convert");
+        else {
+            // let it throw if it fails
+            String toParse = input.substring(num_start, i);
+            long val;
+            try { val = Long.parseLong(toParse); }
+            catch (Exception e) { throw new Exception("parse-duration: failed to parse long at index " + num_start); }
+            if (c == 100 /* d */) { seconds += val * 86400L; }
+            else if (c == 104 /* h */) { seconds += val * 3600L; }
+            else if (c == 109 /* m */) { seconds += val * 60L; }
+            else if (c == 115 /* s */) { seconds += val; }
+            num_start = -1;
+        }
+    }
+    // ignore only spaces
+    else if (c != 32 /* space */)
+        throw new Exception("parse-duration: invalid character at index " + i);
+}
+
+if (num_start != -1)
+    seconds += Long.parseLong(input.substring(num_start));
+
+oset(ctx, target_p, seconds);
