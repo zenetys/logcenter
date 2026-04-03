@@ -6,6 +6,7 @@
     gawk \
     jq \
     lua \
+    lua-json \
     openssl \
     rsyslog8z \
     rsync \
