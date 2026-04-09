@@ -12,6 +12,10 @@ import termios
 import threading
 import traceback
 
+# python 3.6 compatibility, shlex.join() does not exist
+if not hasattr(shlex, 'join'):
+    shlex.join = lambda x: ' '.join(shlex.quote(arg) for arg in x)
+
 # disable output buffering on stdout
 import functools
 print = functools.partial(print, flush=True)
