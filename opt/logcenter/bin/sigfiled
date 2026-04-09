@@ -4,6 +4,7 @@ import argparse
 import errno
 import os
 import select
+import shlex
 import socket
 import sys
 import subprocess
@@ -51,19 +52,20 @@ def stdin_tty_echo(b=None):
 
 def run_client_mode(sockname, args):
     argc = len(args)
+    has_tty = sys.stdin.isatty()
 
     if argc == 1 and args[0] == 'unlock':
-        while True:
+        if has_tty:
             sys.stdout.write('Passphrase:\n')
             sys.stdout.flush()
-            echo_ori = stdin_tty_echo(False)
-            try: p = sys.stdin.readline()
-            except:
-                print('Failed to read passphrase')
-                return False
-            finally: stdin_tty_echo(echo_ori)
-            if len(p) > 1:
-                break
+        echo_ori = stdin_tty_echo(False)
+        try:
+            p = sys.stdin.readline()
+        except:
+            print('Failed to read passphrase')
+            return False
+        finally:
+            stdin_tty_echo(echo_ori)
         args.append(p[:-1])
         argc += 1
 
@@ -86,8 +88,7 @@ def run_client_mode(sockname, args):
     # best effort
     try:
         if argc > 0:
-            data = ' '.join(args)
-            data = bytes(data + '\n', 'utf-8')
+            data = bytes(shlex.join(args) + '\n', 'utf-8')
             srvio.write(data)
             srvio.flush()
             wait_server = True
@@ -229,8 +230,12 @@ class ClientThread(threading.Thread):
             self.reply((False, 'Empty command'))
             return False
 
-        # using shlex is better but no need so far
-        self.cmd = cmd[:-1].split()
+        try:
+            self.cmd = shlex.split(cmd[:-1])
+        except Exception as e:
+            self.log(e2str('Client input parse error'))
+            self.reply((False, 'Input parse error'))
+            return False
         return True
 
     def close(self):
@@ -247,7 +252,7 @@ class ClientThread(threading.Thread):
         try:
             result = format_result(result)
             if self.cmd:
-                logcmd = ' '.join(
+                logcmd = shlex.join(
                     [ e if i == 0 else '<hidden>' for i, e in enumerate(self.cmd) ]
                     if handler and handler['args'].get('hide')
                     else self.cmd
@@ -305,7 +310,7 @@ def cmd_handler__exit(ct):
 def cmd_handler__lock(ct):
     global LOCK, PASSPHRASE
     with LOCK:
-        PASSPHRASE = None
+        PASSPHRASE = ''
     return True
 
 SHELL_SIGN = '''
@@ -329,8 +334,6 @@ exit 0
 def cmd_handler__sign(ct, datfile, sigfile):
     global LOCK, PASSPHRASE
     with LOCK:
-        if PASSPHRASE is None:
-            return False, 'Passphrase not set, need unlock'
         cmd = [ SHELL_CAT + SHELL_SIGN, '--', ARGS.keyfile, datfile, sigfile ]
         # setenv with preexec_fn avoids leaking P=... strings
         p = subprocess.run(cmd, shell=True, executable='/bin/bash',
@@ -350,19 +353,17 @@ def cmd_handler__shutdown(ct):
 def cmd_handler__status(ct):
     global LOCK, PASSPHRASE
     with LOCK:
-        if PASSPHRASE is not None:
-            # check the passphrase
-            cmd = [ 'openssl', 'rsa', '-in', ARGS.keyfile, '-passin', 'env:P', '-noout' ]
-            # setenv with preexec_fn avoids leaking P=... strings
-            p = subprocess.run(cmd, preexec_fn=lambda: os.putenv('P', PASSPHRASE))
-            if p.returncode == 0:
-                return True
+        # check the passphrase
+        cmd = [ 'openssl', 'rsa', '-in', ARGS.keyfile, '-passin', 'env:P', '-noout' ]
+        # setenv with preexec_fn avoids leaking P=... strings
+        p = subprocess.run(cmd, preexec_fn=lambda: os.putenv('P', PASSPHRASE))
+        if p.returncode == 0:
+            return True
         return False, 'Passphrase not set, need unlock'
 
 def cmd_handler__unlock(ct, v=None):
     global LOCK, PASSPHRASE
     if v is None:
-        # best effort
         try:
             ct.io.write(b'Passphrase:\n')
             ct.io.flush()
@@ -374,8 +375,6 @@ def cmd_handler__unlock(ct, v=None):
         except:
             ct.client_loop_running = False
             return False, 'Failed to read passphrase'
-    if len(v) == 0:
-        return False, 'Empty passphrase'
     with LOCK:
         PASSPHRASE = v
         return cmd_handler__status(ct)
@@ -425,7 +424,7 @@ elif ARGS.mode == 'verify':
 # run server mode
 CLIENT_TIMEOUT = 10
 SERVER_LOOP_RUNNING = True
-PASSPHRASE = None
+PASSPHRASE = ''
 LOCK = threading.RLock()
 HANDLERS = {
     'echo': { 'func': cmd_handler__echo, 'args': { 'min': 1, 'max': 1 } },
