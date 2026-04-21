@@ -34,8 +34,8 @@ processors:
   - set: { field: observer.product, value: Fortigate, override: false }
   - set: { field: observer.type, value: firewall, override: false }
 
-  # Set @timestamp from fortigate fields, it is very accurate but we have
-  # to assume the firewall time is correct (should be fine for a firewall).
+  # Set @timestamp from fortigate fields, it is nanoseconds on FortiOS >= 6.2.1
+  # but we have to assume the firewall time is correct (should be fine for a firewall).
   - script:
       lang: painless
       source: |
@@ -43,14 +43,21 @@ processors:
         if (eventtime != null) {
             if (eventtime instanceof String)
                 eventtime = Long.parseLong(eventtime);
-            ctx._.eventtime_ms = eventtime / 1000000;
+            if (eventtime > 9999999999999L)
+                ctx._.eventtime_ms = eventtime / 1000000L;
+            else
+                ctx._.eventtime_ms = eventtime * 1000L;
         }
+        if (ctx.fortigate.tz != null)
+            ctx._.tz = ctx.fortigate.tz;
+        if (ctx._.tz == null)
+            ctx._.tz = 'UTC';
   - date:
       field: _.eventtime_ms
       target_field: '@timestamp'
       formats:
         - UNIX_MS
-      timezone: '{{{ fortigate.tz }}}'
+      timezone: '{{{ _.tz }}}'
       if: ctx._.eventtime_ms != null
 
   - script:
