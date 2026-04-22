@@ -1,10 +1,11 @@
 attributes:
   columns:
-    - host.name
+    - fortigate.devname
     - fortigate.type
     - source.ip
     - destination.ip
     - fortigate
+  density: compact
   description: ""
   grid:
     columns:
@@ -12,6 +13,8 @@ attributes:
         width: 213
       destination.ip:
         width: 134
+      fortigate.devname:
+        width: 130
       fortigate.type:
         width: 96
       host.name:
@@ -29,7 +32,7 @@ attributes:
   timeRestore: false
   title: Listing fortigate global
 coreMigrationVersion: 8.8.0
-created_at: "2024-08-21T02:24:19.793Z"
+created_at: "2026-04-22T09:35:48.683Z"
 id: 58b78e46-e3d9-4f85-b83a-853170741f77
 managed: false
 references:
@@ -46,9 +49,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-08-21T02:39:14.990Z"
-version: WzQyNzAsMzld
+typeMigrationVersion: 10.5.0
+updated_at: "2026-04-22T20:09:14.553Z"
+version: Wzc3NywxXQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0

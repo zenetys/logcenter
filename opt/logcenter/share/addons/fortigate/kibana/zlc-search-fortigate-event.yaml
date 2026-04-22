@@ -1,19 +1,23 @@
 attributes:
   columns:
-    - host.name
+    - fortigate.devname
     - fortigate.level
     - fortigate.subtype
+    - source.ip
+    - user.name
     - fortigate.logdesc
     - fortigate.msg
   description: ""
   grid:
     columns:
       '@timestamp':
-        width: 213
+        width: 222
+      fortigate.devname:
+        width: 103
       fortigate.level:
         width: 102
       fortigate.logdesc:
-        width: 284
+        width: 352
       fortigate.logid:
         width: 114
       fortigate.subtype:
@@ -22,10 +26,14 @@ attributes:
         width: 95
       host.name:
         width: 142
+      source.ip:
+        width: 134
+      user.name:
+        width: 131
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
-    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"Event logs (DO NOT EDIT)","disabled":false,"field":"fortigate.type","key":"fortigate.type","negate":false,"params":{"query":"event"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"fortigate.type":"event"}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity warning+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"4\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"range":{"event.severity":{"lte":"4"}}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity error+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"3\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[2].meta.index"},"$state":{"store":"appState"},"query":{"range":{"event.severity":{"lte":"3"}}}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"Event logs (DO NOT EDIT)","disabled":false,"field":"fortigate.type","key":"fortigate.type","negate":false,"params":{"query":"event"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"fortigate.type":"event"}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity warning+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"4\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"range":{"event.severity":{"lte":"4"}}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity error+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"3\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[2].meta.index"},"query":{"range":{"event.severity":{"lte":"3"}}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
   sort:
     - - '@timestamp'
       - desc
@@ -33,7 +41,7 @@ attributes:
   title: Listing fortigate event
   usesAdHocDataView: false
 coreMigrationVersion: 8.8.0
-created_at: "2024-07-30T17:08:38.853Z"
+created_at: "2026-04-22T09:35:47.656Z"
 id: 41888a25-9532-4d39-a07c-70753a4e2955
 managed: false
 references:
@@ -59,9 +67,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-08-21T01:07:49.092Z"
-version: WzQxMDEsMzld
+typeMigrationVersion: 10.5.0
+updated_at: "2026-04-22T19:53:42.535Z"
+version: WzcyMCwxXQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0

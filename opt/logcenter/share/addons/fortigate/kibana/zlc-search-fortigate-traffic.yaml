@@ -1,15 +1,16 @@
 attributes:
   columns:
-    - host.name
+    - fortigate.devname
     - log.level
     - event.action
     - source.ip
     - source.port
     - destination.ip
     - destination.port
+    - source.nat.ip
+    - destination.nat.ip
     - network.application
     - related.user
-    - rule.name
     - fortigate.rcvdbyte
     - fortigate.sentbyte
   description: ""
@@ -19,12 +20,16 @@ attributes:
         width: 221
       destination.ip:
         width: 164
+      destination.nat.ip:
+        width: 125
       destination.port:
         width: 74
       event.action:
         width: 104
       fortigate.action:
         width: 78
+      fortigate.devname:
+        width: 129
       fortigate.policyname:
         width: 330
       fortigate.rcvdbyte:
@@ -41,18 +46,19 @@ attributes:
         width: 136
       log.level:
         width: 69
-      network.application:
-        width: 148
+      network.application: {}
       network.protocol:
         width: 132
-      related.user:
-        width: 132
+      related.user: {}
       source.ip:
         width: 136
+      source.nat.ip:
+        width: 127
       source.port:
-        width: 94
+        width: 80
       transaction.id:
         width: 143
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
@@ -65,7 +71,7 @@ attributes:
   title: Listing fortigate traffic
   usesAdHocDataView: false
 coreMigrationVersion: 8.8.0
-created_at: "2024-07-30T17:07:06.912Z"
+created_at: "2026-04-22T09:35:50.681Z"
 id: 69d43736-152e-4cdf-b8f0-72af6caab9ba
 managed: false
 references:
@@ -85,9 +91,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-08-21T00:31:02.625Z"
-version: WzQwMzAsMzld
+typeMigrationVersion: 10.5.0
+updated_at: "2026-04-22T18:43:13.325Z"
+version: WzU5MCwxXQ==
 ---
 excludedObjects: []
 excludedObjectsCount: 0
