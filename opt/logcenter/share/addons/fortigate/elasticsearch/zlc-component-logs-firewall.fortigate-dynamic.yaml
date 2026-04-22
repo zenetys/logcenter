@@ -61,3 +61,13 @@ template:
             fields:
               text:
                 type: match_only_text
+
+      - fortigate_wildcard_and_text:
+          path_match:
+            - 'fortigate.url'
+          match_mapping_type: string
+          mapping:
+            type: wildcard
+            fields:
+              text:
+                type: match_only_text

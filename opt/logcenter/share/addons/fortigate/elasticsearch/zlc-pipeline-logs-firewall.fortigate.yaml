@@ -136,6 +136,7 @@ processors:
   # alias: dns.question.name               fortigate.qname      keyword
   # alias: dns.question.type               fortigate.qtype      keyword
   # alias: dns.question.class              fortigate.qclass     keyword
+  # alias: url.original                    fortigate.url        wildcard text
   # alias: source.user.name                user.name            keyword text
 
   # Field fortigate.mac is uppercase on event logs, normalize it.
@@ -304,6 +305,19 @@ processors:
           field: related.ip
           value: '{{{ _ingest._value }}}'
           allow_duplicates: false
+
+  - uri_parts:
+      field: fortigate.url
+      target_field: url
+      keep_original: false
+      if: ctx.fortigate.url != null
+
+  # Try to isolate the registered domain of url.domain
+  - registered_domain:
+      field: url.domain
+      target_field: url
+      ignore_missing: true
+      ignore_failure: true
 
   # Remove event.original if present.
   - remove:
