@@ -69,10 +69,15 @@ function action_status() {
 }
 
 function action_begin_rolling() {
-    es-curl _cluster/settings -X PUT -d '{ "transient": {
-            "cluster.routing.rebalance.enable": "none",
-            "indices.recovery.max_bytes_per_sec": "125mb"
-        }}' |jfmt
+    # do not touch indices.recovery.max_bytes_per_sec if a persistent
+    # value is already defined
+    local persistent_max=$(es-curl _cluster/settings |
+        jq -r '.persistent.indices.recovery.max_bytes_per_sec//""')
+
+    jq -n --arg max "$persistent_max" '{"transient":
+        {"cluster.routing.rebalance.enable":"none"} +
+        (if $max=="" then {"indices.recovery.max_bytes_per_sec":"125mb"} else {} end)
+    }' |es-curl _cluster/settings -X PUT -d @- |jfmt
 }
 
 function action_end_rolling() {
