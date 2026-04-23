@@ -2,10 +2,9 @@
 
 PROGNAME=${0##*/}
 set -o pipefail
-for i in /etc/profile.d/logcenter-{path,es}.sh; do
-    [[ -r $i ]] || continue
-    source "$i" || { echo "Source failed: $i"; exit 1; }
-done
+
+[[ -f /etc/profile.d/logcenter-path.sh ]] &&
+    source /etc/profile.d/logcenter-path.sh
 
 function exit_usage() {
     local status=${1:-0}

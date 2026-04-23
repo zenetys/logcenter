@@ -2,8 +2,6 @@
 
 [[ -f /etc/profile.d/logcenter-path.sh ]] &&
     source /etc/profile.d/logcenter-path.sh
-[[ -f /etc/profile.d/logcenter-es.sh ]] &&
-    source /etc/profile.d/logcenter-es.sh
 
 OIFS=$IFS
 PROGNAME=${0##*/}
