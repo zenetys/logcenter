@@ -25,22 +25,26 @@ EOF
 }
 
 function mode_listing() {
-    es-curl "_cat/indices/${ALL:+*,.*}?s=i" |
-        if [[ -z $WATCHING ]]; then
-            cat |grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
-        else
-            # watch mode, print last indice of aliases/datastreams and single indices
-            awk '
-            ARGIND == 1 { if ($(NF) == "true") { keep[$2]=1; } is_aliased[$2]=1; }
-            ARGIND == 2 { keep[$1]=1; }
-            ARGIND == 3 && (keep[$3] || (!is_aliased[$3] && substr($3, 1, 4) != ".ds-")) { print $0; }
-            '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
-                <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
-                    jq -r '.data_streams |map(.indices |last |.index_name)[]') \
-                <(cat) |
-            grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v} |
-            column -t -o ' '
-        fi
+    es-curl "_cat/indices/${ALL:+*,.*}?v&h=h,s,idx,uuid,p,r,dc,dd,ss,pri.store.size,sc&s=i" |
+        sed -e '1s/pri\.store\.size/pss/' |{
+            # keep header line
+            read -r; echo "$REPLY"
+            if [[ -z $WATCHING ]]; then
+                cat
+            else
+                # watch mode, print last indice of aliases/datastreams and single indices
+                awk '
+                ARGIND == 1 { if ($(NF) == "true") { keep[$2]=1; } is_aliased[$2]=1; }
+                ARGIND == 2 { keep[$1]=1; }
+                ARGIND == 3 && (keep[$3] || (!is_aliased[$3] && substr($3, 1, 4) != ".ds-")) { print $0; }
+                '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
+                    <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+                        jq -r '.data_streams |map(.indices |last |.index_name)[]') \
+                    <(cat)
+            fi |
+            grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
+        } |
+        column -t -o ' ' -R 5,6,7,8,9,10,11
 }
 
 function mode_size() {
@@ -70,6 +74,7 @@ ARGIND == 3 {
     }
 }
 END {
+    print "group ss pss";
     # gawk specific sort
     ordered_groups_len = asorti(store_size_by_group, ordered_groups, SIZE_SORT)
     for (i = 1; i <= ordered_groups_len; i++) {
@@ -85,7 +90,11 @@ END {
         <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
             jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
         <(es-curl "_cat/indices/${ALL:+*,.*}?s=i&bytes=b") |
-    grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v} |
+    {
+        # keep header line
+        read -r; echo "$REPLY"
+        grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
+    } |
     column -t -o ' ' -R 2,3
 }
 
