@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -o pipefail
+OIFS=$IFS
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    cat << EOF
+Usage: $PROGNAME [OPTION...] [PATH-FILTER...]
+List elasticsearch shards
+
+Available options:
+    -E, --grep          Post filter passed to grep -E before pretty columns
+    -v, --invert-match  Pass -v to post filter grep
+
+Arguments:
+    path-filter         Filter passed in the URL _cat/shards/<filter> 
+EOF
+    exit "$status"
+}
+
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) exit_usage 0 ;;
+        -E|--grep) POST_FILTER=$2; shift ;;
+        -v|--invert-match) POST_FILTER_INVERT=1 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+
+PATH_FILTER=( "${@/%/*}" )
+PATH_FILTER=( "${PATH_FILTER/#/*}" )
+IFS=,; PATH_FILTER=${PATH_FILTER[*]}; IFS=$OIFS
+POST_FILTER=${POST_FILTER:-^}
+POST_FILTER_INVERT=${POST_FILTER_INVERT:-}
+
+es-curl "_cat/shards/$PATH_FILTER?v&h=idx,s,pr,n,st,dc,sto,sc&s=index,shard,prirep" |
+    # grep keeping header line
+    { read -r; echo "$REPLY"; grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}; } |
+    column -t -o ' ' -R 6,7,8
