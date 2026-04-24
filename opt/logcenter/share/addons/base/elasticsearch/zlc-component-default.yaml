@@ -10,6 +10,7 @@ template:
       number_of_replicas: "1"
       auto_expand_replicas: "0-1"
       default_pipeline: zlc-pipeline-default
+      unassigned.node_left.delayed_timeout: 30m
       sort:
         field: '@timestamp'
         order: desc
