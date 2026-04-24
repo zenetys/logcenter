@@ -10,6 +10,8 @@ policy:
         rollover:
           max_age: 7d
           max_primary_shard_size: 5gb
+        forcemerge:
+          max_num_segments: 1
     warm:
       min_age: 30d
       actions:
