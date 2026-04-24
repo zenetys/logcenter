@@ -10,6 +10,9 @@ template:
       number_of_replicas: "1"
       auto_expand_replicas: "0-1"
       default_pipeline: zlc-pipeline-default
+      sort:
+        field: '@timestamp'
+        order: desc
       mapping:
         ignore_malformed: "true"
         total_fields:
