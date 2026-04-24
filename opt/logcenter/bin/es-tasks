@@ -1,0 +1,139 @@
+#!/bin/bash
+
+set -o pipefail
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status == 0 ]] || exec >&2
+    cat <<EOF
+Usage: $PROGNAME [OPTION...] [FILTER]
+List Elasticsearch tasks
+
+Options:
+    -v, --verbose   Display more properties
+    -l, --line      Line output, one property per line
+    -r, --raw       Display raw values
+    -j, --json      (ND)JSON output, implies --raw
+    -h, --help      Display this help
+
+Arguments:
+    filter          Regex pattern to filter tasks
+EOF
+    exit "$status"
+}
+
+verbose=
+linemode=
+rawmode=
+jsonmode=
+while (( $# > 0 )); do
+    case "$1" in
+        -v|--verbose) verbose=1 ;;
+        -l|--line) linemode=1 ;;
+        -r|--raw) rawmode=1 ;;
+        -j|--json) jsonmode=1; rawmode=1 ;;
+        -h|--help) exit_usage ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) break ;;
+    esac
+    shift
+done
+filter="$*"
+
+es-curl '_tasks?detailed' |jq -r '
+    [ .nodes | to_entries[] | .value as $node |
+        .value.tasks | to_entries[] |
+        {
+            id:          "\(.value.node):\(.value.id)",
+            node:        ($node.name | split(".")[0]),
+            type:        .value.type,
+            action:      .value.action,
+            description: (.value.description // "-" | if . == "" then "-" else . end),
+            start_ms:    .value.start_time_in_millis,
+            running_ns:  .value.running_time_in_nanos,
+            status:      .value.status
+        }
+    ] |
+    sort_by(.running_ns) | reverse[] |
+    (.running_ns / 1e9 | floor) as $secs |
+    (.start_ms / 1000 | floor) as $start_epoch |
+    (if .status.total and .status.total > 0 then
+        .status as $st |
+        {
+            pct: (($st.updated + $st.created + $st.deleted) * 100 / $st.total),
+            done: ($st.updated + $st.created + $st.deleted),
+            total: $st.total
+        }
+    else
+        { pct: "-", done: "-", total: "-" }
+    end) as $progress |
+    [.id, .node, .type, .action, .description, $start_epoch, $secs,
+        $progress.pct, $progress.done, $progress.total] |
+    @tsv
+' |awk -F'\t' -v "verbose=$verbose" -v "rawmode=$rawmode" -v "filter=$filter" '
+    # TSV in: id node type action description epoch secs pct done total
+    function si(n) {
+        if (n >= 1e12) return sprintf("%.1fT", n/1e12)
+        if (n >= 1e9)  return sprintf("%.1fG", n/1e9)
+        if (n >= 1e6)  return sprintf("%.1fM", n/1e6)
+        if (n >= 1e3)  return sprintf("%.1fK", n/1e3)
+        return n
+    }
+    function dhms(t,    d, h, m, s, r) {
+        d = int(t / 86400); h = int((t % 86400) / 3600)
+        m = int((t % 3600) / 60); s = t % 60
+        r = ""
+        if (d > 0) r = d "d"
+        if (d > 0 || h > 0) r = r h "h"
+        if (d > 0 || h > 0 || m > 0) r = r m "m"
+        return r s "s"
+    }
+    BEGIN {
+        OFS="\t"
+        if (verbose)
+            print "ID", "NODE", "TYPE", "ACTION", "DESCRIPTION", "STARTED", "DURATION", "PROGRESS", "DONE", "TOTAL"
+        else
+            print "ID", "NODE", "ACTION", "STARTED", "DURATION", "PROGRESS", "DONE", "TOTAL"
+    }
+    {
+        if (filter && tolower($0) !~ tolower(filter)) next
+        if (!rawmode) {
+            $6 = strftime("%Y-%m-%dT%H:%M:%S%z", $6)
+            $7 = dhms($7)
+            if ($8 != "-") $8 = sprintf("%.1f%%", $8)
+            if (!verbose && $9 != "-") { $9 = si($9+0); $10 = si($10+0) }
+        }
+        if (verbose)
+            print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        else
+            print $1, $2, $4, $6, $7, $8, $9, $10
+    }
+' |if [[ -n $jsonmode ]]; then
+    jq -Rsc '
+        split("\n") |
+        map(select(length > 0)) |
+        (.[0] |split("\t") |map(ascii_downcase)) as $hdr |
+        .[1:][] |split("\t") as $vals |
+        [range($hdr | length) |{
+            key: $hdr[.],
+            value: ($vals[.] |
+                if . == "-" then null
+                elif test("^-?[0-9]+(\\.[0-9]+)?$") then tonumber
+                else . end)
+        }] |
+        from_entries
+    '
+elif [[ -n $linemode ]]; then
+    awk -F'\t' '
+        NR == 1 { split($0, hdr); ncols = NF; next }
+        NR > 2 { print "--" }
+        {
+            for (i = 1; i <= ncols; i++)
+                printf "%s %s\n", hdr[i], $i
+        }
+    '
+else
+    column -t -s$'\t'
+fi
