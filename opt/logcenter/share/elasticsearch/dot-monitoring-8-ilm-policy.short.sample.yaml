@@ -6,9 +6,6 @@ policy:
         rollover:
           max_age: 12h
           max_primary_shard_size: 512mb
-    warm:
-      min_age: 0ms
-      actions:
         forcemerge:
           max_num_segments: 1
     delete:
