@@ -25,7 +25,7 @@ EOF
 }
 
 function mode_listing() {
-    es-curl "_cat/indices/${ALL:+*,.*}?v&h=h,s,idx,uuid,p,r,dc,dd,ss,pri.store.size,sc&s=i" |
+    es-curl "_cat/indices/$PATH_FILTER?v&h=h,s,idx,uuid,p,r,dc,dd,ss,pri.store.size,sc&s=i" |
         sed -e '1s/pri\.store\.size/pss/' |{
             # keep header line
             read -r; echo "$REPLY"
@@ -37,8 +37,8 @@ function mode_listing() {
                 ARGIND == 1 { if ($(NF) == "true") { keep[$2]=1; } is_aliased[$2]=1; }
                 ARGIND == 2 { keep[$1]=1; }
                 ARGIND == 3 && (keep[$3] || (!is_aliased[$3] && substr($3, 1, 4) != ".ds-")) { print $0; }
-                '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
-                    <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+                '   <(es-curl "_cat/aliases/$PATH_FILTER?expand_wildcards=all&s=a") \
+                    <(es-curl "_data_stream/$PATH_FILTER?expand_wildcards=all" |
                         jq -r '.data_streams |map(.indices |last |.index_name)[]') \
                     <(cat)
             fi |
@@ -86,10 +86,10 @@ END {
             SIZE_RAW ? pri_store_size : (human(pri_store_size, 1024) "B"));
     }
 }
-    '   <(es-curl "_cat/aliases/${ALL:+*,.*}?expand_wildcards=all&s=a") \
-        <(es-curl "_data_stream/${ALL:+*,.*}?expand_wildcards=all" |
+    '   <(es-curl "_cat/aliases/$PATH_FILTER?expand_wildcards=all&s=a") \
+        <(es-curl "_data_stream/$PATH_FILTER?expand_wildcards=all" |
             jq -r '.data_streams |map(.name as $ds |.indices |map(.index_name)[] |"\($ds) \(.)") []') \
-        <(es-curl "_cat/indices/${ALL:+*,.*}?s=i&bytes=b") |
+        <(es-curl "_cat/indices/$PATH_FILTER?s=i&bytes=b") |
     {
         # keep header line
         read -r; echo "$REPLY"
@@ -101,7 +101,7 @@ END {
 SIZE=
 SIZE_RAW=
 SIZE_SORT=@ind_str_asc
-ALL=${ALL:-}
+PATH_FILTER=${PATH_FILTER-'*,-.internal.*'}
 WATCH=
 WATCH_INTERVAL=5
 WATCHING=${WATCHING:-}
@@ -115,7 +115,7 @@ while (( $# > 0 )); do
         -r|--size-raw) SIZE_RAW=1 ;;
         -n|--size-asc) SIZE_SORT=@val_num_asc ;;
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
-        -a|--all) ALL=1 ;;
+        -a|--all) PATH_FILTER='*,.*' ;;
         -E|--grep) POST_FILTER=$2; shift ;;
         -v|--invert-match) POST_FILTER_INVERT=1 ;;
         -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
@@ -126,7 +126,7 @@ while (( $# > 0 )); do
                     r) SIZE_RAW=1 ;;
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
-                    a) ALL=1 ;;
+                    a) PATH_FILTER='*,.*' ;;
                     v) POST_FILTER_INVERT=1 ;;
                     w) WATCH=1 ;;
                     h) exit_usage 0 ;;
@@ -141,7 +141,7 @@ shopt -u extglob
 
 if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
-    export WATCHING=1 ALL POST_FILTER POST_FILTER_INVERT
+    export WATCHING=1 PATH_FILTER POST_FILTER POST_FILTER_INVERT
     exec watch -n "$WATCH_INTERVAL" "$0"
 elif [[ -n $SIZE ]]; then
     mode_size
