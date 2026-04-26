@@ -19,13 +19,22 @@ Available options:
                         or datastreams using an '*,.*' filter in API calls
 
   -E, --grep            Post filter passed to grep -E before pretty columns
-  -v, --invert-match    Pass -v to post filter grep
+  -x, --invert-match    Invert grep post filter
+  -v, --verbose         Display more columns
 EOF
     exit "$status"
 }
 
 function mode_listing() {
-    es-curl "_cat/indices/$PATH_FILTER?v&h=h,s,idx,uuid,p,r,dc,dd,ss,pri.store.size,sc&s=i" |
+    local headers column_right
+    if [[ -z $VERBOSE ]]; then
+        headers=h,s,idx,p,r,dc,dd,ss,pri.store.size,sc
+        column_right=4,5,6,7,8,9,10
+    else
+        headers=h,s,idx,uuid,p,r,dc,dd,ss,pri.store.size,sc
+        column_right=5,6,7,8,9,10,11
+    fi
+    es-curl "_cat/indices/$PATH_FILTER?v&h=$headers&s=i" |
         sed -e '1s/pri\.store\.size/pss/' |{
             # keep header line
             read -r; echo "$REPLY"
@@ -44,7 +53,7 @@ function mode_listing() {
             fi |
             grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
         } |
-        column -t -o ' ' -R 5,6,7,8,9,10,11
+        column -t -o ' ' -R "$column_right"
 }
 
 function mode_size() {
@@ -102,6 +111,7 @@ SIZE=
 SIZE_RAW=
 SIZE_SORT=@ind_str_asc
 PATH_FILTER=${PATH_FILTER-'*,-.internal.*'}
+VERBOSE=${VERBOSE:-}
 WATCH=
 WATCH_INTERVAL=5
 WATCHING=${WATCHING:-}
@@ -117,9 +127,10 @@ while (( $# > 0 )); do
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
         -a|--all) PATH_FILTER='*,.*' ;;
         -E|--grep) POST_FILTER=$2; shift ;;
-        -v|--invert-match) POST_FILTER_INVERT=1 ;;
+        -x|--invert-match) POST_FILTER_INVERT=1 ;;
+        -v|--verbose) VERBOSE=1 ;;
         -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
-        -+([srnNavwh]))
+        -+([srnNaxvwh]))
             for (( i = 1; i < ${#1}; i++ )); do
                 case "${1:i:1}" in
                     s) SIZE=1 ;;
@@ -127,7 +138,8 @@ while (( $# > 0 )); do
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
                     a) PATH_FILTER='*,.*' ;;
-                    v) POST_FILTER_INVERT=1 ;;
+                    x) POST_FILTER_INVERT=1 ;;
+                    v) VERBOSE=1 ;;
                     w) WATCH=1 ;;
                     h) exit_usage 0 ;;
                 esac
@@ -141,7 +153,7 @@ shopt -u extglob
 
 if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
-    export WATCHING=1 PATH_FILTER POST_FILTER POST_FILTER_INVERT
+    export WATCHING=1 PATH_FILTER POST_FILTER POST_FILTER_INVERT VERBOSE
     exec watch -n "$WATCH_INTERVAL" "$0"
 elif [[ -n $SIZE ]]; then
     mode_size
