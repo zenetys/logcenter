@@ -1,0 +1,42 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+
+[[ -f /etc/profile.d/logcenter-path.sh ]] &&
+    source /etc/profile.d/logcenter-path.sh
+
+function exit_usage() {
+    echo "\
+Usage: $PROGNAME [OPTION...]
+Print elasticsearch master node or test if current node is master
+
+Available options:
+    -q, --quiet         Do not print master node name
+    -h, --help          Display this help
+
+Exit status:
+    0, this node is master
+    1, this node is not master
+    2, unknown
+
+This script assumes node.name default value, ie. the node's hostname.
+" >&2
+    exit 2
+}
+
+quiet=
+while (( $# > 0 )); do
+    case "$1" in
+        -q|--quiet) quiet=1 ;;
+        -h|--help) exit_usage ;;
+        *) exit_usage ;;
+    esac
+    shift
+done
+
+master=$(es-curl _cat/master?h=node)
+[[ $? != 0 || -z $master ]] && exit 2
+
+[[ -z $quiet ]] && echo "$master"
+[[ $master == $HOSTNAME ]] && exit 0
+exit 1
