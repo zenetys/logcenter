@@ -75,8 +75,8 @@ function action_begin_rolling() {
         jq -r '.persistent.indices.recovery.max_bytes_per_sec//""')
 
     jq -n --arg max "$persistent_max" '{"transient":
-        {"cluster.routing.rebalance.enable":"none"} +
-        (if $max=="" then {"indices.recovery.max_bytes_per_sec":"125mb"} else {} end)
+        ({"cluster.routing.rebalance.enable":"none"} +
+         (if $max=="" then {"indices.recovery.max_bytes_per_sec":"125mb"} else {} end))
     }' |es-curl _cluster/settings -X PUT -d @- |jfmt
 }
 
