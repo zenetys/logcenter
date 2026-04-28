@@ -39,7 +39,17 @@ IFS=,; PATH_FILTER=${PATH_FILTER[*]}; IFS=$OIFS
 POST_FILTER=${POST_FILTER:-^}
 POST_FILTER_INVERT=${POST_FILTER_INVERT:-}
 
-es-curl "_cat/shards/$PATH_FILTER?v&h=idx,s,pr,n,st,dc,sto,sc&s=index,shard,prirep" |
+headers='idx,s,pr,n,st,dc,sto,sc'
+es-curl "_cat/shards/$PATH_FILTER?v&h=$headers&s=index,shard,prirep&format=json" |
+    jq -r --arg headers "$headers" '
+        ($headers | split(",")) as $h |
+        ($h | @tsv),
+        (.[] | [.[$h[]]] | @tsv)
+    ' |
     # grep keeping header line
     { read -r; echo "$REPLY"; grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}; } |
-    column -t -o ' ' -R 6,7,8
+    sed -re 's,\t([^ ]+ -> )[^ ]+ [^ ]+ ([^\t]+)\t,\t\1\2\t,' |
+    # sorten n column value when a shard is relocating
+    # original: node1 -> ip2 uuid2 node2
+    # rewritten: node1 -> node2
+    column -t -s $'\t' -o ' ' -R 6,7,8
