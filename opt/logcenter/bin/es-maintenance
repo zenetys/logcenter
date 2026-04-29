@@ -27,6 +27,10 @@ function jfmt() {
     jq -c
 }
 
+function info() {
+    echo "$(date +%Y-%m-%dT%H:%M:%S.%3N%:z) $*" >&2
+}
+
 # wait-until [-m max-wait-sec] command...
 function wait-until() {
     local explain="$FUNCNAME ${*@Q}" try=0 max=0
@@ -65,6 +69,7 @@ function is-cluster-green() {
 }
 
 function action_status() {
+    info '[status] Cluster settings'
     es-curl _cluster/settings |jfmt
 }
 
@@ -74,6 +79,7 @@ function action_begin_rolling() {
     local persistent_max=$(es-curl _cluster/settings |
         jq -r '.persistent.indices.recovery.max_bytes_per_sec//""')
 
+    info '[begin-rolling] Apply transient cluster settings'
     jq -n --arg max "$persistent_max" '{"transient":
         ({"cluster.routing.rebalance.enable":"none"} +
          (if $max=="" then {"indices.recovery.max_bytes_per_sec":"125mb"} else {} end))
@@ -81,6 +87,7 @@ function action_begin_rolling() {
 }
 
 function action_end_rolling() {
+    info '[end-rolling] Reset transient cluster settings'
     es-curl _cluster/settings -X PUT -d '{ "transient": {
             "cluster.routing.rebalance.enable": null,
             "indices.recovery.max_bytes_per_sec": null
@@ -88,12 +95,14 @@ function action_end_rolling() {
 }
 
 function action_begin_node() {
+    info '[begin-node] Apply transient cluster shard allocation constraint'
     es-curl _cluster/settings -X PUT -d '{ "transient": {
             "cluster.routing.allocation.enable": "primaries"
         }}' |jfmt
 }
 
 function action_end_node() {
+    info '[end-node] Reset transient cluster shard allocation'
     es-curl _cluster/settings -X PUT -d '{ "transient": {
             "cluster.routing.allocation.enable": null
         }}' |jfmt
@@ -110,7 +119,9 @@ function action_wait_node() {
         esac
         shift
     done
-    wait-until -m "$max" is-node-present "${name:-$HOSTNAME}"
+    [[ -z $name ]] && name=$HOSTNAME
+    info "[wait-node] Wait for $name to join cluster"
+    wait-until -m "$max" is-node-present "$name"
 }
 
 # es-maintenance wait-green [-m 300]
@@ -123,6 +134,7 @@ function action_wait_green() {
         esac
         shift
     done
+    info '[wait-green] Wait for cluster green state'
     wait-until -m "$max" is-cluster-green
 }
 
