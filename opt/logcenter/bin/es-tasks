@@ -27,19 +27,32 @@ verbose=
 linemode=
 rawmode=
 jsonmode=
+shopt -s extglob
 while (( $# > 0 )); do
     case "$1" in
-        -v|--verbose) verbose=1 ;;
+        -v|--verbose) (( verbose++ )) ;;
         -l|--line) linemode=1 ;;
         -r|--raw) rawmode=1 ;;
         -j|--json) jsonmode=1; rawmode=1 ;;
         -h|--help) exit_usage ;;
+        -+([vlrjh]))
+            for (( i = 1; i < ${#1}; i++ )); do
+                case "${1:i:1}" in
+                    v) (( verbose++ )) ;;
+                    l) linemode=1 ;;
+                    r) rawmode=1 ;;
+                    j) jsonmode=1; rawmode=1 ;;
+                    h) exit_usage ;;
+                esac
+            done
+            ;;
         --) shift; break ;;
         -*) exit_usage 1 ;;
         *) break ;;
     esac
     shift
 done
+shopt -u extglob
 filter="$*"
 
 es-curl '_tasks?detailed' |jq -r '
@@ -92,10 +105,12 @@ es-curl '_tasks?detailed' |jq -r '
     }
     BEGIN {
         OFS="\t"
-        if (verbose)
+        if (verbose >= 2)
             print "ID", "NODE", "TYPE", "ACTION", "DESCRIPTION", "STARTED", "DURATION", "PROGRESS", "DONE", "TOTAL"
+        else if (verbose >= 1)
+            print "ID", "NODE", "TYPE", "ACTION", "DESCRIPTION", "STARTED", "DURATION", "PROGRESS"
         else
-            print "ID", "NODE", "ACTION", "STARTED", "DURATION", "PROGRESS", "DONE", "TOTAL"
+            print "ID", "NODE", "ACTION", "STARTED", "DURATION", "PROGRESS"
     }
     {
         if (filter && tolower($0) !~ tolower(filter)) next
@@ -103,12 +118,15 @@ es-curl '_tasks?detailed' |jq -r '
             $6 = strftime("%Y-%m-%dT%H:%M:%S%z", $6)
             $7 = dhms($7)
             if ($8 != "-") $8 = sprintf("%.1f%%", $8)
-            if (!verbose && $9 != "-") { $9 = si($9+0); $10 = si($10+0) }
+            if ($9 != "-") $9 = si($9+0);
+            if ($10 != "-") $10 = si($10+0);
         }
-        if (verbose)
+        if (verbose >= 2)
             print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        else if (verbose >= 1)
+            print $1, $2, $3, $4, $5, $6, $7, $8
         else
-            print $1, $2, $4, $6, $7, $8, $9, $10
+            print $1, $2, $4, $6, $7, $8
     }
 ' |if [[ -n $jsonmode ]]; then
     jq -Rsc '
@@ -135,5 +153,7 @@ elif [[ -n $linemode ]]; then
         }
     '
 else
-    column -t -s$'\t'
+    cols_wrap=
+    (( !rawmode && verbose >= 1 )) && cols_wrap=5
+    column -t -o ' ' -s $'\t' -W "$cols_wrap"
 fi
