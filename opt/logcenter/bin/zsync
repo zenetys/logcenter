@@ -362,12 +362,12 @@ fi
 [[ -n $use_rsync_update ]] && USE_RSYNC_UPDATE=$use_rsync_update
 
 # This script is ment to be run as root.
-if (( $BECOMEROOT == 1 && $UID != 0 )); then
+if (( BECOMEROOT == 1 && UID != 0 )); then
     sudo_opts=( -u root )
     [[ -t 0 ]] || sudo_opts=( -n )
     exec sudo -u root "${sudo_opts[@]}" -- "$0" "${ARGV[@]}"
-elif (( $BECOMEROOT == 1 )); then
-    SUDO_REMOTE='[ "$UID" != 0 ] && SUDO="sudo -n -- "; $SUDO'
+elif (( BECOMEROOT == 1 )); then
+    SUDO_REMOTE='[ "$UID" != 0 ] && SUDO="sudo -n -- " || SUDO=; $SUDO'
 fi
 
 if (( ${#peers[@]} > 0 )); then
