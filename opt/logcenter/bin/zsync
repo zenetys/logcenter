@@ -193,13 +193,13 @@ function show_diff() {
         ln -s / "$ZSYNC_TEMPDIR/new"
         (
             IFS=$'\t'
-            function do_remote() {
+            function do_remote_diff() {
                 tar zc -C / "${@#/}"
             }
-            declare -f do_remote
-            echo "do_remote$IFS${ascii_files[*]}"
+            declare -f do_remote_diff
+            echo "do_remote_diff$IFS${ascii_files[*]}"
         ) |
-            "${SSHCMD[@]}" "$peer" "[[ -x $0 ]] && CMD='$0 --do-remote' || CMD='bash'; $SUDO_REMOTE \$CMD" |
+            "${SSHCMD[@]}" "$peer" "[[ -x $0 ]] && CMD='$0 --do-diff' || CMD='bash'; $SUDO_REMOTE \$CMD" |
             tar zx -C "$ZSYNC_TEMPDIR/old"
         (
             cd "$ZSYNC_TEMPDIR"
@@ -210,11 +210,11 @@ function show_diff() {
     fi
 }
 
-function do_remote() {
+function do_remote_diff() {
     local IFS=$'\t'
     local -a FILES=( )
     while read CMD REST; do
-       [[ $CMD == do_remote ]] && FILES=( $REST )
+       [[ $CMD == do_remote_diff ]] && FILES=( $REST )
     done
     if [[ ${#FILES[@]} -gt 0 ]]; then
         tar zc -C / "${FILES[@]}"
@@ -332,7 +332,7 @@ while (( $# > 0 )); do
         -i|--include) includes+=( "$2" ); shift ;;
         -e|--exclude) excludes+=( "$2" ); shift ;;
         --use-rsync-update) use_rsync_update=1 ;;
-        --do-remote) do_remote; exit $? ;;
+        --do-diff) do_remote_diff; exit $? ;;
         --do-rsync) do_remote_rsync "${@:2}"; exit $? ;;
         --x-debug) XDEBUG=1 ;;
         -q|--quiet) (( QUIET++ )) ;;
