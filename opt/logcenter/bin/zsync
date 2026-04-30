@@ -199,7 +199,7 @@ function show_diff() {
             declare -f do_remote_diff
             echo "do_remote_diff$IFS${ascii_files[*]}"
         ) |
-            "${SSHCMD[@]}" "$peer" "[[ -x $0 ]] && CMD='$0 --do-diff' || CMD='bash'; $SUDO_REMOTE \$CMD" |
+            "${SSHCMD[@]}" "$peer" "[ -x ${ARGV0@Q} ] && CMD=${ARGV0@Q}\ --do-diff || CMD=bash; $SUDO_REMOTE \$CMD" |
             tar zx -C "$ZSYNC_TEMPDIR/old"
         (
             cd "$ZSYNC_TEMPDIR"
@@ -245,7 +245,7 @@ function do_rsync() {
         --relative
         --omit-dir-times
         --delete
-        --rsync-path "[[ -x $ARGV0 ]] && CMD='${ARGV0@Q} --do-rsync' || CMD='rsync' ; $SUDO_REMOTE \$CMD"
+        --rsync-path "[ -x ${ARGV0@Q} ] && CMD=${ARGV0@Q}\ --do-rsync || CMD=rsync; $SUDO_REMOTE \$CMD"
         -e "${SSHCMD[*]}"
     )
 
