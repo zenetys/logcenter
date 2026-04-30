@@ -377,7 +377,7 @@ fi
 [[ -z $PEERS ]] && fatal "No peers to sync with"
 
 [[ $SSH_IDENTITY && ! -r $SSH_IDENTITY ]] &&
-  fatal "Cannot read SSH identity '$SSH_IDENTITY'"
+    fatal "Cannot read SSH identity '$SSH_IDENTITY'"
 
 SSHCMD=(
     ssh -T
