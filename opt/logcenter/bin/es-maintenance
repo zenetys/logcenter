@@ -84,6 +84,11 @@ function action_begin_rolling() {
         ({"cluster.routing.rebalance.enable":"none"} +
          (if $max=="" then {"indices.recovery.max_bytes_per_sec":"125mb"} else {} end))
     }' |es-curl _cluster/settings -X PUT -d @- |jfmt
+
+    # index.unassigned.node_left.delayed_timeout is 1m by default
+    info '[begin-rolling] Delay allocation when nodes leave'
+    es-curl '_all/_settings' -X PUT -d '{"settings":{
+        "index.unassigned.node_left.delayed_timeout":"30m"}}' |jfmt
 }
 
 function action_end_rolling() {
