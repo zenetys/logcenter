@@ -45,7 +45,9 @@ attributes:
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
   rowHeight: 1
-  sort: []
+  sort:
+    - - '@timestamp'
+      - desc
   timeRestore: false
   title: Listing squid
 coreMigrationVersion: 8.8.0
