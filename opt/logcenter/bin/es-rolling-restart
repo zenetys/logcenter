@@ -104,6 +104,21 @@ function wait-until() {
     done
 }
 
+# $1: file
+# $2: match line
+# $3: search in match
+# $4: replace in match
+# $5: or append, default $4
+function replace_or_append() {
+    if [[ -s $1 ]]; then
+        [[ $2 =~ ^/.*/I?$ ]] && local e2=$2 || local e2="/${2//\//\\/}/"
+        local e3=${3//\//\\/} e4=${4//\//\\/} e5=${5//\//\\/}
+        sed -i -re "$e2{h;s/$e3/$e4/};\${x;/^$/{s//${e5:-$e4}/;H};x}" "$1"
+    else
+        echo "${5:-$4}" >> "$1"
+    fi
+}
+
 # remote_exec NAME IP COMMAND_STRING
 function remote_exec() {
     local name=$1 ip=$2; shift 2
@@ -342,10 +357,17 @@ function do_remote_reboot() {
 function process_node() {
     local name=$1
 
-    info "$name: Run es-maintenance begin-node"
-    wait-until -m : es-maintenance begin-node
-
+    # Because update / download time can take a while, do it before calling
+    # es-maintenance begin-node, but make sure /etc/sysconfig/elasticsearch
+    # has RESTART_ON_UPGRADE=false.
     if [[ -n $UPDATE ]]; then
+        info "$name: Enforce RESTART_ON_UPGRADE=false in /etc/sysconfig/elasticsearch"
+        remote_exec "$name" "${NODES[$name]}" "
+            $(declare -f replace_or_append)
+            replace_or_append /etc/sysconfig/elasticsearch \
+                '^\s*#?\s*RESTART_ON_UPGRADE=' '.*' 'RESTART_ON_UPGRADE=false'
+        "
+
         info "$name: Update elasticsearch"
         remote_exec "$name" "${NODES[$name]}" '
             # fake term to follow yum progress
@@ -355,6 +377,9 @@ function process_node() {
         '
         (( $? == 0 )) || { error "$name: Failed to update elasticsearch"; return 1; }
     fi
+
+    info "$name: Run es-maintenance begin-node"
+    wait-until -m : es-maintenance begin-node
 
     if [[ -n $REBOOT ]]; then
         if [[ $name == "$LOCAL_NODE" ]]; then
