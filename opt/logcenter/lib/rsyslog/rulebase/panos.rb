@@ -374,3 +374,69 @@ rule=:%[
     { "type": "@string" }, { "type": "literal", "text": "," },
     { "type": "@string", "name": "high_res_timestamp" },
     { "type": "rest" } ]%
+
+type=@globalprotect_fields_v11_1:%[
+    { "type": "literal", "text": "," }, { "type": "@string", "name": "cluster_name" },
+]%
+
+type=@globalprotect_fields_after_vsys_id:%{
+    "type": "alternative",
+    "parser": [
+        { "type": "@globalprotect_fields_v11_1", "name": ".", "priority": 200 },
+        { "type": "@nothing", "name": ".", "priority": 500 },
+     ]
+}%
+
+# GLOBALPROTECT
+rule=:%[
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "receive_time" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "serial" }, { "type": "literal", "text": "," },
+    { "type": "literal", "name": "type", "text": "GLOBALPROTECT" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "subtype" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "eventid" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "stage" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "auth_method" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "tunnel_type" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "srcuser" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "srcregion" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "machinename" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "public_ip" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "public_ipv6" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "private_ip" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "private_ipv6" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "hostid" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "serialnumber" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "client_ver" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "client_os" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "client_os_ver" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "repeatcnt" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "reason" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "error" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "opaque" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "status" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "location" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "login_duration" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "connect_method" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "error_code" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "portal" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "seqno" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "actionflags" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "selection_type" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "response_time" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "priority" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "attempted_gateways" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "gateway" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_1" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_2" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_3" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_4" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys_name" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "device_name" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys_id" },
+    { "type": "@globalprotect_fields_after_vsys_id", "name": "." },
+    { "type": "rest" } ]%
