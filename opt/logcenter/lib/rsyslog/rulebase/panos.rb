@@ -440,3 +440,51 @@ rule=:%[
     { "type": "@string", "name": "vsys_id" },
     { "type": "@globalprotect_fields_after_vsys_id", "name": "." },
     { "type": "rest" } ]%
+
+type=@hipmatch_fields_v11_1:%[
+    { "type": "literal", "text": "," }, { "type": "@string", "name": "cluster_name" },
+]%
+
+type=@hipmatch_fields_after_high_res_timestamp:%{
+    "type": "alternative",
+    "parser": [
+        { "type": "@hipmatch_fields_v11_1", "name": ".", "priority": 200 },
+        { "type": "@nothing", "name": ".", "priority": 500 },
+     ]
+}%
+
+# HIPMATCH
+rule=:%[
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "receive_time" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "serial" }, { "type": "literal", "text": "," },
+    { "type": "literal", "name": "type", "text": "HIPMATCH" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "subtype" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "time_generated" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "srcuser" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "machinename" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "os" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "src" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "matchname" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "repeatcnt" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "matchtype" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "seqno" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "actionflags" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_1" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_2" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_3" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "dg_hier_level_4" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys_name" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "device_name" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "vsys_id" }, { "type": "literal", "text": "," },
+    { "type": "@string" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "hostid" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "serialnumber" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "mac" }, { "type": "literal", "text": "," },
+    { "type": "@string", "name": "high_res_timestamp" },
+    { "type": "@hipmatch_fields_after_high_res_timestamp", "name": "." },
+    { "type": "rest" } ]%
