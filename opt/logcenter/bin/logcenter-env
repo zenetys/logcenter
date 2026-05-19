@@ -30,7 +30,9 @@ declare var
 for var in $(declare -p |sed -nre 's,^declare [^ ]+ ([^=]+)(=.*)?,\1,p'); do
     orivars["$var"]=1
 done
-source "$MAINCONF"
+if [[ -e $MAINCONF ]]; then
+    source "$MAINCONF"
+fi
 while read -r flags var; do
     [[ -n ${orivars[$var]} ]] && continue
     [[ -n $FILTER && ! $var =~ $FILTER ]] && continue
