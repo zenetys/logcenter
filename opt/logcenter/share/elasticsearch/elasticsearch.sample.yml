@@ -1,5 +1,6 @@
 cluster.name: elasticsearch
 node.name: ${HOSTNAME}
+node.attr.site: ${ZLC_NODE_ATTR_SITE}
 
 path.data: /var/lib/elasticsearch
 path.logs: /var/log/elasticsearch
