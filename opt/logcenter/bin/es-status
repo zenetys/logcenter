@@ -33,10 +33,10 @@ echo "# es-curl _nodes/stats/fs (used)"
 es-curl _nodes/stats/fs |
     jq --arg human 1 -r '
 def numfmt2:
-    . * 100 |
-        round |
-        tostring |
-        sub("(?<x>..)$"; ".\(.x)")
+    "\(((. * 100) |round) / 100)" |
+    if (test("\\.") |not) then . + ".00"
+    elif (split(".")[1] | length) == 1 then . + "0"
+    else . end
     ;
 def human_bytes:
     def hb(v; u):
