@@ -279,7 +279,8 @@ const chartConfig = ref({
  */
 const formatIndexDate = (indexData) => {
   indexData.rawDate = indexData.date
-  const dateObject = new Date(indexData.date)
+  // Backend returns UTC timestamps (SQLite strftime without modifier) — force UTC parsing
+  const dateObject = new Date(indexData.date.replace(' ', 'T') + 'Z')
 
   /** @WORKAROUND Temporary hotfix to avoid incoherent dates (year of 32120 etc.) */
   if (dateObject.getFullYear() <= new Date().getFullYear()) {
