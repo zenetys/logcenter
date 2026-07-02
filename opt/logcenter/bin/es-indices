@@ -15,7 +15,9 @@ Available options:
   -r, --size-raw        Output sizes in bytes, for size mode
   -n, --size-asc        Sort by size ascending, for size mode
   -N, --size-desc       Sort by size descending for size mode
-  -a, --all             Force to include all system hidden indices, aliases
+  -a, --age             Age mode, displays min/max @timestamp per index
+  -u, --utc             For age mode, display dates in UTC
+  -l, --all             Force to include all system hidden indices, aliases
                         or datastreams using an '*,.*' filter in API calls
 
   -E, --grep            Post filter passed to grep -E before pretty columns
@@ -54,6 +56,57 @@ function mode_listing() {
             grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
         } |
         column -t -o ' ' -R "$column_right"
+}
+
+function mode_age() {
+    local IFS=$'\n' indices postdata
+    indices=($(es-curl "_cat/indices/$PATH_FILTER?h=i&s=i" |
+        grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}))
+    for i in "${indices[@]}"; do
+        postdata+="{\"index\":\"$i\"}"$'\n'
+        postdata+="{\"size\":0,\"track_total_hits\":false,\"aggs\":{\"min_ts\":{\"min\":{\"field\":\"@timestamp\"}},\"max_ts\":{\"max\":{\"field\":\"@timestamp\"}}}}"$'\n'
+    done
+    local headers column_right
+    if [[ -z $VERBOSE ]]; then
+        headers=i,from,to
+        column_right=
+    else
+        headers=i,from,to,min_ts,max_ts
+        column_right=4,5
+    fi
+    {   echo "${headers//,/$'\t'}"
+        es-curl _msearch -d "$postdata" |jq '
+        def n3f:
+            (. * 1000 |round) as $c |"\($c / 1000)" |
+            (split(".") + [""]) as $p| $p[0] + "." + (($p[1] + "000")[0:3]);
+
+        def to_local:
+            #(.[:19] + "Z" | fromdateiso8601 | strflocaltime("%Y-%m-%dT%H:%M:%S%z")) as $l|
+            #$l[:19] + .[19:-1] + $l[19:];
+            # Workaround for github issue #2429 "strflocaltime always outputs +0000 ..."
+            (.[:19] + "Z" |fromdateiso8601) as $t |
+            (($t |strflocaltime("%Y-%m-%dT%H:%M:%S") |strptime("%Y-%m-%dT%H:%M:%S") |mktime) - $t) as $off |
+            (if $off < 0 then "-" else "+" end) as $sign |
+            ($off | fabs / 60) as $m |
+            ($t |strflocaltime("%Y-%m-%dT%H:%M:%S")) + .[19:-1] +
+                $sign + "0\($m / 60 | floor)"[-2:] + "0\($m % 60)"[-2:];
+
+        def utc_or_local:
+            if $utc == "1" then . else to_local end;
+
+        .responses |to_entries |map(
+            [$ARGS.positional[.key],
+             (.value?.aggregations?.min_ts?.value_as_string| utc_or_local)? // "-",
+             (.value?.aggregations?.max_ts?.value_as_string| utc_or_local)? // "-",
+             (if $V == "1" then
+                (((.value?.aggregations?.min_ts?.value/1000)| n3f)? // "-"),
+                (((.value?.aggregations?.max_ts?.value/1000)| n3f)? // "-")
+              else empty end)
+            ] |join("\t")
+        )[]
+        ' -r --arg V "$VERBOSE" --arg utc "$UTC" --args "${indices[@]}"
+    } |
+    column -t -o ' ' -R "$column_right"
 }
 
 function mode_size() {
@@ -110,6 +163,8 @@ END {
 SIZE=
 SIZE_RAW=
 SIZE_SORT=@ind_str_asc
+AGE=
+UTC=
 PATH_FILTER=${PATH_FILTER-'*,-.internal.*'}
 VERBOSE=${VERBOSE:-}
 WATCH=
@@ -125,19 +180,23 @@ while (( $# > 0 )); do
         -r|--size-raw) SIZE_RAW=1 ;;
         -n|--size-asc) SIZE_SORT=@val_num_asc ;;
         -N|--size-desc) SIZE_SORT=@val_num_desc ;;
-        -a|--all) PATH_FILTER='*,.*' ;;
+        -a|--age) AGE=1 ;;
+        -u|--utc) UTC=1 ;;
+        -l|--all) PATH_FILTER='*,.*' ;;
         -E|--grep) POST_FILTER=$2; shift ;;
         -x|--invert-match) POST_FILTER_INVERT=1 ;;
         -v|--verbose) VERBOSE=1 ;;
         -w|--watch) WATCH=1; [[ ${2:0:1} == [0-9]* ]] && { WATCH_INTERVAL=$2; shift; } ;;
-        -+([srnNaxvwh]))
+        -+([srnNiaulxvwh]))
             for (( i = 1; i < ${#1}; i++ )); do
                 case "${1:i:1}" in
                     s) SIZE=1 ;;
                     r) SIZE_RAW=1 ;;
                     n) SIZE_SORT=@val_num_asc ;;
                     N) SIZE_SORT=@val_num_desc ;;
-                    a) PATH_FILTER='*,.*' ;;
+                    a) AGE=1 ;;
+                    u) UTC=1 ;;
+                    l) PATH_FILTER='*,.*' ;;
                     x) POST_FILTER_INVERT=1 ;;
                     v) VERBOSE=1 ;;
                     w) WATCH=1 ;;
@@ -155,6 +214,8 @@ if [[ -n $WATCH ]]; then
     [[ -z ${WATCH_INTERVAL//[0-9]} ]] || exit_usage 1
     export WATCHING=1 PATH_FILTER POST_FILTER POST_FILTER_INVERT VERBOSE
     exec watch -n "$WATCH_INTERVAL" "$0"
+elif [[ -n $AGE ]]; then
+    mode_age
 elif [[ -n $SIZE ]]; then
     mode_size
 else
