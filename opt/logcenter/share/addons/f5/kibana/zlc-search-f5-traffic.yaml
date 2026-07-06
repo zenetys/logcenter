@@ -1,0 +1,64 @@
+attributes:
+  columns:
+    - host.name
+    - source.ip
+    - f5.http_host
+    - http.response.status_code
+    - f5.http_uri
+    - event.duration
+  description: ""
+  grid:
+    columns:
+      event.duration:
+        width: 82
+      f5.client_address:
+        width: 173
+      f5.http_host:
+        width: 291
+      f5.http_status:
+        width: 54
+      f5.vip:
+        width: 145
+      host.name:
+        width: 252
+      http.response.status_code:
+        width: 73
+      source.ip:
+        width: 130
+  hideChart: true
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 1
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing f5 traffic
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-02T13:18:58.871Z"
+id: 4135064a-0d4f-4455-b5f4-6d37cddb1a62
+managed: false
+references:
+  - id: 5850d80c-2254-42c7-9d7b-3472f88efe6e
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: f42acd8d-1c35-49b0-844e-a86d8171e2ff
+    name: tag-ref-f42acd8d-1c35-49b0-844e-a86d8171e2ff
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+  - id: bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    name: tag-ref-bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2026-07-06T14:06:36.795Z"
+version: WzIzMzk4LDQ2XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

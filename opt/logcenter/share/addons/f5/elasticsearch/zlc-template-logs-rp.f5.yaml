@@ -1,0 +1,28 @@
+version: 2
+index_patterns:
+  - logs-rp.f5-zlc
+  - logs-rp.f5-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-rp.f5-dynamic
+  - zlc-component-logs-rp.f5-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-rp.f5@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-rp.f5-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-rp.f5@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }
+      http.request.referrer: { type: zlc_alias, target: { path: f5.http_referrer, type: [ keyword, text ] } }
+      http.request.body.bytes: { type: zlc_alias, target: { path: f5.req_contentlength, type: long } }
+      http.response.status_code: { type: zlc_alias, target: { path: f5.http_status, type: long } }
+      http.response.body.bytes: { type: zlc_alias, target: { path: f5.resp_contentlength, type: long } }

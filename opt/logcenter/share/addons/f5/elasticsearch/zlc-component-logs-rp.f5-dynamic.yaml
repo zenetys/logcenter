@@ -1,0 +1,42 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - rp.f5_date:
+          path_match:
+            - 'f5.req_start_time'
+          match_mapping_type: string
+          mapping:
+            type: date
+
+      - rp.f5_ip:
+          path_match:
+            - 'f5.lb_server_addr'
+            - 'f5.vip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - rp.f5_long:
+          path_match:
+            - '*_port'
+            - '*.port'
+            - 'f5.http_status'
+            - 'f5.req_elapsed_time'
+            - 'f5.req_contentlength'
+            - 'f5.resp_contentlength'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - rp.f5_wildcard_and_text:
+          path_match:
+            - 'f5.http_uri'
+            - 'f5.lb_pool'
+          match_mapping_type: string
+          mapping:
+            type: wildcard
+            fields:
+              text:
+                type: match_only_text

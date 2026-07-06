@@ -1,0 +1,19 @@
+attributes:
+  color: '#031161'
+  description: ""
+  name: f5
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-02T13:18:52.183Z"
+id: f42acd8d-1c35-49b0-844e-a86d8171e2ff
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2026-07-02T13:18:52.183Z"
+version: WzIyMjk5OSwzOV0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

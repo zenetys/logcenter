@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"event.duration":{"count":1},"event.original":{"count":1},"f5.client_address":{"count":1},"f5.http_host":{"count":1},"f5.http_status":{"count":1},"f5.http_uri":{"count":1},"f5.req_start_time":{"count":1},"f5.vip":{"count":1},"host.name":{"count":1},"http.response.status_code":{"count":1},"source.ip":{"count":1},"f5.lb_server_port":{"count":0},"server.port":{"count":0},"source.port":{"count":0},"url.port":{"count":0},"http.request.body.bytes":{"count":0},"http.response.body.bytes":{"count":0},"f5.req_contentlength":{"count":0},"f5.resp_contentlength":{"count":0}}'
+  fieldFormatMap: '{"event.duration":{"id":"duration","params":{"inputFormat":"nanoseconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"f5.lb_server_port":{"id":"number","params":{"pattern":"0","alwaysShowSign":false}},"server.port":{"id":"number","params":{"pattern":"0","alwaysShowSign":false}},"source.port":{"id":"number","params":{"pattern":"0","alwaysShowSign":false}},"url.port":{"id":"number","params":{"pattern":"0","alwaysShowSign":false}},"http.request.body.bytes":{"id":"bytes","params":{}},"http.response.body.bytes":{"id":"bytes","params":{}},"f5.req_contentlength":{"id":"bytes","params":{}},"f5.resp_contentlength":{"id":"bytes","params":{}}}'
+  fields: '[]'
+  name: logs-rp.f5-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-rp.f5-zlc,logs-rp.f5-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-02T13:14:20.075Z"
+id: 5850d80c-2254-42c7-9d7b-3472f88efe6e
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2026-07-06T13:49:01.820Z"
+version: WzIzMzg0LDQ2XQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

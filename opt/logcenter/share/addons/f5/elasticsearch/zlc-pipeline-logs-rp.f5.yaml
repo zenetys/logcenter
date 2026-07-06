@@ -1,0 +1,145 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - kv:
+      field: event.original
+      target_field: f5
+      field_split: '(?:((\s+)?$|,\s+(?=[\w]+=)))'
+      value_split: '='
+      strip_brackets: true
+      trim_key: " \r\n\t"
+      trim_value: " \r\n\t"
+      ignore_failure: true
+      ignore_missing: true
+
+  - dissect:
+      field: f5.client_address
+      pattern: '%{source.ip}:%{source.port}'
+      ignore_missing: true
+      ignore_failure: true
+
+  - script:
+      lang: painless
+      ignore_failure: true
+      source: |
+        // strip route domain %rd off source.ip
+        if (ctx?.source?.ip instanceof String) {
+            int pos = ctx.source.ip.indexOf('%');
+            if (pos > -1)
+                ctx.source.ip = ctx.source.ip.substring(0, pos);
+        }
+        // strip route domain %rd off f5.vip
+        if (ctx?.f5?.vip instanceof String) {
+            int pos = ctx.f5.vip.indexOf('%');
+            if (pos > -1)
+                ctx.f5.vip = ctx.f5.vip.substring(0, pos);
+        }
+        // strip route domain %rd off f5.lb_server_addr
+        if (ctx?.f5?.lb_server_addr instanceof String) {
+            int pos = ctx.f5.lb_server_addr.indexOf('%');
+            if (pos > -1)
+                ctx.f5.lb_server_addr = ctx.f5.lb_server_addr.substring(0, pos);
+        }
+
+  - uri_parts:
+      field: f5.http_uri
+      target_field: url
+      keep_original: false
+      ignore_missing: true
+      ignore_failure: true
+
+  - dissect:
+      field: f5.http_host
+      pattern: '%{url.domain}:%{url.port}'
+      ignore_missing: true
+      ignore_failure: true
+
+  - script:
+      lang: painless
+      ignore_failure: true
+      source: |
+        String url_reconstructed = '';
+        boolean is_ssl = false;
+        if (ctx?.f5?.http_version instanceof String && ctx.f5.http_version.startsWith('HTTP/')) {
+            url_reconstructed += 'http';
+            if (ctx?.f5?.req_cipher_name instanceof String && ctx.f5.req_cipher_name.length() > 0) {
+                is_ssl = true;
+                url_reconstructed += 's';
+            }
+            url_reconstructed += '://';
+            if (ctx?.url?.domain instanceof String) {
+                url_reconstructed += ctx.url.domain;
+                if (ctx?.url?.port instanceof String &&
+                    ((is_ssl && ctx.url.port != '443') || (!is_ssl && ctx.url.port != '80'))) {
+                    url_reconstructed += ':' + ctx.url.port;
+                }
+                if (ctx?.f5?.http_uri instanceof String) {
+                    url_reconstructed += ctx.f5.http_uri;
+
+                    // commit reconstructed url.full
+                    if (ctx.url == null)
+                        ctx.url = [:];
+                    ctx.url.full = url_reconstructed;
+                }
+            }
+        }
+
+        def duration = ctx?.f5?.req_elapsed_time;
+        if (duration != null) {
+            try {
+                if (duration instanceof String)
+                    duration = Long.parseLong(duration);
+                if (duration instanceof Number)
+                    ctx.event.duration = duration * 1000000L;
+            }
+            catch (Exception e) {}
+        }
+
+        // field http.version should not contain "HTTP/" prefix
+        if (ctx?.f5?.http_version instanceof String && ctx.f5.http_version.startsWith('HTTP/')) {
+            if (ctx.http == null)
+                ctx.http = [:];
+            ctx.http.version = ctx.f5.http_version.substring(5);
+        }
+
+        // field tls.version should not contain "TLSv" prefix
+        // split into fields tls.version and tls.version_protocol
+        // see https://www.elastic.co/guide/en/ecs/current/ecs-tls.html
+        // sample input: SSLv3, TLSv1.3
+        if (ctx?.f5?.req_cipher_version instanceof String) {
+            int vpos = ctx.f5.req_cipher_version.indexOf('v');
+            if (vpos > 0 && vpos < ctx.f5.req_cipher_version.length()-1) {
+                if (ctx.tls == null)
+                    ctx.tls = [:];
+                ctx.tls.version_protocol = ctx.f5.req_cipher_version.substring(0, vpos).toLowerCase();
+                ctx.tls.version = ctx.f5.req_cipher_version.substring(vpos+1);
+            }
+        }
+
+  - set:
+      field: server.address
+      copy_from: f5.lb_server_addr
+      ignore_empty_value: true
+      ignore_failure: true
+
+  - convert:
+      target_field: server.port
+      field: f5.lb_server_port
+      type: long
+      ignore_failure: true
+
+  - convert:
+      target_field: server.ip
+      field: server.address
+      type: ip
+      ignore_missing: true
+      on_failure:
+        - set:
+            field: server.domain
+            copy_from: server.address
+            ignore_empty_value: true
+            ignore_failure: true
