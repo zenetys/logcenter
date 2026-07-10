@@ -19,3 +19,42 @@ rule=:<%-:number%>\x25%-:rest%
 
 # <30>last message repeated 2 times
 rule=:<%-:number%>last message repeated %-:number% times
+
+# Huawei vrp logs
+# Timezone unsupported in pmrfc3164: <190>Jul 10 2026 15:55:47+02:00 ...
+# Invalid decimal number after milliseconds: <188>Jul 10 2026 15:51:30.570.1...
+
+type=@wrong_rfc3164_date_suffix1:%{
+    "type": "alternative",
+    "parser": [
+        { "type": "literal", "text": "+" },
+        { "type": "literal", "text": "-" }
+    ]
+}%
+
+type=@wrong_rfc3164_date_suffix2:%[
+    { "type": "literal", "text": "." },
+    { "type": "number" },
+    { "type": "literal", "text": "." },
+    { "type": "number" }
+]%
+
+rule=:%[
+    { "type": "literal", "text": "<" },
+    { "type": "number" },
+    { "type": "literal", "text": ">" },
+    { "type": "date-rfc3164" },
+    { "type": "@wrong_rfc3164_date_suffix1" },
+    { "type": "rest" }
+]%
+
+rule=:%[
+    { "type": "literal", "text": "<" },
+    { "type": "number" },
+    { "type": "literal", "text": ">" },
+    { "type": "date-rfc3164" },
+    { "type": "@wrong_rfc3164_date_suffix2" },
+    { "type": "rest" }
+]%
+
+# Workaround EOF after ']%' or '}%'
