@@ -14,7 +14,7 @@ rule=:<%-:number%>logver=%-:number%%-:rest%
 rule=:<%-:number%>date=2%-:rest%
 
 # Cisco SB logs sent in rfc3164, ie. without logging origin-id hostname
-# <189>%SYSLOG-N-NEWSYSLOGSERVER: configure new syslog server 10.109.21.254, aggregated (1)'
+# <189>%SYSLOG-N-NEWSYSLOGSERVER: configure new syslog server 10.109.21.254, aggregated (1)
 rule=:<%-:number%>\x25%-:rest%
 
 # <30>last message repeated 2 times
