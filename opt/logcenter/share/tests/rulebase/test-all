@@ -14,7 +14,7 @@ function run() {
         return
     fi
     if [[ -n $TEST_MEMORY ]]; then
-        "$@" 2>&1 >/dev/null |fgrep -q '== All heap blocks were freed -- no leaks are possible'
+        "$@" 2>&1 >/dev/null |grep -F -q '== All heap blocks were freed -- no leaks are possible'
     else
         "$@" >/dev/null 2>&1
     fi
