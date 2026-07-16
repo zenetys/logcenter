@@ -1,0 +1,58 @@
+attributes:
+  columns:
+    - host.name
+    - huawei.module
+    - huawei.level
+    - huawei.brief
+    - huawei.message
+    - huawei.raw_data
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 216
+      host.name:
+        width: 149
+      huawei.brief:
+        width: 199
+      huawei.level:
+        width: 40
+      huawei.message:
+        width: 484
+      huawei.module:
+        width: 87
+  headerRowHeight: 1
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing huawei vrp
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-08T21:01:38.098Z"
+id: 96e4a4b9-9ca4-49e4-9443-574e41fb8c5f
+managed: false
+references:
+  - id: cf263269-f329-45fa-82a2-017f4d408f0b
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+  - id: b0cb6353-253b-4ac4-9b5c-996def5cae65
+    name: tag-ref-b0cb6353-253b-4ac4-9b5c-996def5cae65
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2026-07-16T15:20:39.353Z"
+version: WzU0MTk0LDMzXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

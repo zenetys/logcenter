@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"host.ip":{"count":1},"host.name":{"count":2},"huawei.brief":{"count":2},"huawei.level":{"count":1},"huawei.message":{"count":2},"huawei.module":{"count":2},"huawei.raw_data":{"count":1},"message":{"count":1},"huawei.parsed_data.DownByte":{"count":0},"huawei.parsed_data.UpByte":{"count":0},"huawei.raw_data.AuthType":{"count":1},"huawei.parsed_data.OnlineTime_s":{"count":0},"huawei.parsed_data.TimeOnline":{"count":0}}'
+  fieldFormatMap: '{"huawei.parsed_data.DownByte":{"id":"bytes","params":{}},"huawei.parsed_data.UpByte":{"id":"bytes","params":{}},"huawei.parsed_data.OnlineTime_s":{"id":"duration","params":{"inputFormat":"seconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}},"huawei.parsed_data.TimeOnline":{"id":"duration","params":{"inputFormat":"seconds","outputFormat":"humanizePrecise","outputPrecision":1,"includeSpaceWithSuffix":true,"useShortSuffix":true}}}'
+  fields: '[]'
+  name: logs-huawei.vrp-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-huawei.vrp-zlc,logs-huawei.vrp-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-08T20:53:31.541Z"
+id: cf263269-f329-45fa-82a2-017f4d408f0b
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2026-07-16T15:19:52.072Z"
+version: WzU0MTkxLDMzXQ==
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

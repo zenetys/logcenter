@@ -1,0 +1,19 @@
+attributes:
+  color: '#e4846d'
+  description: ""
+  name: huawei
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-08T21:01:35.677Z"
+id: b0cb6353-253b-4ac4-9b5c-996def5cae65
+managed: false
+references: []
+type: tag
+typeMigrationVersion: 8.0.0
+updated_at: "2026-07-08T21:01:35.677Z"
+version: WzQ1Mjc2MywzMF0=
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
