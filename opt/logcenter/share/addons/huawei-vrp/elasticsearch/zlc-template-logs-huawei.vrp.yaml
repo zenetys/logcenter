@@ -1,0 +1,24 @@
+version: 2
+index_patterns:
+  - logs-huawei.vrp-zlc
+  - logs-huawei.vrp-zlc.*
+priority: 700
+composed_of:
+  - zlc-component-logs-huawei.vrp-dynamic
+  - zlc-component-logs-huawei.vrp-dynamic@custom
+  - logs@mappings
+  - ecs@mappings
+  - zlc-component-default
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-huawei.vrp@custom
+ignore_missing_component_templates:
+  - zlc-component-logs-huawei.vrp-dynamic@custom
+  - zlc-component-default@custom
+  - zlc-component-logs@custom
+  - zlc-component-logs-huawei.vrp@custom
+data_stream: {}
+template:
+  mappings:
+    properties:
+      event.dataset: { type: zlc_alias, target: { path: data_stream.dataset, type: constant_keyword } }

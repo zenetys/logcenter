@@ -1,0 +1,191 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'huawei.* fields expected'
+      if: (ctx.huawei instanceof Map) == false
+
+  - set:
+      field: _
+      value:
+        remove_empty_string: ['', '-', 'NULL']
+
+  # kv1
+  # fields separated by colon ","
+  # key and value separated by equal "="
+  - grok:
+      field: huawei.message
+      patterns:
+          - '%{DATA:huawei.message}\(%{GREEDYDATA:_.kv1}\)\s*$'
+      ignore_failure: true
+      ignore_missing: true
+  - kv:
+      if: ctx._?.kv1 != null
+      field: _.kv1
+      target_field: huawei.data
+      field_split: '(?:([\s,]*$|,\s*(?=[\w _-]+=)))'
+      value_split: '='
+      strip_brackets: true
+      trim_key: " \r\n\t()"
+      trim_value: " \r\n\t"
+      ignore_failure: true
+      ignore_missing: true
+
+  # kv2
+  # fields separated by semicolon ";"
+  # key and value separated by colon ":"
+  - grok:
+      if: ctx._?.kv1 == null
+      field: huawei.message
+      patterns:
+          - '%{PREFIX:huawei.message}%{GREEDYDATA:_.kv2}\s*$'
+      pattern_definitions:
+          UCSTRING: '[A-Z0-9_]+'
+          PREFIX: '%{DATA}\[%{UCSTRING}\]'
+      ignore_failure: true
+      ignore_missing: true
+  - gsub:
+      if: ctx._?.kv2 != null
+      field: _.kv2
+      pattern: ';AUTHID=([0-9]+);'
+      replacement: ';AUTHID:$1;'
+  - kv:
+      if: ctx._?.kv2 != null
+      field: _.kv2
+      target_field: huawei.data
+      field_split: '(?:([\s;]*$|;\s*(?=[\w _-]+(\([^):]+\))?:)))'
+      value_split: ':'
+      strip_brackets: true
+      trim_key: " \r\n\t()"
+      trim_value: " \r\n\t"
+      ignore_failure: true
+      ignore_missing: true
+
+  # split multi-valued fields to arrays
+  # sanitize keys, normalize values
+  - script:
+      lang: painless
+      ignore_failure: true
+      source: |
+          String normMac(String input) {
+              def output = '';
+              def input_len = input.length();
+              int ipair = 0;
+              for (int i = 0; i < input_len; i++) {
+                  char c = input.charAt(i);
+                  if (Character.digit(c, 16) > -1) {
+                      if (ipair >= 2) {
+                          output = output + '-';
+                          ipair = 0;
+                      }
+                      output = output + Character.toLowerCase(c);
+                      ipair++;
+                  }
+                  else if (c != (char)'-' && c != (char)'.' && c != (char)':')
+                      return null;
+              }
+              if (output.length() != 17)
+                  return null;
+              return output;
+          }
+          long parseDuration(String input) {
+              int input_length = input.length();
+              long seconds = 0;
+              int num_start = -1;
+              
+              for (int i = 0; i < input_length; i++) {
+                  char c = Character.toLowerCase(input.charAt(i));
+                  if (c >= 48 /* 0 */ && c <= 57 /* 9 */) {
+                      if (num_start == -1)
+                          num_start = i;
+                  }
+                  else if (c == 100 /* d */ || c == 104 /* h */ || c == 109 /* m */ || c == 115 /* s */) {
+                      if (num_start == -1)
+                          throw new Exception('parseDuration: no number to convert');
+                      // let it throw if it fails
+                      String toParse = input.substring(num_start, i);
+                      long val;
+                      try { val = Long.parseLong(toParse); }
+                      catch (Exception e) { throw new Exception('parseDuration: failed to parse long at index ' + num_start); }
+                      if (c == 100 /* d */) { seconds += val * 86400L; }
+                      else if (c == 104 /* h */) { seconds += val * 3600L; }
+                      else if (c == 109 /* m */) { seconds += val * 60L; }
+                      else if (c == 115 /* s */) { seconds += val; }
+                      num_start = -1;
+                  }
+                  // ignore only spaces
+                  else if (c != 32 /* space */)
+                      throw new Exception('parseDuration: invalid character at index ' + i);
+              }
+              return seconds;
+          }
+
+          if (ctx._?.kv1 != null)
+              ctx.huawei.raw_data = ctx._?.kv1;
+          else if (ctx._?.kv2 != null)
+              ctx.huawei.raw_data = ctx._?.kv2;
+
+          def data = ctx.huawei?.data;
+          if (data instanceof Map) {
+              def data2 = new LinkedHashMap();
+              def parsed = new LinkedHashMap();
+              for (entry in data.entrySet()) {
+                  def k = entry.getKey().replaceAll(/[^a-zA-Z0-9_]+/, m -> '_');
+                  def v = entry.getValue();
+                  if (v == null)
+                      continue;
+
+                  // note: those IP fields must match in dynamic mapping rules
+                  if ((k.endsWith('Ip') || k.endsWith('IpAddress') || k.endsWith('RDSIP') ||
+                       k.endsWith('_address') || k.endsWith('_IP') || k == 'Gateway' ||
+                       k == 'IPADDRESS' || k == 'Mask') &&
+                      v.indexOf('/') == -1) {
+
+                      try { new CIDR(v); parsed[k] = v; }
+                      catch (Exception e) {}
+                  }
+                  else if (k == 'LastAvgRssi' || k.endsWith('Byte') || k.endsWith('Bytes') ||
+                           k.endsWith('PacketNum') || k.endsWith('_dBm') || k.endsWith('Time_s')) {
+                      try { parsed[k] = Long.parseLong(v, 10); }
+                      catch (Exception e) {}
+                  }
+                  else if (k == 'TimeOnline') {
+                      try { parsed[k] = parseDuration(v); }
+                      catch (Exception e) {}
+                  }
+                  else if (k.toLowerCase().endsWith('mac')) {
+                      try { v = normMac(v); }
+                      catch (Exception e) {}
+                  }
+                  else {
+                      def a = new ArrayList();
+                      if (v.contains(';')) {
+                          for (x in v.splitOnToken(';')) {
+                              def x2 = x.trim();
+                              if (!x2.isEmpty())
+                                  a.add(x2);
+                          }
+                      }
+                      else if (v.contains(',')) {
+                          for (x in v.splitOnToken(',')) {
+                              def x2 = x.trim();
+                              if (!x2.isEmpty())
+                                  a.add(x2);
+                          }
+                      }
+                      def l = a.size();
+                      if (l == 1)
+                          v = a.get(0);
+                      else if (l >= 2)
+                          v = a;
+                  }
+
+                  data2[k] = v;
+              }
+              ctx.huawei.data = data2;
+              ctx.huawei.parsed_data = parsed;
+          }

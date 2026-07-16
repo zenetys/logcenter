@@ -1,0 +1,35 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - huawei_vrp_ip:
+          path_match:
+            - 'huawei.parsed_data.*_IP'
+            - 'huawei.parsed_data.*_address'
+            - 'huawei.parsed_data.*Ip'
+            - 'huawei.parsed_data.*IpAddress'
+            - 'huawei.parsed_data.*RDSIP'
+            - 'huawei.parsed_data.Gateway'
+            - 'huawei.parsed_data.IPADDRESS'
+            - 'huawei.parsed_data.Mask'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - huawei_vrp_text:
+          path_match:
+            - 'huawei.raw_data'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - huawei_vrp_keyword_and_text:
+          path_match:
+            - 'huawei.hostname'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text
