@@ -35,3 +35,13 @@ processors:
       # redundant with fortigate.level (text)
       field: cef.severity
       ignore_missing: true
+
+  # provide fortigate.devname through host.name for compatibility
+  # with key/value logs
+  - set:
+      if: ctx?.host?.name != ctx?.host?.ip
+      field: fortigate.devname
+      copy_from: host.name
+      override: false
+      ignore_empty_value: true
+      ignore_failure: true
