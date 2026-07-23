@@ -1,0 +1,40 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - exchange_msgtrk_ip:
+          path_match:
+            - '*_ip'
+          match_mapping_type: string
+          mapping:
+            type: ip
+
+      - exchange_msgtrk_long:
+          path_match:
+            - '*_bytes'
+            - '*_count'
+          match_mapping_type: string
+          mapping:
+            type: long
+
+      - exchange_msgtrk_text:
+          path_match:
+            - '*.custom_data'
+            - '*.message_info'
+            - '*.recipient_status'
+            - '*.related_recipient_address'
+            - '*.source_context'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - exchange_msgtrk_keyword_and_text:
+          path_match:
+            - 'exchange.msgtrk.*'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            fields:
+              text:
+                type: match_only_text

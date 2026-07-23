@@ -1,0 +1,51 @@
+version: 1
+
+on_failure:
+  - append: { field: error.message, value: '{{{ _ingest.on_failure_message }}}' }
+  - set: { field: event.kind, value: pipeline_error }
+
+processors:
+  - fail:
+      message: 'exchange.msgtrk.* fields expected'
+      if: (ctx?.exchange?.msgtrk instanceof Map) == false
+
+  - split:
+      field: exchange.msgtrk.recipient_address
+      target_field: email.to.address
+      separator: ';'
+      ignore_missing: true
+      ignore_failure: true
+
+  - dissect:
+      field: exchange.msgtrk.custom_data
+      pattern: "%{}S:OriginalFromAddress=%{_.email.from.address};"
+      ignore_missing: true
+      ignore_failure: true
+
+  - append:
+      field: email.from.address
+      value: '{{{_.email.from.address}}}'
+      if: ctx._?.email?.from?.address != null && ctx._.email.from.address != '<>'
+      ignore_failure: true
+      allow_duplicates: false
+
+  - append:
+      field: email.from.address
+      value: '{{{exchange.msgtrk.sender_address}}}'
+      if: ctx.exchange.msgtrk.sender_address != null && ctx.exchange.msgtrk.sender_address != ''
+      ignore_failure: true
+      allow_duplicates: false
+
+  - convert:
+      field: exchange.msgtrk.client_ip
+      target_field: client.ip
+      type: ip
+      ignore_failure: true
+      ignore_missing: true
+
+  - convert:
+      field: exchange.msgtrk.server_ip
+      target_field: server.ip
+      type: ip
+      ignore_failure: true
+      ignore_missing: true
