@@ -1,0 +1,25 @@
+attributes:
+  allowHidden: false
+  fieldAttrs: '{"exchange.msgtrk.total_bytes":{"count":0},"network.bytes":{"count":0},"email.subject":{"count":1}}'
+  fieldFormatMap: '{"exchange.msgtrk.total_bytes":{"id":"bytes","params":{}},"network.bytes":{"id":"bytes","params":{}}}'
+  fields: '[]'
+  name: logs-exchange.msgtrk-zlc
+  runtimeFieldMap: '{}'
+  sourceFilters: '[]'
+  timeFieldName: '@timestamp'
+  title: logs-exchange.msgtrk-zlc,logs-exchange.msgtrk-zlc.*
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-08T06:22:06.083Z"
+id: 1f2d0c43-d184-4dc6-96d8-daa6ef5c68a8
+managed: false
+references: []
+type: index-pattern
+typeMigrationVersion: 8.0.0
+updated_at: "2026-07-08T06:24:39.615Z"
+version: Wzg3LDRd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []
