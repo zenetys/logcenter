@@ -1,0 +1,82 @@
+attributes:
+  columns:
+    - host.name
+    - source.ip
+    - haproxy.frontend_name
+    - haproxy.backend_name
+    - haproxy.server_name
+    - haproxy.termination_state
+    - haproxy.connection_wait_time_ms
+    - haproxy.total_waiting_time_ms
+    - haproxy.total_time_ms
+    - haproxy.bytes_uploaded
+    - haproxy.bytes_read
+  description: ""
+  grid:
+    columns:
+      '@timestamp':
+        width: 225
+      haproxy.backend_name:
+        width: 212
+      haproxy.bytes_read:
+        width: 142
+      haproxy.bytes_uploaded:
+        width: 142
+      haproxy.connection_wait_time_ms:
+        width: 108
+      haproxy.frontend_name:
+        width: 196
+      haproxy.server_name:
+        width: 139
+      haproxy.total_time_ms:
+        width: 140
+      haproxy.total_waiting_time_ms:
+        width: 140
+      host.name:
+        width: 141
+      source.ip:
+        width: 133
+  headerRowHeight: 0
+  hideChart: false
+  isTextBasedQuery: false
+  kibanaSavedObjectMeta:
+    searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"haproxy.log.type:tcp (DO NOT EDIT)","disabled":true,"field":"haproxy.log.type","key":"haproxy.log.type","negate":false,"params":{"query":"tcp"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"haproxy.log.type":"tcp"}},"$state":{"store":"appState"}},{"meta":{"disabled":true,"negate":false,"alias":"haproxy.log.type:http (DO NOT EDIT)","key":"haproxy.log.type","field":"haproxy.log.type","params":{"query":"http"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"match_phrase":{"haproxy.log.type":"http"}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: 0
+  sort:
+    - - '@timestamp'
+      - desc
+  timeRestore: false
+  title: Listing haproxy traffic
+coreMigrationVersion: 8.8.0
+created_at: "2026-07-28T11:53:50.470Z"
+id: 883cd417-ac4e-4054-8a7e-f53986221419
+managed: false
+references:
+  - id: fe1bba72-8dee-455e-8160-aa15ab9c9383
+    name: kibanaSavedObjectMeta.searchSourceJSON.index
+    type: index-pattern
+  - id: fe1bba72-8dee-455e-8160-aa15ab9c9383
+    name: kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index
+    type: index-pattern
+  - id: fe1bba72-8dee-455e-8160-aa15ab9c9383
+    name: kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index
+    type: index-pattern
+  - id: bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    name: tag-ref-bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    type: tag
+  - id: d80936fc-1dcd-47f3-9c97-32b0bcdec6d7
+    name: tag-ref-d80936fc-1dcd-47f3-9c97-32b0bcdec6d7
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
+type: search
+typeMigrationVersion: 10.5.0
+updated_at: "2026-07-28T11:59:28.500Z"
+version: WzM1NTQsMjhd
+---
+excludedObjects: []
+excludedObjectsCount: 0
+exportedCount: 1
+missingRefCount: 0
+missingReferences: []

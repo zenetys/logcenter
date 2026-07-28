@@ -56,7 +56,7 @@ attributes:
   timeRestore: false
   title: Listing haproxy http
 coreMigrationVersion: 8.8.0
-created_at: "2024-10-07T10:52:09.038Z"
+created_at: "2025-08-26T07:30:29.516Z"
 id: 015e94e6-9020-41bc-903a-a4be720313bb
 managed: false
 references:
@@ -66,16 +66,19 @@ references:
   - id: fe1bba72-8dee-455e-8160-aa15ab9c9383
     name: kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index
     type: index-pattern
-  - id: bd1e1218-8334-464f-8ad2-9c4a62b6156f
-    name: tag-ref-bd1e1218-8334-464f-8ad2-9c4a62b6156f
-    type: tag
   - id: d80936fc-1dcd-47f3-9c97-32b0bcdec6d7
     name: tag-ref-d80936fc-1dcd-47f3-9c97-32b0bcdec6d7
     type: tag
+  - id: bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    name: tag-ref-bd1e1218-8334-464f-8ad2-9c4a62b6156f
+    type: tag
+  - id: 92d6769a-8406-4839-9a2e-53fbe69d05e6
+    name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
+    type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-10-07T22:07:55.159Z"
-version: WzYyNDUsNDFd
+typeMigrationVersion: 10.5.0
+updated_at: "2026-07-28T11:56:38.963Z"
+version: WzM1NDUsMjhd
 ---
 excludedObjects: []
 excludedObjectsCount: 0

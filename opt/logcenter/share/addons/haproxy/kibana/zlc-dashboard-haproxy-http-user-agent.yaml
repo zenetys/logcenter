@@ -14,7 +14,7 @@ attributes:
   title: Dashboard haproxy http user-agent
   version: 2
 coreMigrationVersion: 8.8.0
-created_at: "2024-10-15T18:17:06.848Z"
+created_at: "2025-08-26T07:30:31.908Z"
 id: 4f487fb3-cf9c-45aa-af5b-eff19d9e952d
 managed: false
 references:
@@ -85,9 +85,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: dashboard
-typeMigrationVersion: 10.2.0
-updated_at: "2024-10-16T08:02:53.334Z"
-version: WzczNDksNDFd
+typeMigrationVersion: 10.3.0
+updated_at: "2025-08-26T07:30:31.908Z"
+version: WzI3LDRd
 ---
 excludedObjects: []
 excludedObjectsCount: 0

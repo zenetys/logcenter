@@ -14,7 +14,7 @@ attributes:
   title: Dashboard haproxy error
   version: 2
 coreMigrationVersion: 8.8.0
-created_at: "2024-10-07T16:06:57.430Z"
+created_at: "2025-08-26T07:30:30.812Z"
 id: f862b2eb-c213-466e-b381-13ebffa952dd
 managed: false
 references:
@@ -61,9 +61,9 @@ references:
     name: tag-ref-92d6769a-8406-4839-9a2e-53fbe69d05e6
     type: tag
 type: dashboard
-typeMigrationVersion: 10.2.0
-updated_at: "2024-10-16T08:03:16.799Z"
-version: WzczNTIsNDFd
+typeMigrationVersion: 10.3.0
+updated_at: "2025-08-26T07:30:30.812Z"
+version: WzI2LDRd
 ---
 excludedObjects: []
 excludedObjectsCount: 0
