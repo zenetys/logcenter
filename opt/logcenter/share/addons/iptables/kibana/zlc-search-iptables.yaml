@@ -42,8 +42,7 @@ attributes:
   timeRestore: false
   title: Listing iptables
 coreMigrationVersion: 8.8.0
-created_at: "2024-08-24T13:17:55.097Z"
-created_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
+created_at: "2026-07-29T13:05:03.471Z"
 id: f51da986-c604-4d34-89a4-987c28ca81ca
 managed: false
 references:
@@ -60,10 +59,9 @@ references:
     name: tag-ref-7a6f7626-8ff7-4602-b344-3ea35f0f27bc
     type: tag
 type: search
-typeMigrationVersion: 10.4.0
-updated_at: "2024-08-24T13:17:55.097Z"
-updated_by: u_kA1i-EOzx0UwsvdJgIBv8rir_x8m7DA2haaMKDnyN-I_0
-version: WzQ0NDAsMzld
+typeMigrationVersion: 10.5.0
+updated_at: "2026-07-29T13:05:03.471Z"
+version: Wzc2LDRd
 ---
 excludedObjects: []
 excludedObjectsCount: 0
