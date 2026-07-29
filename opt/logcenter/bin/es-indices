@@ -53,7 +53,7 @@ function mode_listing() {
                         jq -r '.data_streams |map(.indices |last |.index_name)[]') \
                     <(cat)
             fi |
-            grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
+            grep -E ${POST_FILTER_INVERT:+-v} -- "$POST_FILTER"
         } |
         column -t -o ' ' -R "$column_right"
 }
@@ -61,7 +61,7 @@ function mode_listing() {
 function mode_age() {
     local IFS=$'\n' indices postdata
     indices=($(es-curl "_cat/indices/$PATH_FILTER?h=i&s=i" |
-        grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}))
+        grep -E ${POST_FILTER_INVERT:+-v} -- "$POST_FILTER"))
     for i in "${indices[@]}"; do
         postdata+="{\"index\":\"$i\"}"$'\n'
         postdata+="{\"size\":0,\"track_total_hits\":false,\"aggs\":{\"min_ts\":{\"min\":{\"field\":\"@timestamp\"}},\"max_ts\":{\"max\":{\"field\":\"@timestamp\"}}}}"$'\n'
@@ -155,7 +155,7 @@ END {
     {
         # keep header line
         read -r; echo "$REPLY"
-        grep -E "$POST_FILTER" ${POST_FILTER_INVERT:+-v}
+        grep -E ${POST_FILTER_INVERT:+-v} -- "$POST_FILTER"
     } |
     column -t -o ' ' -R 2,3
 }
