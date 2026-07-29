@@ -21,6 +21,11 @@ DEFAULT = {
     msg = ''
 }
 
+DEFAULT_SETTER = {
+    facility = tonumber,
+    severity = tonumber,
+}
+
 PAT_DATE_RFC3339 = '%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d[^+]*%+%d%d:%d%d'
 
 PARSER_DATE = {
@@ -414,7 +419,12 @@ function main(arg)
     local i = 1
     while i <= #arg do
         if arg[i] == '-d' or arg[i] == '--default' then
-            DEFAULT[arg[i+1]] = arg[i+2]; i = i + 2;
+            if DEFAULT_SETTER[arg[i+1]] then
+                arg[i+2] = DEFAULT_SETTER[arg[i+1]](arg[i+2]);
+                if not arg[i+2] then error('Invalid value for -d '..arg[i+1]) end
+            end
+            DEFAULT[arg[i+1]] = arg[i+2];
+            i = i + 2;
         elseif arg[i] == '-q' or arg[i] == '--quiet' then
             VERBOSE = 0
         elseif arg[i] == '-v' or arg[i] == '--verbose' then
