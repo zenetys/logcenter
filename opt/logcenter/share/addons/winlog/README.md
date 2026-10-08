@@ -16,7 +16,7 @@
     Module          om_tcp
     Host            logcenter-syslog-collector.acme.loc
     Port            514
- </Output>
+</Output>
 ```
 
 - Paste the following content to `C:\program files\nxlog\nxlog.d\70-windows-events.conf`
