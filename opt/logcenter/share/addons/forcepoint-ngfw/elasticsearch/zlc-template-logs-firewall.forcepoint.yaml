@@ -40,7 +40,6 @@ template:
       network.application: { type: zlc_alias, target: { path: forcepoint.IpsAppid, type: keyword }}
       network.iana_number: { type: zlc_alias, target: { path: forcepoint.Protocol, type: keyword }}
       network.protocol: { type: zlc_alias, target: { path: forcepoint.Service, type: keyword }}
-      network.transport: { type: zlc_alias, target: { path: forcepoint.ProtocolName, type: keyword }}
       network.vlan.id: { type: zlc_alias, target: { path: forcepoint.SrcVlan, type: keyword }}
       observer.egress.interface.id: { type: zlc_alias, target: { path: forcepoint.Dstif, type: keyword }}
       observer.egress.vlan.id: { type: zlc_alias, target: { path: forcepoint.DstVlan, type: keyword }}
