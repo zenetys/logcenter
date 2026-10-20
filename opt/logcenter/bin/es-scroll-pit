@@ -1,0 +1,146 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+ES_PIT_SIZE=${ES_PIT_SIZE:-1000}
+ES_PIT_KEEP_ALIVE=${ES_PIT_KEEP_ALIVE:-1m}
+TMPFILE=
+
+# Keep track of pit ids to close them on exit
+declare -A PIT_IDS=()
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] INDEX [QUERY] [PARAMS]
+Search elasticsearch with a point in time until there is no more hit
+
+Available options:
+    -v, --verbose       Be verbose, prints on stderr
+    -h, --help          Display this help
+
+This script paginates a _search query on the given index using a point in
+time (pit) and search_after, which is the recommended replacement for the
+deprecated scroll API. It prints on stdout the raw response of each page.
+
+QUERY is the data to POST for the query, it must be a JSON object, it may
+be empty. The following properties are added to QUERY unless already set:
+
+size              $ES_PIT_SIZE
+sort              [{\"_shard_doc\":\"asc\"}], ie: index order, cheapest
+                      way to paginate, similar to what a scroll does
+track_total_hits  false, recommended for deep pagination
+
+Property pit is always set, using a keep_alive of $ES_PIT_KEEP_ALIVE, and
+search_after is set from the sort values of the last hit of the previous
+page. Note the index must not be given in the URL of a pit search, hence
+INDEX is only used to open the pit.
+
+If PARAMS is given, it gets appended to the URL parameters of each _search
+request.
+
+Environment variables ES_PIT_SIZE and ES_PIT_KEEP_ALIVE override
+the defaults given above."
+    exit "$status"
+}
+
+function perr() {
+    echo "$PROGNAME: $*" >&2
+}
+
+function _curl() {
+    if [[ -n $VERBOSE ]]; then
+        perr "Call es-curl $*"
+    fi
+    es-curl "$@"
+}
+
+function on_exit() {
+    local i
+    if [[ -n $TMPFILE && -e $TMPFILE ]]; then
+        rm ${VERBOSE:+-v} "$TMPFILE" >&2
+    fi
+    for i in "${!PIT_IDS[@]}"; do
+        _curl "/_pit" -d "{\"id\":\"$i\"}" -s -o /dev/null -X DELETE
+    done
+}
+
+# $1: query to POST, may be empty
+# $2: pit id
+# $3: search_after sort values, JSON array, empty on the initial query
+function build_body() {
+    local query=$1
+    [[ -z $query ]] && query='{}'
+    jq -cn --argjson query "$query" --arg pit_id "$2" \
+        --arg keep_alive "$ES_PIT_KEEP_ALIVE" --argjson size "$ES_PIT_SIZE" \
+        --argjson search_after "${3:-null}" '
+        $query |
+        (if .size == null then .size = $size else . end) |
+        (if .sort == null then .sort = [{"_shard_doc":"asc"}] else . end) |
+        (if .track_total_hits == null then .track_total_hits = false else . end) |
+        .pit = { id: $pit_id, keep_alive: $keep_alive } |
+        (if $search_after == null then . else .search_after = $search_after end)'
+}
+
+# $1: index
+# $2: query to POST
+# $3: extra _search parameters
+function es-scroll-pit() {
+    local index=$1 query=$2 params=$3
+    local pit_id body nhits search_after=
+
+    [[ $VERBOSE ]] && perr "Open pit on $index"
+    _curl "$index/_pit?keep_alive=$ES_PIT_KEEP_ALIVE" -s -o "$TMPFILE" -X POST
+    [[ $? != 0 ]] && { perr "Error, cURL failed"; return 1; }
+    [[ -s $TMPFILE ]] || { perr "Error, empty response"; return 1; }
+    pit_id=$(jq -r '.id // ""' "$TMPFILE")
+    [[ $? != 0 ]] && { perr "Error, jq failed to extract pit id"; return 1; }
+    [[ -z $pit_id ]] && { perr "Error, empty pit id"; return 1; }
+    PIT_IDS["$pit_id"]=1
+
+    while :; do
+        body=$(build_body "$query" "$pit_id" "$search_after")
+        [[ -z $body ]] && { perr "Error, jq failed to build query"; return 1; }
+        if [[ -z $search_after ]]; then
+            [[ $VERBOSE ]] && perr 'Send initial query'
+        else
+            [[ $VERBOSE ]] && perr "Continue with search_after $search_after"
+        fi
+        _curl "/_search${params:+?$params}" -d "$body" -s -o "$TMPFILE"
+        [[ $? != 0 ]] && { perr "Error, cURL failed"; return 1; }
+        [[ -s $TMPFILE ]] || { perr "Error, empty response"; return 1; }
+        # a pit search always sorts on the _shard_doc tiebreaker, implicitly
+        # if not requested, hence hits are expected to have sort values
+        { read -r pit_id; read -r nhits; read -r search_after; } < <(
+            jq -r '(.pit_id // ""), (.hits.hits |length),
+                   (.hits.hits[-1].sort // [] |tojson)' "$TMPFILE")
+        [[ -z $nhits || -z $search_after ]] &&
+            { perr "Error, jq failed to extract metadata"; return 1; }
+        [[ -z $pit_id ]] && { perr "Error, empty pit id"; return 1; }
+        # the pit id may change between requests, always use the last one
+        PIT_IDS["$pit_id"]=1
+        cat "$TMPFILE"
+        [[ $nhits == 0 ]] && return 0
+        [[ $search_after == '[]' ]] &&
+            { perr "Error, no sort values to search after"; return 1; }
+    done
+}
+
+ARGS=()
+while (( $# > 0 )); do
+    case "$1" in
+        -v|--verbose) VERBOSE=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) ARGS+=( "$1" ) ;;
+    esac
+    shift
+done
+ARGS+=( "$@" )
+
+[[ -z ${ARGS[0]} ]] && exit_usage 1
+
+trap on_exit EXIT
+TMPFILE=$(TMPDIR=${TMPDIR:-/dev/shm} mktemp --suffix ".$PROGNAME")
+es-scroll-pit "${ARGS[@]:0:3}"
