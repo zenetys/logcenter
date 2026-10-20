@@ -1,7 +1,8 @@
 #!/bin/bash
 
 PROGNAME=${0##*/}
-ES_SCROLL_PARAMS='size=1000&scroll=1m'
+ES_SCROLL_SIZE=${ES_SCROLL_SIZE:-1000}
+ES_SCROLL_TTL=${ES_SCROLL_TTL:-1m}
 TMPFILE=
 
 # Keep track of scroll ids to close them on exit
@@ -19,9 +20,18 @@ Available options:
     -h, --help          Display this help
 
 This script performs a scroll _search query on the given index.
-QUERY is the data to POST for the query in the initial request.
-If PARAM is given, it gets appended to the default parameters
-of the initial search query, which are $ES_SCROLL_PARAMS"
+
+QUERY is the data to POST for the query in the initial request, it
+must be a JSON object, it may be empty. Property size is added to
+QUERY unless already set, with a value of $ES_SCROLL_SIZE. The scroll
+is kept alive for $ES_SCROLL_TTL, refreshed on each request.
+
+If PARAMS is given, it gets appended to the URL parameters of the
+initial search query. Beware a size given there takes precedence over
+the size property of QUERY.
+
+Environment variables ES_SCROLL_SIZE and ES_SCROLL_TTL override
+the defaults given above."
     exit "$status"
 }
 
@@ -52,16 +62,19 @@ function on_exit() {
 # $4: internal, scroll id
 function es-scroll() {
     local index=$1 query=$2 params=$3 scroll_id=$4
-    local meta
+    local body meta
 
     if [[ -n $scroll_id ]]; then
         # continue scroll
         [[ $VERBOSE ]] && perr "Continue scroll $scroll_id"
-        _curl "/_search/scroll" -d "{\"scroll\":\"1m\",\"scroll_id\":\"$scroll_id\"}" -s -o "$TMPFILE"
+        _curl "/_search/scroll" -d "{\"scroll\":\"$ES_SCROLL_TTL\",\"scroll_id\":\"$scroll_id\"}" -s -o "$TMPFILE"
     else
         # initial query
         [[ $VERBOSE ]] && perr 'Send initial query'
-        _curl "$index/_search?$ES_SCROLL_PARAMS${params:+&$params}" -d "$query" -s -o "$TMPFILE"
+        body=$(jq -cn --argjson query "${query:-{\}}" --argjson size "$ES_SCROLL_SIZE" '
+            $query |(if .size == null then .size = $size else . end)')
+        [[ -z $body ]] && { perr "Error, jq failed to build query"; return 1; }
+        _curl "$index/_search?scroll=$ES_SCROLL_TTL${params:+&$params}" -d "$body" -s -o "$TMPFILE"
     fi
     [[ $? != 0 ]] && { perr "Error, cURL failed"; return 1; }
     [[ -s $TMPFILE ]] || { perr "Error, empty response"; return 1; }
