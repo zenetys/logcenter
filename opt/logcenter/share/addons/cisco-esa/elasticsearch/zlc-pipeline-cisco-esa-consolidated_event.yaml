@@ -5,11 +5,8 @@ on_failure:
   - set: { field: event.kind, value: pipeline_error }
 
 processors:
-  - set:
-      field: _
-      value:
-        enable_pipeline_geoip: false
-        enable_pipeline_related_ip: false
+  - set: { field: _.enable_pipeline_geoip, value: false }
+  - set: { field: _.enable_pipeline_related_ip, value: false }
 
   - grok:
       field: event.original
