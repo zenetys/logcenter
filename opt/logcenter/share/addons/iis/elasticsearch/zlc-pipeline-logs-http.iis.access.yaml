@@ -22,9 +22,8 @@ processors:
 
   - set:
       if: ctx.iis.access.date != null && ctx.iis.access.time != null
-      field: _
-      value:
-        datetime: '{{{iis.access.date}}} {{{iis.access.time}}}'
+      field: _.datetime
+      value: '{{{iis.access.date}}} {{{iis.access.time}}}'
 
   - date:
       if: ctx._.datetime != null
