@@ -1,0 +1,10 @@
+version: 1
+
+processors:
+  - script:
+      lang: painless
+      ignore_failure: true
+      source: |
+        if (!(ctx.zlc instanceof Map))
+            ctx.zlc = [:];
+        ctx.zlc.ingest_done_at = System.currentTimeMillis();
