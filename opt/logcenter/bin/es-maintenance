@@ -33,12 +33,13 @@ function info() {
 
 # wait-until [-m max-wait-sec] command...
 function wait-until() {
-    local explain="$FUNCNAME ${*@Q}" try=0 max=0
+    local explain="$FUNCNAME ${*@Q}" try=0 max=
     [[ $1 == -m ]] && { max=$2; shift 2; }
     while :; do
         (( try++ ))
-        echo "[$try/${max:-0}] $explain"
+        echo "[${try}${max:+/$max}] $explain"
         "$@" && return 0
+        # empty max gets evaluated as 0 by bash arithmetics
         (( max > 0 && try >= max )) && return 1
         sleep 1
     done
@@ -128,7 +129,7 @@ function action_wait_node() {
     done
     [[ -z $name ]] && name=$HOSTNAME
     info "[wait-node] Wait for $name to join cluster"
-    wait-until -m "$max" is-node-present "$name"
+    wait-until ${max:+-m "$max"} is-node-present "$name"
 }
 
 # es-maintenance wait-green [-m 300]
@@ -142,7 +143,7 @@ function action_wait_green() {
         shift
     done
     info '[wait-green] Wait for cluster green state'
-    wait-until -m "$max" is-cluster-green
+    wait-until ${max:+-m "$max"} is-cluster-green
 }
 
 args=()
