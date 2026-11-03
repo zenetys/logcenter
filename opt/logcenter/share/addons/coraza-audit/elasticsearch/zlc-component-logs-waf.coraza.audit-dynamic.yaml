@@ -1,0 +1,67 @@
+version: 1
+template:
+  mappings:
+    dynamic_templates:
+
+      - coraza_force_keyword:
+          path_match:
+            - 'coraza.transaction.timestamp'
+            - 'coraza.messages.data.id'
+          match_mapping_type: [ string, long ]
+          mapping:
+            type: keyword
+            ignore_above: 1024
+
+      - coraza_byte:
+          path_match:
+            - 'coraza.messages.data.severity'
+            - 'coraza.messages.data.maturity'
+            - 'coraza.messages.data.accuracy'
+          match_mapping_type: long
+          mapping:
+            type: byte
+
+      - coraza_text:
+          path_match:
+            - 'coraza.messages.error_message'
+          match_mapping_type: string
+          mapping:
+            type: match_only_text
+
+      - coraza_keyword_and_text:
+          path_match:
+            - 'coraza.messages.message'
+            - 'coraza.messages.data.msg'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            ignore_above: 1024
+            fields:
+              text:
+                type: match_only_text
+
+      - coraza_wildcard:
+          path_match:
+            - 'coraza.messages.data.data'
+          match_mapping_type: string
+          mapping:
+            type: wildcard
+
+      - coraza_not_indexed:
+          path_match:
+            - 'coraza.messages.data.raw'
+          match_mapping_type: string
+          mapping:
+            type: keyword
+            index: false
+            doc_values: false
+
+      - coraza_flattened:
+          path_match:
+            - 'coraza.transaction.request.headers'
+            - 'coraza.transaction.request.args'
+            - 'coraza.transaction.response.headers'
+          match_mapping_type: object
+          mapping:
+            type: flattened
+            ignore_above: 8191
