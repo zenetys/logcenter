@@ -12,6 +12,10 @@ WAIT_CONFIRM__ES_RESTART=${WAIT_CONFIRM__ES_RESTART:-10}
 WAIT_CONFIRM__REBOOT=${WAIT_CONFIRM__REBOOT:-10}
 WAIT_CONFIRM__CLUSTER_GREEN=${WAIT_CONFIRM__CLUSTER_GREEN:-10}
 DISK_CLOSE_MARGIN_PCT=${DISK_CLOSE_MARGIN_PCT:-2}
+# While waiting for green, request a reroute when the cluster stays non-green
+# with unassigned shards and no recovery in progress for this many seconds.
+# 0 disables the reroute nudge.
+REROUTE_STUCK_DELAY=${REROUTE_STUCK_DELAY:-60}
 
 # options
 UPDATE=
@@ -79,15 +83,18 @@ EOF
 
 # wait-until [-m max-try[:confirm[:reset]]] command...
 # Note: sleep 1 second between each try
+# The command is run with WAIT_UNTIL_CALL=<n> in its environment, n being the
+# call number within this wait-until series (starts at 1, never reset). It
+# allows stateful check functions to initialize their state on first call.
 function wait-until() {
-    local explain="$FUNCNAME ${*@Q}" try=1 max=30
+    local explain="$FUNCNAME ${*@Q}" try=1 max=30 calls=0
     local step=0 last confirm_try= confirm_max= reset_try= reset_max=2
     [[ $1 == -m ]] && { max=$2; shift 2; }
     [[ $max == *:* ]] && { confirm_max=${max#*:}; max=${max%%:*}; }
     [[ $confirm_max == *:* ]] && { reset_max=${confirm_max#*:}; confirm_max=${confirm_max%%:*}; }
     while :; do
         echo "[t:$try/${max:--}${confirm_try:+ c:$confirm_try/${confirm_max:--}}${reset_try:+ r:$reset_try/${reset_max:--}}] $explain" >&2
-        last=0; "$@" || last=$?
+        last=0; WAIT_UNTIL_CALL=$((++calls)) "$@" || last=$?
         if (( step == 0 )); then
             case "$last,$confirm_max" in
                 0,) return 0 ;;
@@ -195,6 +202,34 @@ function plan_order() {
 function cluster_is_green() {
     local status
     status=$(es-curl '_cat/health?h=status' -m 3 2>/dev/null)
+    [[ $status == green ]]
+}
+
+# cluster_is_green_or_reroute:
+# Same as cluster_is_green, but if the cluster stays non-green with unassigned
+# shards and no recovery in progress for REROUTE_STUCK_DELAY seconds, ask the
+# master for a new (harmless) allocation round. Workaround for replicas left
+# unassigned, seen after a 8.x -> 9.x rolling upgrade.
+# State: STUCK_SINCE holds the start of the current stuck period. It is reset
+# on the first call of a wait-until series (WAIT_UNTIL_CALL=1).
+function cluster_is_green_or_reroute() {
+    local status relo init unassign
+    (( ${WAIT_UNTIL_CALL:-1} == 1 )) && STUCK_SINCE=
+    read -r status relo init unassign < <(
+        es-curl '_cat/health?h=status,relo,init,unassign' -m 3 2>/dev/null)
+    if [[ $status == yellow || $status == red ]] &&
+       (( relo == 0 && init == 0 && unassign > 0 )); then
+        [[ -z $STUCK_SINCE ]] && STUCK_SINCE=$SECONDS
+        if (( REROUTE_STUCK_DELAY > 0 &&
+              SECONDS - STUCK_SINCE >= REROUTE_STUCK_DELAY )); then
+            warn "Cluster $status with $unassign unassigned shard(s) and no recovery for ${REROUTE_STUCK_DELAY}s, request reroute"
+            es-curl '_cluster/reroute?metric=none' -XPOST -m 10 >/dev/null ||
+                warn 'Reroute request failed'
+            STUCK_SINCE=$SECONDS
+        fi
+    else
+        STUCK_SINCE=
+    fi
     [[ $status == green ]]
 }
 
@@ -405,7 +440,7 @@ function process_node() {
     wait-until -m : es-maintenance end-node
 
     info "$name: Wait until cluster is green"
-    wait-until -m ":${WAIT_CONFIRM__CLUSTER_GREEN}:" cluster_is_green
+    wait-until -m ":${WAIT_CONFIRM__CLUSTER_GREEN}:" cluster_is_green_or_reroute
 }
 
 # main
