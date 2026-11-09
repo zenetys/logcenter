@@ -160,30 +160,36 @@ function filter_nodes() {
 }
 
 function plan_order() {
+    # Rolling upgrade order recommended by Elastic. A node belongs to the
+    # first applicable group (a data node that is also master-eligible is
+    # a data node):
+    #
+    # 1. data nodes, tier by tier: frozen, cold, warm, hot, then other data
+    # 2. nodes neither data nor master-eligible (ml, ingest, coordinating...)
+    # 3. master-eligible nodes: voting-only first, then master nodes
+    #
+    # The currently elected master is processed last within its group and tier,
+    # to avoid needless master elections. It must not override the group order
+    # (eg. a data node master must not go after voting-only).
     ORDERED_NODES=( $(for name in "$@"; do
-        bucket=2; tier=4
-        if [[ $name == "$MASTER_NODE" ]]; then
-            # current master always last
-            bucket=5
-        elif [[ ${NODES_ROLES[$name]} == *[dhwcfs]* ]]; then
-            # data nodes first, frozen to hot if multi-tier
+        roles=${NODES_ROLES[$name]}
+        bucket=2; tier=0; is_master=0
+        [[ $name == "$MASTER_NODE" ]] && is_master=1
+        if [[ $roles == *[dhwcfs]* ]]; then
             bucket=1
-            case "${NODES_ROLES[$name]}" in
+            case "$roles" in
                 *f*) tier=0 ;;
                 *c*) tier=1 ;;
                 *w*) tier=2 ;;
                 *h*) tier=3 ;;
+                *) tier=4 ;;
             esac
-        elif [[ ${NODES_ROLES[$name]} == *m* ]]; then
-            # voting-only, then master-eligibles
-            if [[ ${NODES_ROLES[$name]} == *v* ]]; then
-                bucket=3
-            else
-                bucket=4
-            fi
+        elif [[ $roles == *m* ]]; then
+            bucket=3
+            [[ $roles == *v* ]] && tier=0 || tier=1
         fi
-        printf '%d\t%d\t%s\n' "$bucket" "$tier" "$name"
-    done |sort -t $'\t' -k1,1n -k2,2n -k3,3 |cut -d $'\t' -f 3) )
+        printf '%d\t%d\t%d\t%s\n' "$bucket" "$tier" "$is_master" "$name"
+    done |sort -t $'\t' -k1,1n -k2,2n -k3,3n -k4,4 |cut -d $'\t' -f 4) )
 }
 
 function cluster_is_green() {
