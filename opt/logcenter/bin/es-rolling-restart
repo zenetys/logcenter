@@ -194,9 +194,8 @@ function plan_order() {
 
 function cluster_is_green() {
     local status
-    status=$(es-curl _cat/health -m 3 2>/dev/null |awk 'NR==1 {print $4}')
-    [[ $status == green ]] && return 0
-    return 1
+    status=$(es-curl '_cat/health?h=status' -m 3 2>/dev/null)
+    [[ $status == green ]]
 }
 
 function elasticsearch_has_restarted_and_is_ok() {
