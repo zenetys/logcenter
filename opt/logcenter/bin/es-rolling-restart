@@ -290,7 +290,7 @@ function preflight_disk_space_or_fatal() {
     local node=$1
     # return success if no disk stats, assuming it is not a data node
     [[ -z ${NODES_DISK_PERCENT[$node]} ]] && return 0
-    info "$name: Preflight disk space check"
+    info "$node: Preflight disk space check"
 
     if [[ ${LOW_WATERMARK[0]} == p ]]; then
         awk -v "dp=${NODES_DISK_PERCENT[$node]}" \
