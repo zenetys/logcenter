@@ -38,6 +38,7 @@ attributes:
       unifi.wifiName:
         width: 124
       user.name: {}
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
