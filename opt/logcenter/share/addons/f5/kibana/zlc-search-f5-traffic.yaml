@@ -26,7 +26,7 @@ attributes:
       source.ip:
         width: 130
   headerRowHeight: 1
-  hideChart: true
+  hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
