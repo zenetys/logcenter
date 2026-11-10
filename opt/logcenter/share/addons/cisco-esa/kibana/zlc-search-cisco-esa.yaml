@@ -34,10 +34,12 @@ attributes:
         width: 95
       source.geo.country_name:
         width: 114
+  headerRowHeight: 1
   hideChart: true
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
   sort:
     - - '@timestamp'
       - desc
