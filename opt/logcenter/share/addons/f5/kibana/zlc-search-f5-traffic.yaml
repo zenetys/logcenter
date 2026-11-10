@@ -25,6 +25,7 @@ attributes:
         width: 73
       source.ip:
         width: 130
+  headerRowHeight: 1
   hideChart: true
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
