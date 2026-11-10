@@ -1,0 +1,73 @@
+#!/bin/bash
+
+set -f
+PROGNAME=${0##*/}
+
+function exit_usage() {
+    local status=${1:-0}
+    [[ $status != 0 ]] && exec >&2
+    echo "\
+Usage: $PROGNAME [OPTION...] OBJECT...
+Delete objects from spaces
+
+OBJECT is given as [SPACE:]TYPE:ID, like in kbn-ls output. The default
+space is used when SPACE is omitted.
+
+Available options:
+
+    --force                 When set to true, forces an object to be
+        deleted if it exists in multiple spaces. The object gets removed
+        from all of them.
+
+    -d, --debug             Dump raw kibana API output
+    -h, --help              Display this help
+"
+    exit "$status"
+}
+
+args=()
+force=
+debug=
+while (( $# > 0 )); do
+    case "$1" in
+        --force) force=1 ;;
+        -d|--debug) debug=1 ;;
+        -h|--help) exit_usage 0 ;;
+        --) shift; break ;;
+        -*) exit_usage 1 ;;
+        *) args+=( "$1" ) ;;
+    esac
+    shift
+done
+args+=( "$@" )
+
+[[ -z $args ]] && exit_usage 1
+
+gret=0
+for o in "${args[@]}"; do
+    spec=( ${o//:/$IFS} )
+    if (( ${#spec[@]} == 2 )); then
+        space=default
+        type=${spec[0]}
+        id=${spec[1]}
+    elif (( ${#spec[@]} == 3 )); then
+        space=${spec[0]}
+        type=${spec[1]}
+        id=${spec[2]}
+    else
+        echo "Delete $o: ERROR: Invalid object specification"
+        gret=1
+        continue
+    fi
+
+    # curl errors get printed on stderr before the result line
+    result=$(
+        set -o pipefail
+        kbn-curl "/s/$space/api/saved_objects/$type/$id${force:+?force=true}" -X DELETE |
+        { cat; echo; } |if [[ -n $debug ]]; then tee /dev/stderr; else cat; fi |
+        jq -r 'if .error then "ERROR: \(.statusCode), \(.message)" else "OK" end'
+    )
+    [[ $? == 0 && $result == OK ]] || gret=1
+    echo "Delete $o: ${result:-ERROR}"
+done
+exit "$gret"
