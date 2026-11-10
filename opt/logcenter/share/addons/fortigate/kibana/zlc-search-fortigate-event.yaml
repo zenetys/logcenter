@@ -30,10 +30,12 @@ attributes:
         width: 134
       user.name:
         width: 131
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"Event logs (DO NOT EDIT)","disabled":false,"field":"fortigate.type","key":"fortigate.type","negate":false,"params":{"query":"event"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"fortigate.type":"event"}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity warning+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"4\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"range":{"event.severity":{"lte":"4"}}},"$state":{"store":"appState"}},{"meta":{"type":"custom","disabled":true,"negate":false,"alias":"event.severity error+ (DO NOT ENABLE+SAVE)","key":"query","value":"{\"range\":{\"event.severity\":{\"lte\":\"3\"}}}","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[2].meta.index"},"query":{"range":{"event.severity":{"lte":"3"}}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
   sort:
     - - '@timestamp'
       - desc
