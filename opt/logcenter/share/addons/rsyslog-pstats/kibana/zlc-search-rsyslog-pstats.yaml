@@ -15,6 +15,7 @@ attributes:
         width: 245
       rsyslog.origin:
         width: 152
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
