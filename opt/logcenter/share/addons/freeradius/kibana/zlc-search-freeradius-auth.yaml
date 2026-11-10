@@ -42,6 +42,7 @@ attributes:
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":"freeradius.type:Auth (DO NOT EDIT)","negate":false,"disabled":false,"type":"phrase","key":"freeradius.type","params":{"query":"Auth"},"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"freeradius.type":"Auth"}},"$state":{"store":"appState"}},{"meta":{"disabled":true,"negate":false,"alias":"is inner-tunnel (DO NOT REMOVE)","key":"freeradius.request.FreeRADIUS-Proxied-To","field":"freeradius.request.FreeRADIUS-Proxied-To","value":"exists","type":"exists","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"exists":{"field":"freeradius.request.FreeRADIUS-Proxied-To"}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
   sort:
     - - '@timestamp'
       - desc
