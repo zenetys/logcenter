@@ -18,6 +18,7 @@ attributes:
         width: 86
       log.logger:
         width: 374
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
