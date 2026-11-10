@@ -1,0 +1,121 @@
+#!/bin/bash
+# kbn-settings - list Kibana advanced settings (global + one space) with
+# their type, effective value and default value.
+# Requires the kbn-curl wrapper (authentication, base URL, curl -f), jq >= 1.6
+# and column (util-linux).
+# Note: jq 1.6 rejects keywords as variable names (eg. $label), 1.7 accepts.
+
+PROGNAME=${0##*/}
+set -o pipefail
+INTERNAL_ORIGIN='x-elastic-internal-origin: kibana'
+
+function usage() {
+    cat <<EOF
+Usage: $PROGNAME [OPTION]... [SPACE]
+List Kibana advanced settings: global settings (globalUiSettings), then the
+settings of the given space (uiSettings:SPACE), "default" space if not given.
+
+Options:
+  -m, --modified  Only show settings with a value set (user or kibana.yml)
+  -t, --tsv       Tab-separated output, for scripting (cut -f, awk -F'\t')
+  -h, --help      Show this help
+
+Columns: SCOPE KEY TYPE FLAG EFFECTIVE DEFAULT
+  TYPE       type declared by the setting, or deduced from its default value
+  FLAG       U = value set by a user (Advanced Settings UI or API)
+             O = value locked by uiSettings.overrides in kibana.yml
+             ? = value set for a key unknown to this Kibana (obsolete?)
+             - = no value set, the default applies
+  EFFECTIVE  value set, "-" when the default applies
+Values are JSON encoded: strings are quoted ("" is an empty string), JSON
+settings are compacted on one line. A "-" cell means no value.
+EOF
+}
+
+function fatal() {
+    echo "$PROGNAME: $*" >&2
+    exit 1
+}
+
+# Decode the HTML entities used to escape an attribute value
+function html_unescape() {
+    sed -e 's/&quot;/"/g' -e "s/&#39;/'/g" -e "s/&#x27;/'/g" \
+        -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g'
+}
+
+only_set=false
+format=table
+space=
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -m|--modified) only_set=true ;;
+        -t|--tsv) format=tsv ;;
+        --) shift; break ;;
+        -*) echo "$PROGNAME: unknown option: $1" >&2; usage >&2; exit 1 ;;
+        *) [[ -z $space ]] || { usage >&2; exit 1; }; space=$1 ;;
+    esac
+    shift
+done
+if (( $# > 0 )); then
+    [[ -z $space && $# == 1 ]] || { usage >&2; exit 1; }
+    space=$1
+fi
+space=${space:-default}
+[[ $space == default ]] && prefix= || prefix=/s/$space
+
+kbn-curl "/api/spaces/space/$space" > /dev/null ||
+    fatal "Space '$space' not found"
+home=$(kbn-curl "$prefix/app/home") ||
+    fatal "Cannot fetch $prefix/app/home"
+space_settings=$(kbn-curl "$prefix/internal/kibana/settings" -H "$INTERNAL_ORIGIN") ||
+    fatal "Cannot fetch $prefix/internal/kibana/settings"
+global_settings=$(kbn-curl /internal/kibana/global_settings -H "$INTERNAL_ORIGIN") ||
+    fatal 'Cannot fetch /internal/kibana/global_settings'
+
+meta=$(echo "$home" |
+    grep -o '<kbn-injected-metadata data="[^"]*"' |
+    sed -e 's/^<kbn-injected-metadata data="//' -e 's/"$//' |
+    html_unescape)
+[[ -n $meta ]] ||
+    fatal 'kbn-injected-metadata not found in the page (login page?)'
+
+rows=$(echo "$meta" |
+    jq -r --arg space "$space" --argjson only_set "$only_set" \
+    --argjson global "$global_settings" --argjson spaceset "$space_settings" '
+    # Type of settings that do not declare one, deduced from the default value
+    def deduce:
+        {boolean: "boolean", number: "number", string: "string",
+         array: "array", object: "json"}[type] // "-";
+    # One-line JSON; JSON settings (JSON text in a string) are compacted
+    def fmt($t):
+        . as $v |
+            if $t == "json" and type == "string"
+            then (try (fromjson | tojson) catch ($v | tojson))
+            else tojson end;
+
+    (.legacyMetadata // .) as $m |
+        ["globalUiSettings", "globalUiSettings", ($global.settings // {})],
+        ["uiSettings", "uiSettings:" + $space, ($spaceset.settings // {})] |
+        .[0] as $scope | .[1] as $scope_name | .[2] as $user |
+        ($m[$scope].defaults //
+            error("No \($scope) defaults in the page metadata")) as $defaults |
+        ([$defaults, $user] | map(keys) | add | unique)[] |
+        select(. != "buildNum") |   # internal, always set by Kibana itself
+        . as $key | $defaults[$key] as $d | ($user[$key] // {}) as $u |
+        ($u | has("userValue")) as $set |
+        select($set or ($only_set | not)) |
+        (if $d == null then "-" else ($d.type // ($d.value | deduce)) end) as $t |
+        [ $scope_name, $key, $t,
+          (if ($set | not) then "-" elif $d == null then "?"
+           elif $u.isOverridden then "O" else "U" end),
+          (if $set then ($u.userValue | fmt($t)) else "-" end),
+          (if $d == null then "-" else ($d.value | fmt($t)) end) ] |
+        join("\t")
+') || exit 1
+
+# Tab-separated output: JSON encoding guarantees no tab nor newline in values
+{
+    printf 'SCOPE\tKEY\tTYPE\tFLAG\tEFFECTIVE\tDEFAULT\n'
+    [[ -n $rows ]] && printf '%s\n' "$rows"
+} | if [[ $format == tsv ]]; then cat; else column -t -s $'\t'; fi
