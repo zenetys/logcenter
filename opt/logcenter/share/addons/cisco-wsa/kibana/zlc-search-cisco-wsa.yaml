@@ -48,7 +48,7 @@ attributes:
       user.name:
         width: 95
   headerRowHeight: 0
-  hideChart: true
+  hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
