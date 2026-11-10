@@ -34,10 +34,12 @@ attributes:
         width: 154
       source.ip:
         width: 115
+  headerRowHeight: 1
   hideChart: false
   isTextBasedQuery: false
   kibanaSavedObjectMeta:
     searchSourceJSON: '{"query":{"query":"","language":"kuery"},"filter":[{"meta":{"alias":null,"disabled":false,"key":"dnsmasq.service","negate":false,"params":{"query":"dns"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[0].meta.index"},"query":{"match_phrase":{"dnsmasq.service":"dns"}},"$state":{"store":"appState"}},{"meta":{"alias":null,"disabled":true,"key":"dns.question.type","negate":true,"params":{"query":"AAAA"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[1].meta.index"},"query":{"match_phrase":{"dns.question.type":"AAAA"}},"$state":{"store":"appState"}},{"meta":{"alias":null,"disabled":true,"key":"dnsmasq.answer","negate":true,"params":{"query":"NODATA-IPv6"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[2].meta.index"},"query":{"match_phrase":{"dnsmasq.answer":"NODATA-IPv6"}},"$state":{"store":"appState"}},{"meta":{"alias":null,"disabled":true,"key":"dnsmasq.context","negate":true,"params":{"query":"forwarded"},"type":"phrase","indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.filter[3].meta.index"},"query":{"match_phrase":{"dnsmasq.context":"forwarded"}},"$state":{"store":"appState"}}],"indexRefName":"kibanaSavedObjectMeta.searchSourceJSON.index"}'
+  rowHeight: -1
   sort:
     - - '@timestamp'
       - desc
