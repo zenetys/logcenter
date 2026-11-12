@@ -1,0 +1,5 @@
+version: 1
+template:
+  settings:
+    index:
+      number_of_replicas: 0

@@ -8,7 +8,14 @@ template:
       refresh_interval: 10s
       number_of_shards: "1"
       number_of_replicas: "1"
-      auto_expand_replicas: "0-1"
+
+      # auto_expand_replicas: 0-1 is not that good for 2 data nodes clusters;
+      # if one data node reboot, the replica is droped, then recreated when
+      # the node reappears. See github issue #95104:
+      # Auto-expand-replicas causes problems in a small cluster rolling restart
+      # https://github.com/elastic/elasticsearch/issues/95104
+      auto_expand_replicas: false
+
       default_pipeline: zlc-pipeline-default
       final_pipeline: zlc-pipeline-final
       unassigned.node_left.delayed_timeout: 30m
