@@ -32,7 +32,7 @@ declare -A ROLES=(
   "applications": [
     {
       "application": "kibana-.kibana",
-      "privileges": [ "feature_dashboard.read" ],
+      "privileges": [ "feature_discover.read", "feature_dashboard.read" ],
       "resources": [ "space:dashboard" ]
     }
   ]
