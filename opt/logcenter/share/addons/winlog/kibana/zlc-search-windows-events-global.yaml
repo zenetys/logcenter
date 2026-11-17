@@ -40,7 +40,7 @@ attributes:
     - - '@timestamp'
       - desc
   timeRestore: false
-  title: Windows Events, global listing
+  title: Listing windows events, global
   usesAdHocDataView: false
 coreMigrationVersion: 8.8.0
 created_at: "2024-05-15T23:25:58.345Z"
