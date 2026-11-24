@@ -22,13 +22,14 @@ function exit_usage() {
     [[ $status != 0 ]] && exec >&2
     echo "\
 Usage: $PROGNAME [OPTION...] -t USED% -r RULE [-r RULE]...
-Delete Elasticsearch indices until disk usage goes below threshold
+Delete Elasticsearch indices until cluster disk usage goes below threshold
 
 Options:
-  -t, --threshold USED%     Disk usage threshold percent used
+  -t, --threshold USED%     Cluster disk usage threshold percent used
   -M, --master-only         Run only on master
   -r, --rule RULE           Add rule, see format below
-  -sd, --show-disk          Show per-node disk usage, do nothing else
+  -sd, --show-disk          Show cluster and per-node disk usage,
+                            do nothing else
   -si, --show-indices       Show per-indice (DS) stats, do nothing else
   -d, --debug               Enable debug
   -y, --yes-do-it           Dry-run is enabled by default, disable it
@@ -45,7 +46,7 @@ The process is as follows:
   - if there is a stop match, the datastream is further ignored,
     continuing with the oldest indice of the next datastream;
   - if there is match, indice is deleted, which terminates the process;
-  - that process repeats until all data nodes are below disk threshold,
+  - that process repeats until cluster disk usage is below threshold,
     unless no indice matches for deletion.
 
 Rule format is <ds-pattern>,[<max-ds-size>],[<min-keep>]
@@ -60,6 +61,9 @@ Rule examples:
   *,,3                    For any datastream, keep at least 3.
 
 Notes:
+  - cluster disk usage is the space used on all data nodes over their
+    total space, the balance of shards between nodes is left to
+    Elasticsearch and its disk watermarks;
   - only datastream indices are considered;
   - <min-keep> value 0 is an error because an indice cannot be
     deleted if alone in a datastream.
@@ -109,21 +113,25 @@ function i_am_master() {
     return 0
 }
 
-function get_data_nodes_stats() {
-    REPLY=( $(es-curl _nodes/stats/fs |jq -r '.nodes |to_entries |map(
-            .value |select(.roles|join(",")|test("data")) |
-            . + { free_bytes: .fs.total.available_in_bytes } +
-                { used_bytes: (.fs.total.total_in_bytes - .fs.total.available_in_bytes) } |
-            . + { used_pct: (.used_bytes*100/.fs.total.total_in_bytes) |round }
-        ) |
-        sort_by(.name) |
-        map("\(.name),\(.used_pct),\(.free_bytes)")[]') )
-    (( $? == 0 )) || fatal 'Failed to get data nodes stats'
+function get_disk_usage() {
+    local usage cluster
+    usage=( $(es-curl _nodes/stats/fs |jq -r '
+        [ .nodes[] |select(.roles |join(",") |test("data")) |
+            { name, total: .fs.total.total_in_bytes,
+                free: .fs.total.available_in_bytes } ] |
+        sort_by(.name) + [ { name: "cluster", total: (map(.total) |add),
+            free: (map(.free) |add) } ] |
+        map("\(.name),\((.total - .free) * 100 / .total |round),\(.free)")[]') )
+    (( $? == 0 )) || fatal 'Failed to get disk usage'
 
     if [[ -n $DEBUG || -n $SHOW ]]; then
-        { echo 'name,used_pct,free_bytes'; (IFS=$'\n'; echo "${REPLY[*]}"); } |
-            if [[ -n $DEBUG ]]; then LOG_STDIN=1 debug 'Node#%l '; else column -t -s ,; fi
+        { echo 'name,used_pct,free_bytes'; (IFS=$'\n'; echo "${usage[*]}"); } |
+            if [[ -n $DEBUG ]]; then LOG_STDIN=1 debug 'Disk#%l '; else column -t -s ,; fi
     fi
+
+    # used_pct of the cluster, last line
+    cluster=${usage[-1]#*,}
+    REPLY=( "${cluster%%,*}" )
 }
 
 function get_indices_stats() {
@@ -153,7 +161,7 @@ function get_indices_stats() {
                 done
             } |
             tac) )
-    (( $? == 0 )) || fatal 'Failed to get data nodes stats'
+    (( $? == 0 )) || fatal 'Failed to get indices stats'
 
     if [[ -n $DEBUG || -n $SHOW ]]; then
         { echo 'ds-name,ds-order,index,max-date,size,ds-size'; (IFS=$'\n'; echo "${REPLY[*]}"); } |
@@ -166,7 +174,7 @@ while (( $# > 0 )); do
         -t|--threshold) THRESHOLD=${2%\%}; shift ;;
         -M|--master-only) MASTER_ONLY=1 ;;
         -r|--rule) RULES+=( "$2" ); shift ;;
-        -sd|--show-disk) DEBUG= SHOW=1 DRY_RUN= get_data_nodes_stats; exit 0 ;;
+        -sd|--show-disk) DEBUG= SHOW=1 DRY_RUN= get_disk_usage; exit 0 ;;
         -si|--show-indices) DEBUG= SHOW=1 DRY_RUN= get_indices_stats; exit 0 ;;
         -d|--debug) DEBUG=1 ;;
         -y|--yes-do-it) DRY_RUN= ;;
@@ -194,24 +202,21 @@ trap 'release_lock if_ours' EXIT
 acquire_lock_or_fatal
 
 while :; do
-    # name, used_pct, free_bytes
-    get_data_nodes_stats; nodes=( "${REPLY[@]}" )
-    alert_msg=
-    for n in "${nodes[@]}"; do
-        IFS=,; n=( $n ); IFS=$OIFS
-        (( n[1] < THRESHOLD )) && continue
-        alert_msg+="${alert_msg:+, }${n[0]} (${n[1]}%)"
-    done
-    [[ -z $alert_msg ]] && { info 'Disk usage below threshold'; break; }
-    info "Disk usage above threshold: $alert_msg"
+    get_disk_usage
+    if (( REPLY < THRESHOLD )); then
+        info "Cluster disk usage ${REPLY}% below threshold"
+        break
+    fi
+    info "Cluster disk usage ${REPLY}% above threshold"
 
-    has_deleted=
+    to_delete=
     declare -A ds_to_pass=()
     # ds-name, ds-order (highest is oldest), index, max-date, size, ds-size
     get_indices_stats; indices=( "${REPLY[@]}" )
     for i in "${indices[@]}"; do
         IFS=,; i=( $i ); IFS=$OIFS
         [[ -n ${ds_to_pass["${i[0]}"]} ]] && continue
+        ds_to_pass["${i[0]}"]=1
         debug "Considering indice ${i[2]} (${i[1]}), last ${i[3]}, ds size ${i[5]}"
 
         for r in "${RULES[@]}"; do
@@ -236,25 +241,17 @@ while :; do
             fi
 
             debug "Rule $rule => ${match[0]}${match[1]:+, ${match[1]}}"
-            ds_to_pass["${i[0]}"]=1
 
-            if [[ ${match[0]} == yes ]]; then
-                if [[ -z ${match[1]} ]]; then
-                    info "Delete indice ${i[2]}"
-                    if [[ -z $DRY_RUN ]]; then
-                        out=$(es-curl "${i[2]}" -XDELETE) ||
-                            fatal "Delete failed${out:+: $out}"
-                        has_deleted=1
-                    fi
-                    break 2
-                else # it is a stop action
-                    break
-                fi
-            fi
+            [[ ${match[0]} == yes ]] || continue
+            [[ -n ${match[1]} ]] && break # it is a stop action
+            to_delete=${i[2]}
+            break 2
         done
     done
 
-    [[ -z $has_deleted ]] && { info 'Not match, nothing deleted'; break; }
+    [[ -n $to_delete ]] || { info 'No match, nothing deleted'; break; }
+    info "Delete indice $to_delete"
     [[ -n $DRY_RUN ]] && break
+    out=$(es-curl "$to_delete" -XDELETE) || fatal "Delete failed${out:+: $out}"
     sleep 1
 done
