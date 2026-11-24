@@ -50,10 +50,9 @@ def flatten_keys:
                     [$x[] |select(.value|type != "string") |.key] |first as $begin |
                     $x[] |select($begin and .key >= $begin)
                 ) |
-                map(.value) |join(".")
+                map(.value)
             ) |
-            unique |
-            map(split("."))[]
+            unique[]
         ) as $p (
             null;
             ($in |getpath($p)) as $v |
