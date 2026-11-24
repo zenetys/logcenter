@@ -231,7 +231,7 @@ while :; do
                 elif [[ -n ${r[2]//[0-9]} || ${r[2]} == 0 ]]; then
                     fatal "Invalid min-keep in rule $rule"
                 elif (( i[1] <= r[2] )); then
-                    match=( no min-keep )
+                    match=( yes min-keep )
                 fi
             fi
 
